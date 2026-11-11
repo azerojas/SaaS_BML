@@ -1,0 +1,9 @@
+FROM python:3.14.10-alpine3.23@sha256:0cdfadc8472de8f74a5d3c6e5e49d1b3f059f36cd01a0a0d4015cb1cb89df436 AS testdependencies
+RUN apk add --no-cache build-base cmake
+COPY requirements.txt requirements-dev.txt /tmp/
+RUN pip install --no-cache-dir --prefix=/testdeps -r /tmp/requirements-dev.txt
+FROM beauty-manager:phase8-local
+USER 0:0
+RUN apk add --no-cache libstdc++
+COPY --from=testdependencies /testdeps /usr/local
+USER 10001:10001

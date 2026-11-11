@@ -1,0 +1,8 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "deployment/Dockerfile"
+
+[deploy]
+startCommand = "python manage.py run_maintenance --limit 500 --max-batches 20"
+cronSchedule = "*/5 * * * *"
+restartPolicyType = "NEVER"

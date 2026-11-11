@@ -1,0 +1,11 @@
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('config/', views.presentation_config, name='auth-config'),
+    path('csrf/', views.csrf, name='auth-csrf'),
+    path('login/', views.login_view, name='auth-login'),
+    path('me/', views.me, name='auth-me'),
+    path('logout/', views.logout_view, name='auth-logout'),
+]
+

@@ -1,0 +1,441 @@
+.feature-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin: 1.5rem 0 2rem;
+}
+.feature-heading h1 {
+  font-size: clamp(1.8rem, 4vw, 2.7rem);
+  letter-spacing: -1.3px;
+  margin: 0.5rem 0;
+}
+.feature-heading p {
+  color: var(--muted);
+  line-height: 1.7;
+}
+.surface {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: clamp(1.2rem, 3vw, 2rem);
+  min-width: 0;
+}
+.surface h2 {
+  font-size: 1.2rem;
+  margin-top: 0;
+}
+.surface + .surface,
+.section-gap {
+  margin-top: 1.5rem;
+}
+.filters,
+.reference-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 650;
+  margin-bottom: 0.5rem;
+}
+input:not([type='checkbox']),
+select,
+textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  border: 1px solid #89998d;
+  border-radius: 9px;
+  padding: 0.75rem;
+  font: inherit;
+  font-size: 0.88rem;
+  background: var(--paper);
+  color: var(--ink);
+}
+textarea {
+  resize: vertical;
+}
+input[readonly] {
+  background: var(--canvas);
+  color: var(--muted);
+}
+select {
+  padding-right: 1.5rem;
+}
+small,
+.muted {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+small {
+  display: block;
+  margin-top: 0.4rem;
+}
+.record-list {
+  display: grid;
+}
+.record-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-decoration: none;
+  padding: 1.25rem 0.35rem;
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+.record-row:hover {
+  background: var(--canvas);
+}
+.record-avatar {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  background: var(--sage);
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  color: var(--forest);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.record-main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.record-main strong {
+  overflow-wrap: anywhere;
+}
+.record-main > span {
+  font-size: 0.8rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.badge {
+  display: inline-block;
+  border-radius: 50px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  background: var(--sage);
+  color: var(--forest);
+}
+.badge.inactive {
+  background: #f2e9e2;
+  color: #805039;
+}
+.record-price {
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.pager {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 1.5rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.pager > div {
+  display: flex;
+  gap: 0.6rem;
+}
+.form-grid,
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.4rem;
+}
+.form-field {
+  min-width: 0;
+}
+.wide {
+  grid-column: 1/-1;
+}
+.field-error {
+  font-size: 0.8rem;
+  color: #9d3625;
+  line-height: 1.6;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 46px;
+  font-weight: 500;
+}
+.check input {
+  accent-color: var(--forest);
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+}
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 1.5rem;
+}
+.back-link {
+  font-size: 0.85rem;
+  color: var(--forest);
+  text-underline-offset: 5px;
+}
+.details-grid {
+  margin-bottom: 0;
+}
+.details-grid dt {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+.details-grid dd {
+  margin: 0;
+  font-size: 0.92rem;
+  overflow-wrap: anywhere;
+  line-height: 1.8;
+}
+.preserve-lines {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.empty-panel {
+  text-align: center;
+  background: var(--canvas);
+  border-radius: 12px;
+  padding: 2rem 1rem;
+  margin: 1rem 0;
+  line-height: 1.8;
+}
+.empty-panel h2,
+.empty-panel h3 {
+  font-size: 1.1rem;
+}
+.feature-tabs {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.8rem;
+  margin-bottom: 1.5rem;
+}
+.feature-tabs a {
+  font-size: 0.78rem;
+  text-decoration: none;
+  border-radius: 8px;
+  padding: 0.7rem;
+  color: var(--muted);
+}
+.feature-tabs a.selected {
+  color: var(--forest);
+  background: var(--sage);
+  font-weight: 700;
+}
+.filter-extra {
+  margin: 1rem 0;
+}
+.filter-extra summary {
+  cursor: pointer;
+  padding: 0.7rem 0;
+  font-size: 0.85rem;
+}
+.reference-picker {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem;
+  background: var(--canvas);
+}
+.reference-picker label:not(:first-child) {
+  margin-top: 0.8rem;
+}
+.reference-picker .pager {
+  margin-top: 0.6rem;
+}
+.reference-picker .pager > span {
+  display: none;
+}
+.reference-picker .pager button {
+  font-size: 0.7rem;
+}
+.recipe-list {
+  display: grid;
+  gap: 1rem;
+}
+.recipe-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 1rem;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 1.5rem;
+}
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.image-card {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  min-width: 0;
+}
+.image-card img {
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  border-radius: 9px;
+}
+.image-placeholder {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4/3;
+  background: var(--cream);
+  font-size: 0.8rem;
+}
+.public-content {
+  max-width: 1150px;
+  margin: auto;
+}
+.public-hero {
+  text-align: center;
+  padding: 2rem 1rem 3rem;
+}
+.public-hero h1 {
+  font-size: clamp(2.6rem, 7vw, 5rem);
+  letter-spacing: -2px;
+  line-height: 1.12;
+  margin: 1rem 0 1.5rem;
+}
+.public-hero em {
+  font-family: Georgia, serif;
+  font-weight: 400;
+}
+.public-hero > p:last-child {
+  color: var(--muted);
+}
+.public-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+.public-toolbar > div:last-child {
+  min-width: min(100%, 270px);
+}
+.public-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+.public-card {
+  text-decoration: none;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 1rem;
+  min-width: 0;
+}
+.public-card h2 {
+  font-size: 1.2rem;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+.public-card .eyebrow {
+  margin-top: 1.3rem;
+}
+.card-bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+  color: var(--forest);
+}
+.card-bottom > span:first-child {
+  font-weight: 700;
+}
+.public-note {
+  text-align: center;
+  margin: 3rem 0;
+}
+.public-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 3rem;
+  margin: 3rem 0;
+  line-height: 1.8;
+}
+.public-detail h1 {
+  font-size: clamp(2rem, 5vw, 3.1rem);
+  line-height: 1.2;
+  letter-spacing: -1px;
+  overflow-wrap: anywhere;
+}
+.public-price {
+  font-weight: 650;
+  font-size: 1.5rem;
+}
+.editor {
+  max-width: 1000px;
+}
+header:has(> a[aria-label='Lasheo, catálogo público']) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+@media (max-width: 1000px) {
+  .public-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 650px) {
+  .form-grid,
+  .details-grid,
+  .recipe-row,
+  .public-detail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .public-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .record-row {
+    flex-wrap: wrap;
+    gap: 0.7rem;
+  }
+  .record-price {
+    margin-left: 54px;
+  }
+  .feature-heading {
+    gap: 0.8rem;
+  }
+  .feature-tabs a {
+    font-size: 0.75rem;
+  }
+  .reference-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .public-detail {
+    gap: 1.5rem;
+  }
+  .surface {
+    border-radius: 13px;
+  }
+}

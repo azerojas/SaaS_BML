@@ -1,0 +1,25 @@
+{
+  "description": "Datos ficticios. Sustituir IDs por resultados reales de GET. Headers: cookie de sesion, X-CSRFToken e Idempotency-Key UUID para cada mutacion.",
+  "abrir_visita": {"clienta_id": 1, "notas": "Atencion ficticia"},
+  "crear_venta": {
+    "visita_id": 1,
+    "descuento_global": "10.00", "propina": "5.00",
+    "lineas": [
+      {"tipo": "SERVICIO", "servicio_id": 1, "profesional_id": 1, "cantidad": "1.000", "descuento_linea": "10.00"},
+      {"tipo": "PRODUCTO", "articulo_id": 2, "unidad_id": 1, "cantidad": "2.000"}
+    ]
+  },
+  "previsualizar": {},
+  "confirmar_venta": {
+    "consumos_revisados": true,
+    "consumos_reales": [{"detalle_id": 1, "insumos": [{"articulo_id": 3, "unidad_id": 2, "cantidad": "0.300"}]}]
+  },
+  "confirmar_solo_productos": {"consumos_revisados": true, "consumos_reales": []},
+  "confirmar_servicio_sin_insumos": {"consumos_revisados": true, "consumos_reales": [{"detalle_id": 1, "insumos": []}]},
+  "pago_parcial": {"metodo": "YAPE", "monto": "20.00", "referencia": "PRUEBA-0001", "verificado_manualmente": true},
+  "crear_anticipo": {"cita_id": 1, "metodo": "TRANSFERENCIA", "monto": "30.00"},
+  "confirmar_anticipo": {"verificado_manualmente": true, "referencia": "PRUEBA-0002"},
+  "aplicar_anticipo": {"anticipo_id": 1, "monto": "10.00"},
+  "anular_error_pago": {"motivo": "Registro duplicado de prueba", "error_registro_confirmado": true},
+  "anular_borrador_o_anticipo_pendiente": {"motivo": "Solicitud ficticia equivocada"}
+}

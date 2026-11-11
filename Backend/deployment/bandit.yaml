@@ -1,0 +1,12 @@
+exclude_dirs:
+  - '*\tests\*'
+  - '*/tests/*'
+  - apps/autenticacion/tests.py
+  - apps/clientas/tests.py
+  - apps/catalogo/tests
+  - apps/inventario/tests
+  - apps/checkin/tests
+  - apps/finanzas/tests
+  - apps/reporting/tests
+  - apps/agenda/tests
+  - apps/operaciones/tests

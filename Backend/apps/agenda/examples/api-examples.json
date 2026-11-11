@@ -1,0 +1,19 @@
+{
+  "description": "Datos ficticios. Sustituir IDs y fecha futura por datos autorizados. En mutaciones: sesion, X-CSRFToken e Idempotency-Key UUID.",
+  "profesional": {"nombres": "Profesional", "apellidos": "Ficticia", "visible_reservas": true, "comision_porcentaje": "10.00"},
+  "especialidades": {"servicios": [1, 2]},
+  "horario": {"profesional_id": 1, "dia_semana": 2, "hora_inicio": "10:00", "hora_fin": "18:00"},
+  "bloqueo": {"profesional_id": null, "inicio_en": "2026-11-10T12:00:00-05:00", "fin_en": "2026-11-10T13:00:00-05:00", "motivo": "Pausa global ficticia"},
+  "crear_cita": {"clienta_id": 1, "profesional_id": 1, "servicios": [1, 2], "inicio_en": "2026-11-10T10:00:00-05:00", "origen": "MANUAL"},
+  "reprogramar": {"inicio_en": "2026-11-10T14:00:00-05:00", "motivo": "Cambio de hora ficticio"},
+  "cancelar": {"motivo": "Cancelacion ficticia solicitada"},
+  "confirmar_o_completar_o_expirar": {},
+  "vincular_llegada": {"llegada_id": 1},
+  "lista_espera": {"clienta_id": 1, "servicio_id": 1, "profesional_id": 1, "fecha_deseada": "2026-11-10", "franja_inicio": "10:00", "franja_fin": "12:00"},
+  "oferta_manual": {"oferta_registrada_manualmente": true},
+  "convertir_espera": {"inicio_en": "2026-11-10T11:00:00-05:00"},
+  "retirar_horario_o_bloqueo": {"confirmar_retiro": true, "motivo": "Retiro administrativo ficticio"},
+  "configurar": {"anticipo_porcentaje": "20.00", "intervalo_slots_minutos": 15},
+  "disponibilidad_query": "fecha=2026-11-10&profesional_id=1&servicios=1,2",
+  "calendario_query": "desde=2026-11-10&hasta=2026-11-17&profesional_id=1&page_size=20"
+}

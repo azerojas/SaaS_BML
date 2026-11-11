@@ -1,0 +1,4 @@
+django-environ==0.14.0
+psycopg[binary]==3.3.8
+cryptography==50.0.2
+boto3==1.43.127

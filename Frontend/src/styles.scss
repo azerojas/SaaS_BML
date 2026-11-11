@@ -1,0 +1,100 @@
+@use '@angular/material' as mat;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+html {
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$green-palette,
+        theme-type: light,
+      ),
+      typography: 'Manrope Variable',
+      density: 0,
+    )
+  );
+  @include mat.theme-overrides(
+    (
+      primary: #2e4d42,
+      on-primary: #ffffff,
+      surface: #ffffff,
+      on-surface: #25382d,
+      outline: #8b978d,
+      outline-variant: #dde3da,
+      error: #a53c2b,
+    )
+  );
+  --forest: #2e4d42;
+  --ink: #25382d;
+  --muted: #59685c;
+  --cream: #f0eee4;
+  --sage: #eaf0e7;
+  --line: #e1e5dc;
+  --paper: #fff;
+  --canvas: #f8f9f5;
+  font-family: 'Manrope Variable', Arial, sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+}
+button,
+input,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+input {
+  font-family: inherit;
+}
+a {
+  color: inherit;
+}
+button,
+a {
+  touch-action: manipulation;
+}
+:focus-visible {
+  outline: 2px solid #53755c;
+  outline-offset: 4px;
+}
+.eyebrow {
+  font-size: 0.61rem;
+  font-weight: 750;
+  letter-spacing: 1.8px;
+  color: var(--muted);
+}
+.skip-link {
+  position: fixed;
+  z-index: 3000;
+  top: -100px;
+  left: 1rem;
+  padding: 0.8rem 1.2rem;
+  border-radius: 8px;
+  background: var(--forest);
+  color: #fff;
+}
+.skip-link:focus {
+  top: 1rem;
+}
+.mat-mdc-form-field {
+  --mdc-outlined-text-field-container-shape: 10px;
+  --mdc-outlined-text-field-outline-color: #d9dfd5;
+}
+.mat-mdc-dialog-container {
+  --mdc-dialog-container-shape: 18px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

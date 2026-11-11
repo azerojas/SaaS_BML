@@ -1,0 +1,23 @@
+{
+  "description": "Ejemplos ficticios. No representan resultados de Lasheo. hasta es exclusiva; null financiero no significa cero.",
+  "queries": {
+    "overview": "desde=2026-10-01&hasta=2026-11-01",
+    "revenue-series": "desde=2026-10-01&hasta=2026-11-01&granularidad=week",
+    "payment-methods": "periodo=month&fecha=2026-10-15&metodo=YAPE",
+    "top-services": "desde=2026-10-01&hasta=2026-11-01&orden=importe&page_size=20&limit=100",
+    "top-clients": "desde=2026-10-01&hasta=2026-11-01&orden=visitas&page_size=20",
+    "inventory-alerts": "categoria_id=1&page_size=20",
+    "expenses": "desde=2026-10-01&hasta=2026-11-01&categoria_id=1",
+    "clients-retention": "periodo=day&fecha=2026-11-06"
+  },
+  "month_comparison": "month=2026-10",
+  "excel": "report=top-services&desde=2026-10-01&hasta=2026-11-01&limit=100",
+  "illustrative_indicators": {
+    "ventas_confirmadas": "105.00", "ingreso_por_servicios": "63.64", "ingreso_por_productos": "36.36",
+    "propinas": "5.00", "costo_directo": "6.60", "comisiones": "6.36", "margen_contribucion": "93.40",
+    "margen_tras_comisiones": "87.04", "gastos_operativos": "7.00", "utilidad_estimada": "80.04",
+    "cobros_registrados": "30.00", "anticipos_recibidos": "0.00", "saldo_pendiente": "75.00", "dinero_recaudado": null
+  },
+  "quality": {"recaudacion_conciliada": false, "dinero_recaudado_habilitado": false,
+    "advertencias": ["RECAUDACION_NETA_BLOQUEADA_SIN_LEDGER_REEMBOLSOS", "ESTADOS_ACTUALES_NO_RECONSTRUYEN_CIERRES_HISTORICOS", "UTILIDAD_OPERATIVA_ESTIMADA_NO_FISCAL"]}
+}

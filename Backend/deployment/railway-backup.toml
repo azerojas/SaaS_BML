@@ -1,0 +1,8 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "deployment/Dockerfile.backup"
+[deploy]
+cronSchedule = "0 7 * * *"
+restartPolicyType = "NEVER"
+# Inactive template. Explicitly enable only with private destination, key custody and restore drill approved.
+# 07:00 UTC = 02:00 America/Lima. Ephemeral container files do not replace an external/private destination.

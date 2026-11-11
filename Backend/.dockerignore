@@ -1,0 +1,16 @@
+.env
+.env.*
+.venv
+backups
+**/__pycache__
+**/*.pyc
+.git
+staticfiles
+media
+*.key
+*.enc
+*.otpauth
+docs
+!docs/openapi.json
+.ruff_cache
+.mypy_cache

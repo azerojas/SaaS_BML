@@ -1,0 +1,127 @@
+@if (session.isAuthenticated()) {
+  <div class="workspace">
+    <aside class="sidebar" aria-label="Navegación principal">
+      <a class="brand-link" routerLink="/admin" aria-label="Lasheo, inicio"><bm-brand /></a>
+      <div class="workspace-label">
+        <span class="salon-mark" aria-hidden="true">L</span
+        ><span>Mi espacio de trabajo<small>Administración del salón</small></span
+        ><bm-icon name="chevron" />
+      </div>
+      <p class="nav-caption">TU DÍA A DÍA</p>
+      <nav>
+        @for (item of navigation(); track item.path) {
+          <a
+            [routerLink]="item.path"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: item.path === '/admin' }"
+            ariaCurrentWhenActive="page"
+            ><bm-icon [name]="item.icon" /><span>{{ item.label }}</span>
+            @if (!item.available && item.path !== '/admin') {
+              <span class="nav-dot" aria-label="Módulo en preparación"></span>
+            }
+          </a>
+        }
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="little-note">
+          <bm-icon name="sparkles" />
+          <p>El detalle hace<br />la diferencia.</p>
+          <span>Un día a la vez.</span>
+        </div>
+        <button mat-button type="button" class="logout-link" (click)="logout()">
+          <bm-icon name="logout" /> Cerrar sesión
+        </button>
+      </div>
+    </aside>
+    <div class="workspace-main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button
+            class="mobile-menu"
+            mat-icon-button
+            type="button"
+            aria-label="Abrir menú"
+            [attr.aria-expanded]="menuOpen()"
+            (click)="menuOpen.set(true)"
+          >
+            <bm-icon name="menu" /></button
+          ><span class="breadcrumb">Mi espacio <span>/</span> <strong>Administración</strong></span>
+        </div>
+        <div class="topbar-right">
+          <span class="session-status"><i aria-hidden="true"></i> Sesión activa</span
+          ><span class="topbar-divider"></span
+          ><span class="avatar" aria-hidden="true">{{ initials() }}</span
+          ><span class="user-name"
+            >{{ session.displayName() }}<small>Acceso administrativo</small></span
+          >
+        </div>
+      </header>
+      <main id="main-content" tabindex="-1" class="content">
+        @if (events.notice(); as notice) {
+          <div class="global-notice">
+            <bm-alert [message]="notice" /><button
+              mat-icon-button
+              type="button"
+              aria-label="Cerrar aviso"
+              (click)="events.notice.set(null)"
+            >
+              <bm-icon name="close" />
+            </button>
+          </div>
+        }
+        <router-outlet />
+      </main>
+      <footer class="workspace-footer">
+        <span>Diseñado para acompañar tu día.</span><span>Lasheo · Beauty Manager</span>
+      </footer>
+    </div>
+  </div>
+  @if (menuOpen()) {
+    <div class="mobile-overlay" (keydown.escape)="menuOpen.set(false)" tabindex="-1">
+      <button
+        class="drawer-scrim"
+        type="button"
+        aria-label="Cerrar menú"
+        (click)="menuOpen.set(false)"
+      ></button>
+      <section
+        class="mobile-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Menú de navegación"
+        cdkTrapFocus
+        [cdkTrapFocusAutoCapture]="true"
+      >
+        <div class="drawer-head">
+          <bm-brand /><button
+            mat-icon-button
+            type="button"
+            aria-label="Cerrar menú"
+            cdkFocusInitial
+            (click)="menuOpen.set(false)"
+          >
+            <bm-icon name="close" />
+          </button>
+        </div>
+        <p class="nav-caption">TU DÍA A DÍA</p>
+        <nav>
+          @for (item of navigation(); track item.path) {
+            <a
+              [routerLink]="item.path"
+              routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: item.path === '/admin' }"
+              ariaCurrentWhenActive="page"
+              (click)="menuOpen.set(false)"
+              ><bm-icon [name]="item.icon" />{{ item.label }}</a
+            >
+          }
+        </nav>
+        <button mat-button type="button" class="logout-link" (click)="logout()">
+          <bm-icon name="logout" /> Cerrar sesión
+        </button>
+      </section>
+    </div>
+  }
+} @else {
+  <bm-loading label="Verificando tu sesión…" />
+}

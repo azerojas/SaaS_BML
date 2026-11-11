@@ -1,0 +1,4 @@
+-r requirements.txt
+# Independent decoder used only by QR regression tests; not a runtime dependency.
+zxing-cpp==3.1.1
+

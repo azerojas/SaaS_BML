@@ -1,0 +1,109 @@
+@if (session.recoveryCodes().length) {
+  <span class="step-icon"><bm-icon name="shield" /></span>
+  <p class="eyebrow">UN ÚLTIMO PASO</p>
+  <h1>Guarda tu acceso<br />de respaldo.</h1>
+  <p class="intro">
+    Estos códigos se muestran una sola vez. Guárdalos en un lugar privado para recuperar tu acceso
+    si pierdes el autenticador.
+  </p>
+  <div class="recovery-codes" aria-label="Códigos de recuperación">
+    @for (code of session.recoveryCodes(); track code) {
+      <code>{{ code }}</code>
+    }
+  </div>
+  <bm-button class="full" [full]="true" (click)="downloadCodes()">Descargar códigos</bm-button>
+  <button mat-button class="secondary-action" type="button" (click)="enter()">
+    Ya los guardé, continuar
+  </button>
+} @else if (session.mfaRequired()) {
+  <span class="step-icon"><bm-icon name="lock" /></span>
+  <p class="eyebrow">SOLO UN PASO MÁS</p>
+  <h1>Confirmemos<br />que eres tú.</h1>
+  <p class="intro">
+    {{
+      recoveryMode()
+        ? 'Introduce uno de tus códigos de recuperación. Cada código se puede usar una sola vez.'
+        : 'Abre tu aplicación de autenticación e introduce el código de 6 dígitos.'
+    }}
+  </p>
+  @if (session.error(); as error) {
+    <bm-alert [message]="error" />
+  }
+  <form [formGroup]="mfa" (ngSubmit)="verify()">
+    <bm-text-field
+      id="mfa-code"
+      [label]="recoveryMode() ? 'Código de recuperación' : 'Código de verificación'"
+      [control]="mfa.controls.code"
+      [inputMode]="recoveryMode() ? 'text' : 'numeric'"
+      autocomplete="one-time-code"
+      [maxLength]="128"
+      [placeholder]="recoveryMode() ? 'Tu código de respaldo' : '000000'"
+    />
+    <bm-button class="full" type="submit" [full]="true" [busy]="session.isBusy()" [arrow]="true"
+      >Verificar y entrar</bm-button
+    >
+  </form>
+  <button
+    mat-button
+    class="secondary-action"
+    type="button"
+    (click)="recoveryMode.set(!recoveryMode()); mfa.reset()"
+  >
+    {{ recoveryMode() ? 'Usar mi autenticador' : 'Usar un código de recuperación' }}
+  </button>
+  <button
+    mat-button
+    class="back-action"
+    type="button"
+    [disabled]="session.isBusy()"
+    (click)="session.useAnotherAccount(); mfa.reset()"
+  >
+    Usar otra cuenta
+  </button>
+} @else {
+  <div class="welcome-tag"><span aria-hidden="true">✳</span> TU ESPACIO DE TRABAJO</div>
+  <h1>Qué bueno<br />verte de nuevo.</h1>
+  <p class="intro">Inicia sesión y continúa con lo que más importa.</p>
+  @if (session.error(); as error) {
+    <bm-alert [message]="error" />
+  }
+  @if (session.logoutPending()) {
+    <button
+      mat-stroked-button
+      class="retry-logout"
+      type="button"
+      (click)="session.logout()"
+      [disabled]="session.isBusy()"
+    >
+      Reintentar cierre de sesión
+    </button>
+  }
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <bm-text-field
+      id="username"
+      label="Usuario"
+      [control]="form.controls.username"
+      autocomplete="username"
+      placeholder="Tu nombre de usuario"
+    />
+    <bm-text-field
+      id="password"
+      label="Contraseña"
+      [control]="form.controls.password"
+      type="password"
+      autocomplete="current-password"
+      [maxLength]="4096"
+      placeholder="Introduce tu contraseña"
+    />
+    <div class="help-row">
+      <button mat-button type="button" (click)="help()">¿Necesitas ayuda para entrar?</button>
+    </div>
+    <bm-button class="full" type="submit" [full]="true" [busy]="session.isBusy()" [arrow]="true"
+      >Entrar a mi espacio</bm-button
+    >
+  </form>
+  <div class="access-note">
+    <bm-icon name="lock" />
+    <p>Este acceso es exclusivo para el equipo autorizado del salón.</p>
+  </div>
+}

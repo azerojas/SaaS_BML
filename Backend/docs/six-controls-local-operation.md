@@ -1,0 +1,13 @@
+# ADR-011 — Operación local protegida (sin publicar)
+
+Usuario: aún no hay disco externo, servidor privado externo ni canal de avisos. Objetivos acordados: RPO1h y RTO2h. Backups cada30min mientras el equipo/usuario estén activos; prueba automática de restore en scratch. No afirmar cumplimiento ante pérdida del equipo: las copias y claves siguen en el mismo dispositivo. No contratar ni enviar datos a terceros.
+
+Cambios locales autorizados para controles2/4/6: roles exclusivos beauty_lasheo_runtime/backup/restore; runtime sin DDL ni gestión de permisos, backup solo lectura y heartbeat, restore CREATEDB sin datos de negocio. Nueva cuenta operador_local staff sin superuser, permisos de grupo revisados, contraseña aleatoria y dispositivo MFA cifrado; credenciales y URI solo en carpeta privada fuera de OneDrive. No cambiar la contraseña postgres compartida con otras bases. Mantener un migrador separado del proceso web.
+
+Habilitar capacidad TLS nativa PostgreSQL mediante certificados locales con ACL para NetworkService y recarga, sin reiniciar el servicio ni cambiar otras bases. HBA, si fuera necesario, se limita a Lasheo: conexiones TLS desde loopback y el cliente Docker identificado para roles explícitos; rechazar otros accesos a Lasheo. Guardar HBA/configuración anterior, validar pg_hba_file_rules y recargar. No editar reglas de otras bases ni cerrar sesiones de otros proyectos.
+
+Servidor web Gunicorn UID10001 en red Docker; solo proxy Caddy publica 127.0.0.1:8443. Backend y DB no publican puertos nuevos. Certificado local con CA propia, verify-full hacia PostgreSQL, CSRF/cookies/MFA de staging. No instalar CA en almacén del usuario sin revisión; navegador requerirá confiar manualmente en la CA local. Aviso de privacidad es ficticio y explícito, no apto comercial.
+
+Tareas Windows del usuario, sin contraseña almacenada ni servicio del sistema: mantenimiento cada5min, backup cada30min, sonda/alertas locales cada5min y restore diario. No borrar copias automáticamente; alertar disco bajo y antigüedad. Tareas no pueden ejecutar si equipo apagado/sesión no disponible. Alertas locales no alcanzan a nadie si el equipo cae; canal independiente pendiente.
+
+Reversión: deshabilitar y retirar únicamente tareas LasheoLocal*, detener contenedores con etiqueta beauty.local.operation=true, volver al endpoint previo solo para desarrollo, conservar tablas/cierres/respaldos y no perder claves. Restaurar valores TLS/HBA guardados mediante responsable si es necesario, con reload y verificación; no restablecer un archivo completo si otro proyecto lo modificó después. Revocar roles de proyecto tras retirar sesiones y comprobar ownership; nunca revocar roles compartidos. No deshacer operaciones financieras legítimas automáticamente.

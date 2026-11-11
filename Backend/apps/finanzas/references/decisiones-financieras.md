@@ -1,0 +1,23 @@
+# Decisiones financieras V1
+
+Políticas explícitas para datos de prueba; no constituyen definición fiscal ni integración bancaria.
+
+- PEN, Decimal exclusivamente; HALF_UP al redondear neto de cada línea y dinero final a 2 decimales. Cantidades 3, costo unitario histórico 4; precisión intermedia 48. Se rechaza descuento superior al bruto exacto, incluido el caso bruto 0.005. Límites NUMERIC(12,2) antes de escribir.
+- Subtotal suma netos de línea ya redondeados. Total = subtotal − descuento global + propina. Nunca descuento global mayor al subtotal; nunca importe negativo. Se admite precio genuinamente cero y venta gratuita con líneas; no se admite cobrar monto cero.
+- Descuento global distribuido en centavos por proporción del neto, método de mayores restos y desempate por orden de ID de línea. La suma asignada coincide exactamente con descuento global.
+- Comisión por servicio = HALF_UP((neto de línea − descuento global asignado) × porcentaje_snapshot /100,2). Producto no genera comisión. Profesional opcional implica comisión cero si no se asigna; se conserva el porcentaje al mantener el mismo profesional. Propina excluida de comisión.
+- Costo unitario: `PROMEDIO_PONDERADO_COMPRAS_RECIBIDAS_HISTORICAS_V1`, mismo criterio de Fase 3: cantidades y costos de COMPRA recibida acumulados, no promedio móvil del stock restante ni FIFO. Se congela a cuatro decimales en producto/consumo al confirmar; compras posteriores no recalculan operaciones confirmadas. Ajuste sin adquisición no demuestra costo cero; costo desconocido bloquea confirmación. Compra recibida con costo realmente cero sí lo permite.
+- Costo directo = suma cantidades de productos × costo_snapshot + cantidades de consumos reales × costo_snapshot. Se redondea la suma a 2 para presentación. Margen = HALF_UP(subtotal − descuento_global − costo directo exacto − suma comisiones redondeadas,2). Propina y gastos generales excluidos. Puede ser negativo; es margen operativo preliminar, no utilidad contable.
+- Precios/descripcion/porcentajes se capturan al crear línea; costos al confirmar. Las actualizaciones del catálogo no cambian historia. Precio manual requiere permiso y motivo, no se acepta costo enviado por Angular.
+- Cobertura de venta es distinta a caja: pagos confirmados + aplicaciones de anticipos. Anticipo confirmado es ingreso de caja original; aplicación no crea un nuevo pago. Saldo nunca negativo. Facturación por fecha de venta, caja por fecha de pago original: no sumar ambas medidas como ingreso único.
+- Confirmar venta y finalizar atención puede dejar deuda. Cobrar solamente ventas CONFIRMADAS, bajo lock y verificando saldo actualizado. Medios mixtos y pagos parciales conservan responsable y fecha individual.
+- Métodos manuales; referencia normalizada obligatoria para no efectivo. Duplicación activa método/referencia se verifica entre pagos y anticipos. EFECTIVO sin referencia se protege por clave de la intención, no por semejanza del monto.
+- Anticipo solo para su cita/clienta/visita, monto aplicado <= disponible y saldo. Confirmados de cita <= precio de cita. Aplicaciones parciales requieren nueva tabla aprobada. Datos antiguos ambiguos se bloquean, no se infiere caja duplicada.
+- BORRADOR es editable/anulable; CONFIRMADA inmutable. Anulación de pago corrige error de registro explícitamente reconocido con permiso separado y auditoría. No representa salida bancaria. Reembolsos, reversión de aplicación y devolución de producto requieren compensaciones adicionales; bloqueo seguro 409 mientras faltan.
+- No se aplican impuestos nuevos ni emisión fiscal sin una regla acordada. No convertir impuestos en propinas o descuentos. No se cambia stock por abrir visita, leer receta, previsualizar, recibir anticipo o registrar cobro.
+
+Ejemplo probado: servicio 80−10 y dos productos de 20 => subtotal110; descuento global10 y propina5 => total105. Consumos reales0.300 en vez de receta0.500; costo directo6.60, comisión6.36, margen87.04. El costo de referencia y reparto se prueban con snapshots y Decimal.
+
+Implementación transaccional: idempotencia abre `transaction.atomic`; advisory global financiero, lock compartido con check-in y locks ordenados de artículos. No hay llamadas bancarias ni generación de archivos dentro. Defensas SQL UNIQUE se mantienen. Es una elección conservadora de concurrencia: todas las escrituras financieras se serializan; optimización futura exige conservar pruebas de carreras.
+
+Referencias técnicas: [Decimal de Python](https://docs.python.org/3/library/decimal.html), [transacciones Django 5.2](https://docs.djangoproject.com/en/5.2/topics/db/transactions/), [bloqueos PostgreSQL](https://www.postgresql.org/docs/18/explicit-locking.html).
