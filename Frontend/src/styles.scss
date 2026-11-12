@@ -1,4 +1,7 @@
 @use '@angular/material' as mat;
+@use './styles/phase4';
+@use './styles/analytics';
+@use './styles/agenda';
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
 

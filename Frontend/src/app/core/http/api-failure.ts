@@ -4,12 +4,49 @@ export class ApiFailure extends Error {
     readonly code: string,
     message: string,
     readonly fields: Readonly<Record<string, readonly string[]>> = {},
+    readonly retryAfter: number | null = null,
   ) {
     super(message);
   }
 }
 
 export function failureMessage(status: number, code: string): string {
+  const agenda: Readonly<Record<string, string>> = {
+    SLOT_NOT_AVAILABLE: 'El horario ya no está disponible. Consulta nuevamente y elige otro hueco.',
+    DUPLICATE_WAITLIST:
+      'Ya existe una solicitud de espera compatible. Revisa la lista antes de registrar otra.',
+    WAITLIST_RESOLVED:
+      'La solicitud de espera ya se resolvió. Consulta su estado y la cita vinculada.',
+    WAITLIST_WINDOW_MISMATCH: 'El horario debe estar dentro de la fecha y franja solicitadas.',
+    PROFESSIONAL_HAS_BOOKINGS: 'Resuelve las citas futuras antes de desactivar al profesional.',
+    SPECIALTY_HAS_BOOKINGS: 'No se puede retirar una especialidad con citas futuras activas.',
+    SCHEDULE_HAS_BOOKINGS:
+      'Reprograma las citas afectadas antes de modificar o retirar este horario.',
+    BLOCK_HAS_BOOKINGS: 'El bloqueo afecta citas activas. Reprograma o cancela esas citas primero.',
+    APPOINTMENT_NOT_CONFIRMABLE:
+      'Django exige una cita programada vigente con anticipo suficiente para confirmar.',
+    ATTENTION_NOT_COMPLETED:
+      'Completar exige una visita finalizada y una venta confirmada de la misma clienta.',
+    NO_SHOW_TOO_EARLY: 'La inasistencia solo se registra después del final programado.',
+    CANCELLATION_DEADLINE: 'La cancelación fuera de plazo requiere autorización excepcional.',
+    BOOKING_OUTSIDE_WINDOW: 'La fecha está fuera del horizonte de reserva permitido por Django.',
+    BOOKING_CONFIGURATION_MISSING:
+      'Django todavía no tiene una configuración de reservas activa. Solicita su preparación administrativa.',
+    AGENDA_NOT_ACTIVATED:
+      'El backend todavía no activó los permisos de agenda. Solicita su revisión administrativa.',
+    anticipo_excesivo: 'El anticipo supera el precio de la cita. Consulta los importes oficiales.',
+  };
+  if (agenda[code]) return agenda[code];
+  if (code === 'saldo_insuficiente' || code === 'sobrepago' || code === 'monto_excede_saldo')
+    return 'El monto supera el saldo disponible. Consulta el saldo oficial antes de continuar.';
+  if (code === 'referencia_duplicada')
+    return 'Esta referencia de pago ya está registrada. Revisa el historial y los anticipos antes de cobrar otra vez.';
+  if (code === 'estado_venta')
+    return 'La venta cambió de estado. Consulta su detalle antes de continuar.';
+  if (code === 'clienta_no_validada')
+    return 'La ficha debe estar activa y validada presencialmente.';
+  if (code === 'anticipo_legacy_ambiguo' || code === 'integridad_saldo')
+    return 'Django bloqueó el saldo por un conflicto de conciliación. Solicita revisión administrativa; no registres nuevos cobros.';
   if (code === 'stock_insuficiente')
     return 'No hay existencias suficientes para esta salida. Consulta el stock antes de continuar.';
   if (code === 'idempotencia_conflicto')

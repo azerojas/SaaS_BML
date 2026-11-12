@@ -1,0 +1,101 @@
+<header class="feature-heading">
+  <div>
+    <p class="eyebrow">ESTADÍSTICAS Y REPORTES</p>
+    <h1>Reportes de tu salón</h1>
+    <p>
+      Una sola selección de fechas para consultar y exportar. Los valores no disponibles nunca se
+      convierten en cero.
+    </p>
+  </div>
+  <div class="form-actions">
+    <button
+      mat-stroked-button
+      [disabled]="facade.download.busy() || facade.resource().loading()"
+      (click)="facade.reload()"
+    >
+      Actualizar reporte
+    </button>
+    @if (session.hasPermission('reporting.export')) {
+      <button
+        mat-flat-button
+        [disabled]="
+          facade.download.busy() || !facade.resource().data() || facade.resource().loading()
+        "
+        (click)="facade.export()"
+      >
+        Exportar reporte Excel
+      </button>
+    }
+  </div>
+</header>
+<form class="surface report-selection" [formGroup]="selection">
+  <fieldset [disabled]="facade.download.busy()">
+    <label for="report-kind">Reporte</label
+    ><select id="report-kind" formControlName="report" (change)="select()">
+      @for (report of facade.available; track report) {
+        <option [value]="report">{{ labels[report] }}</option>
+      }
+    </select>
+    @if (facade.selected() === 'top-services' || facade.selected() === 'top-clients') {
+      <label for="report-order">Orden del ranking</label
+      ><select id="report-order" formControlName="orden" (change)="order()">
+        <option value="importe">Importe de ventas</option>
+        @if (facade.selected() === 'top-services') {
+          <option value="cantidad">Cantidad de tratamientos</option>
+        } @else {
+          <option value="visitas">Visitas finalizadas</option>
+        }
+      </select>
+      <p class="muted">
+        Top {{ facade.limit() }} grupos; la exportación conserva este límite y este orden.
+      </p>
+    }
+  </fieldset>
+</form>
+<bm-report-filters [disabled]="facade.download.busy()" (applied)="facade.apply($event)" />
+<p class="applied-period" role="status">
+  Período aplicado: {{ facade.filters().desde }} al {{ facade.filters().hasta }} inclusive ·
+  America/Lima · PEN
+</p>
+@if (facade.download.error(); as error) {
+  <bm-alert [message]="error" />
+}
+@if (facade.download.success(); as success) {
+  <bm-alert kind="info" [message]="success" />
+}
+@if (facade.download.busy()) {
+  <p role="status">Preparando descarga Excel…</p>
+}
+<bm-report-panel [title]="labels[facade.selected()]" [state]="facade.resource()">
+  @switch (facade.selected()) {
+    @case ('overview') {
+      @if (facade.overview.data(); as data) {
+        <bm-report-quality [data]="data" /><bm-kpi-grid [data]="data" />
+      }
+    }
+    @case ('revenue-series') {
+      @if (facade.series.data(); as data) {
+        <bm-report-quality [data]="data" /><bm-financial-trend [data]="data" />
+      }
+    }
+    @case ('payment-methods') {
+      @if (facade.methods.data(); as data) {
+        <bm-report-quality [data]="data" /><bm-payment-methods [data]="data" />
+      }
+    }
+    @default {
+      @if (facade.table.data(); as data) {
+        <bm-report-quality [data]="data" /><bm-report-table
+          [report]="facade.selected()"
+          [data]="data"
+          [canOpenInventory]="session.hasPermission('negocio.view_articulos')"
+        /><bm-pager
+          [count]="data.count"
+          [page]="facade.page()"
+          [busy]="facade.table.loading() || facade.download.busy()"
+          (changed)="facade.changePage($event)"
+        />
+      }
+    }
+  }
+</bm-report-panel>

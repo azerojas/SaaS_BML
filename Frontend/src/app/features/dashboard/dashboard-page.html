@@ -6,21 +6,25 @@
   </div>
   <span class="date-chip"><bm-icon name="calendar" />{{ today }}</span>
 </section>
-<section class="welcome-card">
-  <div class="welcome-copy">
-    <span class="small-tag">BIENVENIDA A LASHEO</span>
-    <h2>Más espacio para<br />lo que te inspira.</h2>
-    <p>
-      Este es el comienzo de tu espacio de gestión.<br />Tus herramientas crecerán contigo, paso a
-      paso.
-    </p>
-    <div class="welcome-status"><bm-icon name="check" /> Acceso verificado con tu cuenta</div>
-  </div>
-  <div class="welcome-art" aria-hidden="true">
-    <span class="arch arch-one"></span><span class="arch arch-two"></span
-    ><span class="art-flower">✳</span><span class="art-caption">CREAR. CUIDAR. CONECTAR.</span>
-  </div>
-</section>
+@if (session.hasPermission('reporting.view_summary')) {
+  <bm-dashboard-analytics />
+} @else {
+  <section class="welcome-card">
+    <div class="welcome-copy">
+      <span class="small-tag">BIENVENIDA A LASHEO</span>
+      <h2>Más espacio para<br />lo que te inspira.</h2>
+      <p>
+        Este es el comienzo de tu espacio de gestión.<br />Tus herramientas crecerán contigo, paso a
+        paso.
+      </p>
+      <div class="welcome-status"><bm-icon name="check" /> Acceso verificado con tu cuenta</div>
+    </div>
+    <div class="welcome-art" aria-hidden="true">
+      <span class="arch arch-one"></span><span class="arch arch-two"></span
+      ><span class="art-flower">✳</span><span class="art-caption">CREAR. CUIDAR. CONECTAR.</span>
+    </div>
+  </section>
+}
 <section class="shortcuts mt-10">
   <div class="section-title">
     <div>

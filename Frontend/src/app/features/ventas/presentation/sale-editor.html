@@ -1,0 +1,135 @@
+<a class="back-link" routerLink="/admin/ventas">← Ventas</a>
+<header class="feature-heading">
+  <div>
+    <p class="eyebrow">BORRADOR DE ATENCIÓN</p>
+    <h1>{{ facade.sale() ? 'Editar venta #' + facade.sale()!.id : 'Preparar venta' }}</h1>
+    <p>
+      {{
+        facade.visit()
+          ? 'Atención de visita #' + facade.visit()
+          : 'Venta de mostrador: solo productos.'
+      }}
+    </p>
+  </div>
+</header>
+<bm-finance-feedback (recovered)="done($event)" />
+@if (facade.error(); as error) {
+  <bm-alert [message]="error" />
+}
+@if (invalid()) {
+  <bm-alert
+    message="Revisa cantidades, descuentos y precios. Usa punto decimal y cadenas positivas; los servicios requieren cantidades enteras. Un precio excepcional requiere permiso y motivo de al menos 8 caracteres."
+  />
+}
+@if (facade.loading()) {
+  <bm-loading />
+}
+@if (!facade.loading() && !facade.error()) {
+  <div class="phase4-columns">
+    <div class="phase4-stack">
+      @if (facade.visit() && session.hasPermission('negocio.view_servicios')) {
+        <bm-catalog-picker
+          kind="servicios"
+          label="Tratamientos"
+          [disabled]="locked()"
+          (picked)="add($event, 'SERVICIO')"
+        />
+      }
+      @if (session.hasPermission('negocio.view_articulos')) {
+        <bm-catalog-picker
+          kind="articulos"
+          label="Productos"
+          [disabled]="locked()"
+          (picked)="add($event, 'PRODUCTO')"
+        />
+      }
+      @if (lookup.professionals.error(); as error) {
+        <bm-alert [message]="error" />
+      }
+      <section class="surface">
+        <h2>Profesionales activos</h2>
+        <p>
+          Al editar, el profesional actual se conserva aunque esté en otra página. Consulta esta
+          lista para cambiarlo.
+        </p>
+        @for (professional of lookup.professionals.rows(); track professional.id) {
+          <p>#{{ professional.id }} · {{ professional.nombres }} {{ professional.apellidos }}</p>
+        }
+        <bm-pager
+          [count]="lookup.professionals.count()"
+          [page]="Number(lookup.professionals.query()['page'])"
+          [busy]="lookup.professionals.loading()"
+          (changed)="lookup.professionals.page($event)"
+        />
+      </section>
+    </div>
+    <form class="surface phase4-form" [formGroup]="form" (ngSubmit)="save()">
+      <h2>Tratamientos y productos seleccionados</h2>
+      <p>
+        El borrador no descuenta existencias ni registra cobros. Django establece los precios y
+        totales oficiales al guardarlo.
+      </p>
+      <div formArrayName="lineas" class="phase4-stack">
+        @for (row of lines.controls; track row; let index = $index) {
+          <fieldset [formGroupName]="index" class="sale-line">
+            <legend>{{ row.controls.nombre.value }} · {{ row.controls.tipo.value }}</legend>
+            <label [for]="'sale-quantity-' + index">Cantidad</label
+            ><input
+              [id]="'sale-quantity-' + index"
+              formControlName="cantidad"
+              inputmode="decimal"
+            />
+            <label [for]="'sale-discount-' + index">Descuento de línea (PEN)</label
+            ><input
+              [id]="'sale-discount-' + index"
+              formControlName="descuento_linea"
+              inputmode="decimal"
+            />
+            @if (row.controls.tipo.value === 'SERVICIO') {
+              <label [for]="'sale-professional-' + index"
+                >Profesional (ID de la lista, opcional)</label
+              ><input
+                [id]="'sale-professional-' + index"
+                formControlName="profesional"
+                inputmode="numeric"
+              />
+            }
+            @if (session.hasPermission('finanzas.override_price')) {
+              <details>
+                <summary>Precio excepcional autorizado</summary>
+                <label [for]="'sale-price-' + index"
+                  >Precio unitario excepcional (vacío conserva el precio)</label
+                ><input
+                  [id]="'sale-price-' + index"
+                  formControlName="precio"
+                  inputmode="decimal"
+                /><label [for]="'sale-price-reason-' + index">Motivo del cambio de precio</label
+                ><input
+                  [id]="'sale-price-reason-' + index"
+                  formControlName="motivo_precio"
+                  maxlength="250"
+                />
+              </details>
+            }
+            <button mat-button type="button" [disabled]="locked()" (click)="lines.removeAt(index)">
+              Retirar {{ row.controls.nombre.value }}
+            </button>
+          </fieldset>
+        } @empty {
+          <p class="empty-panel">Selecciona un tratamiento o producto para comenzar.</p>
+        }
+      </div>
+      <label for="sale-global-discount">Descuento global (PEN)</label
+      ><input id="sale-global-discount" formControlName="descuento_global" inputmode="decimal" />
+      <label for="sale-tip">Propina (PEN)</label
+      ><input id="sale-tip" formControlName="propina" inputmode="decimal" />
+      <p class="muted">
+        La propina se registra por separado. Los totales, costos, saldo y existencias se obtienen de
+        Django después de guardar.
+      </p>
+      <button mat-flat-button type="submit" [disabled]="locked() || form.invalid || !lines.length">
+        Guardar borrador de venta
+      </button>
+    </form>
+  </div>
+}

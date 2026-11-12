@@ -1,0 +1,101 @@
+<header class="feature-heading">
+  <div>
+    <p class="eyebrow">DECISIONES CON INFORMACIÓN REAL</p>
+    <h2>Tu actividad financiera</h2>
+    <p>Ventas, dinero recibido y utilidad se presentan con sus propios criterios.</p>
+  </div>
+  <div class="form-actions">
+    <a mat-stroked-button routerLink="/admin/reportes">Explorar reportes</a
+    ><button
+      mat-stroked-button
+      [disabled]="facade.download.busy()"
+      (click)="facade.apply(facade.filters())"
+    >
+      Actualizar dashboard
+    </button>
+    @if (session.hasPermission('reporting.export')) {
+      <button
+        mat-flat-button
+        [disabled]="facade.download.busy() || !facade.overview.data()"
+        (click)="facade.export()"
+      >
+        Exportar resumen Excel
+      </button>
+    }
+  </div>
+</header>
+<bm-report-filters [disabled]="facade.download.busy()" (applied)="facade.apply($event)" />
+<p class="applied-period" role="status">
+  Período aplicado: {{ facade.filters().desde }} al {{ facade.filters().hasta }} inclusive ·
+  America/Lima · PEN
+</p>
+@if (facade.download.error(); as error) {
+  <bm-alert [message]="error" />
+}
+@if (facade.download.success(); as success) {
+  <bm-alert kind="info" [message]="success" />
+}
+@if (facade.download.busy()) {
+  <p role="status">Generando Excel con los filtros aplicados…</p>
+}
+<bm-report-panel title="Resumen del período" [state]="facade.overview">
+  @if (facade.overview.data(); as data) {
+    <bm-report-quality [data]="data" /><bm-kpi-grid [data]="data" />
+  }
+</bm-report-panel>
+<bm-report-panel title="Evolución de ventas y dinero recibido" [state]="facade.series">
+  @if (facade.series.data(); as data) {
+    <bm-report-quality [data]="data" /><bm-financial-trend [data]="data" />
+  }
+</bm-report-panel>
+<div class="analytics-columns">
+  <bm-report-panel title="Ingresos por medio de pago" [state]="facade.methods">
+    @if (facade.methods.data(); as data) {
+      <bm-report-quality [data]="data" /><bm-payment-methods [data]="data" />
+    }
+  </bm-report-panel>
+  <bm-report-panel title="Tratamientos destacados" [state]="facade.services">
+    @if (facade.services.data(); as data) {
+      <bm-report-quality [data]="data" /><bm-report-table report="top-services" [data]="data" />
+    }
+  </bm-report-panel>
+</div>
+<div class="analytics-columns">
+  @if (session.hasPermission('reporting.view_clients')) {
+    <bm-report-panel title="Clientas destacadas" [state]="facade.clients">
+      @if (facade.clients.data(); as data) {
+        <bm-report-quality [data]="data" /><bm-report-table report="top-clients" [data]="data" />
+      }
+    </bm-report-panel>
+  }
+  @if (session.hasPermission('reporting.view_inventory')) {
+    <bm-report-panel title="Alertas actuales de inventario" [state]="facade.inventory">
+      @if (facade.inventory.data(); as data) {
+        <bm-report-quality [data]="data" /><bm-report-table
+          report="inventory-alerts"
+          [data]="data"
+          [canOpenInventory]="session.hasPermission('negocio.view_articulos')"
+        />
+      }
+    </bm-report-panel>
+  }
+</div>
+<bm-report-panel title="Gastos operativos por categoría" [state]="facade.expenses">
+  @if (facade.expenses.data(); as data) {
+    <bm-report-quality [data]="data" /><bm-report-table report="expenses" [data]="data" />
+  }
+</bm-report-panel>
+@if (facade.monthly()) {
+  <bm-report-panel title="Comparación mensual" [state]="facade.comparison">
+    @if (facade.comparison.data(); as data) {
+      <bm-report-quality [data]="data.actual" /><bm-report-quality
+        [data]="data.anterior"
+      /><bm-month-comparison [data]="data" />
+    }
+  </bm-report-panel>
+} @else {
+  <p class="muted">
+    Selecciona mes actual o mes anterior para consultar una comparación mensual homogénea del
+    establecimiento.
+  </p>
+}

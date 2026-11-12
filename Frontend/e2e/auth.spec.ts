@@ -174,7 +174,7 @@ test('límite real de intentos muestra 429 sin bucles ni doble envío', async ({
 
 test('layout público no requiere cuenta ni revela el área privada', async ({ page }) => {
   await page.goto('/registro/token-reservado');
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('bienvenida');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Qué gusto recibirte');
   await expect(page.getByRole('button', { name: 'Cerrar sesión' })).toHaveCount(0);
   await expect(page.getByLabel('Usuario', { exact: true })).toHaveCount(0);
 });

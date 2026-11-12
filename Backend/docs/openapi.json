@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Lasheo — API fase 1",
-    "version": "8.4.1",
+    "version": "8.4.2",
     "description": "Solo personal activo is_staff. Sesiones Django y CSRF. No hay registro público, PUT ni DELETE físico. Respuestas privadas sin caché. Errores 403 para anónimos usando SessionAuthentication. Fase 2: catalogo privado y publico, recetas estimadas e imagenes por URL aprobada. No realiza compras, reservas ni movimientos de inventario. Fase 3: proveedores, compras, recepcion idempotente, ledger, ajustes y estimados historicos privados. Fase 4: check-in QR no enumerativo, verificacion presencial y visitas sin cobros. Fase 5: visitas, ventas, consumos reales, pagos parciales y aplicaciones de anticipos; activacion requiere migracion aditiva aprobada. Fase 6: dashboard, series, rankings, inventario y Excel; recaudacion neta bloqueada hasta disponer de ledger conciliable de reembolsos. Fase 7: agenda privada, profesionales, horarios/bloqueos, reservas atomicas, anticipos, expiracion, enlace QR y lista de espera; consulta publica opcional sin alta/gestion anonima. Frontend Fase 1: identidad administrativa incluye permissions efectivos; sesion solo tras MFA cuando es obligatorio. Contrato de caja vigente: reembolsos y conciliaciones trazables disponibles; recaudacion conciliada exige cierres validos, no queda habilitada por inferencia."
   },
   "servers": [
@@ -16885,6 +16885,69 @@
           }
         ]
       }
+    },
+    "/api/finanzas/intentos/{key}/": {
+      "get": {
+        "operationId": "financeIntentRecovery",
+        "tags": [
+          "Finanzas"
+        ],
+        "summary": "Consultar resultado mínimo de una intención del usuario actual",
+        "description": "Solo staff activo con finanzas.view_finance y el permiso de la operación. Busca por actor/operación/UUID bajo el lock financiero compartido. No devuelve payload, PII, referencia bancaria ni hash de la solicitud. Una ausencia no autoriza cambiar de clave: un reintento debe conservar la UUID y el cuerpo originales. No reenvía mutaciones.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "operacion",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "visita.abrir",
+                "visita.notas",
+                "visita.cancelar",
+                "visita.finalizar",
+                "venta.crear",
+                "venta.editar",
+                "venta.confirmar",
+                "venta.anular",
+                "pago.registrar",
+                "pago.anular",
+                "anticipo.aplicar"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resultado persistido original o encontrado=false",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinanceIntentRecovery"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "UUID u operación inválida"
+          },
+          "403": {
+            "description": "Sesión o permiso insuficiente"
+          },
+          "503": {
+            "description": "Esquema financiero no disponible"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -23010,6 +23073,36 @@
           "cantidad_estimada": {
             "type": "string",
             "format": "decimal"
+          }
+        }
+      },
+      "FinanceIntentRecovery": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "encontrado",
+          "operacion",
+          "resultado",
+          "estado_http"
+        ],
+        "properties": {
+          "encontrado": {
+            "type": "boolean"
+          },
+          "operacion": {
+            "type": "string"
+          },
+          "resultado": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FinanceResult"
+              }
+            ],
+            "nullable": true
+          },
+          "estado_http": {
+            "type": "integer",
+            "nullable": true
           }
         }
       }

@@ -1,0 +1,124 @@
+<section class="surface section-gap">
+  <h2>Revisar tratamientos y consumos reales</h2>
+  <p>
+    Declara la cantidad total realmente usada por cada tratamiento. La receta es una propuesta; no
+    se aplica automáticamente. Una lista vacía declara que no hubo consumo.
+  </p>
+  @if (preview(); as data) {
+    <p>
+      Previsualización Django ·
+      {{ data.origen_consumos === 'REAL_PROPUESTO' ? 'Consumo real propuesto' : 'Receta estimada' }}
+      · Total {{ money(data.total) }} · Costo directo estimado
+      {{
+        data.costo_directo_estimado === null ? 'Desconocido' : money(data.costo_directo_estimado)
+      }}
+    </p>
+    <p class="muted">
+      Esta consulta no reserva ni descuenta existencias. Django volverá a validarlas al confirmar.
+    </p>
+    <div class="stock-grid">
+      @for (resource of data.stock_consultado; track resource.articulo_id) {
+        <article class="stock-card">
+          <h3>Artículo #{{ resource.articulo_id }}</h3>
+          <p>
+            Requerido {{ resource.cantidad_requerida }} · Existencia
+            {{ resource.existencia_actual }}
+          </p>
+          <span class="badge">{{
+            resource.suficiente ? 'Disponible al consultar' : 'Stock insuficiente'
+          }}</span>
+        </article>
+      }
+    </div>
+    @if (groups.length) {
+      <button mat-stroked-button type="button" [disabled]="disabled()" (click)="suggestions()">
+        Usar receta como propuesta editable
+      </button>
+    }
+  }
+  @if (groups.length && canReadArticles()) {
+    <div class="phase4-form section-gap">
+      <label for="consumption-service">Tratamiento al que añadir insumo</label
+      ><select
+        id="consumption-service"
+        [value]="selected()"
+        (change)="selected.set(+$any($event.target).value)"
+      >
+        @for (group of groups.controls; track group) {
+          <option [value]="group.controls.detalle.value">
+            {{ group.controls.nombre.value }} · Línea #{{ group.controls.detalle.value }}
+          </option>
+        }</select
+      ><bm-catalog-picker
+        kind="articulos"
+        mode="consumption"
+        label="Insumos"
+        [disabled]="disabled()"
+        (picked)="add($event)"
+      />
+    </div>
+  }
+  <form [formGroup]="form" class="phase4-form section-gap" (ngSubmit)="submit(true)">
+    <fieldset [disabled]="disabled()">
+      <div formArrayName="groups">
+        @for (group of groups.controls; track group; let index = $index) {
+          <fieldset [formGroupName]="index" class="sale-line">
+            <legend>
+              {{ group.controls.nombre.value }} · Línea #{{ group.controls.detalle.value }}
+            </legend>
+            <div formArrayName="insumos">
+              @for (item of group.controls.insumos.controls; track item; let itemIndex = $index) {
+                <div [formGroupName]="itemIndex" class="consumption-item">
+                  <p>
+                    Insumo #{{ item.controls.articulo.value }} · Unidad base #{{
+                      item.controls.unidad.value
+                    }}
+                  </p>
+                  <label [for]="'consumption-' + index + '-' + itemIndex">Cantidad real total</label
+                  ><input
+                    [id]="'consumption-' + index + '-' + itemIndex"
+                    formControlName="cantidad"
+                    inputmode="decimal"
+                  /><button
+                    mat-button
+                    type="button"
+                    (click)="
+                      group.controls.insumos.removeAt(itemIndex);
+                      group.controls.revisado.setValue(false)
+                    "
+                  >
+                    Retirar insumo #{{ item.controls.articulo.value }}
+                  </button>
+                </div>
+              } @empty {
+                <p>Sin consumos declarados para este tratamiento.</p>
+              }
+            </div>
+            <label class="check-row"
+              ><input type="checkbox" formControlName="revisado" /> Revisé estas cantidades reales,
+              incluida la ausencia de consumo si la lista está vacía.</label
+            >
+          </fieldset>
+        }
+      </div>
+      <label class="check-row"
+        ><input type="checkbox" formControlName="verificado" /> Revisé tratamientos, productos,
+        precios, descuentos y consumos. Autorizo confirmar la venta y sus salidas de
+        inventario.</label
+      >
+      @if (invalid()) {
+        <p role="alert">
+          Revisa cantidades positivas y confirma explícitamente cada tratamiento y la venta.
+        </p>
+      }
+      <div class="form-actions">
+        <button mat-stroked-button type="button" (click)="submit(false)">
+          Consultar propuesta y stock en Django
+        </button>
+        @if (canConfirm()) {
+          <button mat-flat-button type="submit">Confirmar venta y consumos</button>
+        }
+      </div>
+    </fieldset>
+  </form>
+</section>

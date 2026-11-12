@@ -1,0 +1,265 @@
+<bm-finance-nav /><a routerLink="/admin/ventas" class="back-link">← Ventas y pagos</a
+><bm-finance-feedback (recovered)="recovered()" />
+@if (facade.error(); as error) {
+  <bm-alert [message]="error" />
+  @if (!facade.record() && !facade.loading()) {
+    <button mat-stroked-button type="button" [disabled]="facade.intent.busy()" (click)="refresh()">
+      Volver a consultar venta
+    </button>
+  }
+}
+@if (facade.success(); as success) {
+  <bm-alert kind="info" [message]="success" />
+}
+@if (facade.loading()) {
+  <bm-loading />
+}
+@if (facade.record(); as sale) {
+  <header class="feature-heading">
+    <div>
+      <p class="eyebrow">ATENCIÓN Y CAJA</p>
+      <h1>Venta #{{ sale.id }}</h1>
+      <span class="badge">{{ sale.estado }}</span>
+    </div>
+    <div class="form-actions">
+      <button mat-stroked-button [disabled]="locked()" (click)="refresh()">
+        Consultar venta y saldo
+      </button>
+      @if (sale.estado === 'BORRADOR' && session.hasPermission('finanzas.manage_sales')) {
+        <a mat-flat-button [routerLink]="['/admin/ventas', sale.id, 'editar']"
+          >Editar tratamientos y productos</a
+        >
+      }
+      @if (sale.visita_id) {
+        <a mat-button [routerLink]="['/admin/visitas', sale.visita_id]"
+          >Ver visita #{{ sale.visita_id }}</a
+        >
+      }
+    </div>
+  </header>
+  <section class="surface">
+    <h2>Resumen oficial de Django</h2>
+    <dl class="details-grid financial-summary">
+      <div>
+        <dt>Subtotal</dt>
+        <dd>{{ money(sale.saldo.subtotal) }}</dd>
+      </div>
+      <div>
+        <dt>Descuento global</dt>
+        <dd>{{ money(sale.saldo.descuento_global) }}</dd>
+      </div>
+      <div>
+        <dt>Propina</dt>
+        <dd>{{ money(sale.saldo.propina) }}</dd>
+      </div>
+      <div>
+        <dt>Total de venta</dt>
+        <dd data-testid="sale-total">{{ money(sale.saldo.total) }}</dd>
+      </div>
+      <div>
+        <dt>Pagos confirmados</dt>
+        <dd>{{ money(sale.saldo.pagos_confirmados) }}</dd>
+      </div>
+      <div>
+        <dt>Anticipos aplicados (dinero recibido antes)</dt>
+        <dd>{{ money(sale.saldo.anticipos_aplicados) }}</dd>
+      </div>
+      <div>
+        <dt>Reembolsos registrados</dt>
+        <dd>{{ money(sale.saldo.reembolsos) }}</dd>
+      </div>
+      <div>
+        <dt>Ajustes comerciales</dt>
+        <dd>{{ money(sale.saldo.ajustes_comerciales) }}</dd>
+      </div>
+      <div>
+        <dt>Cobertura actual</dt>
+        <dd>{{ money(sale.saldo.cobertura_total) }}</dd>
+      </div>
+      <div>
+        <dt>Saldo pendiente</dt>
+        <dd data-testid="sale-balance">
+          <strong>{{ money(sale.saldo.saldo_pendiente) }}</strong>
+        </dd>
+      </div>
+      @if (sale.finanzas_congeladas; as financial) {
+        <div>
+          <dt>Costo directo congelado</dt>
+          <dd>{{ money(financial.costo_directo) }}</dd>
+        </div>
+        <div>
+          <dt>Comisiones congeladas</dt>
+          <dd>{{ money(financial.comisiones) }}</dd>
+        </div>
+      }
+    </dl>
+    <p class="muted">
+      {{
+        sale.estado === 'CONFIRMADA'
+          ? 'La venta está confirmada. Su estado no significa que esté cobrada.'
+          : 'Borrador sin salidas ni cobros. Los precios y totales se revalidan al confirmar.'
+      }}
+    </p>
+  </section>
+  <section class="surface section-gap">
+    <h2>Tratamientos y productos</h2>
+    <div class="phase4-stack">
+      @for (line of sale.lineas; track line.id) {
+        <article class="sale-line">
+          <h3>{{ line.descripcion_snapshot }}</h3>
+          <p>
+            {{ line.tipo }} · Cantidad {{ line.cantidad }} · Precio snapshot
+            {{ money(line.precio_unitario) }} · Descuento de línea {{ money(line.descuento_linea) }}
+          </p>
+          @if (line.profesional_id) {
+            <p>Profesional #{{ line.profesional_id }}</p>
+          }
+          @for (consumption of line.consumos; track consumption.id) {
+            <p>
+              Consumo real #{{ consumption.id }} · Artículo #{{ consumption.articulo_id }} ·
+              {{ consumption.cantidad }}
+            </p>
+          }
+        </article>
+      } @empty {
+        <p>No hay líneas. Edita el borrador antes de confirmar.</p>
+      }
+    </div>
+  </section>
+  @if (sale.estado === 'BORRADOR') {
+    <bm-consumption-review
+      [sale]="sale"
+      [preview]="facade.preview()"
+      [disabled]="locked()"
+      [canConfirm]="session.hasPermission('finanzas.confirm_sale') && sale.lineas.length > 0"
+      [canReadArticles]="session.hasPermission('negocio.view_articulos')"
+      (proposed)="facade.previewSale($event)"
+      (confirmed)="confirm($event)"
+    />
+  }
+  @if (sale.estado === 'CONFIRMADA') {
+    @if (session.hasPermission('finanzas.register_payment')) {
+      <bm-payment-form
+        [disabled]="locked() || sale.saldo.saldo_pendiente === '0.00'"
+        [resetVersion]="paymentReset()"
+        (submitted)="pay($event)"
+      />
+    }
+    @if (session.hasPermission('finanzas.apply_advance')) {
+      <section class="surface section-gap phase4-form">
+        <h2>Anticipos de la misma atención</h2>
+        <button mat-stroked-button [disabled]="locked()" (click)="facade.loadAdvances()">
+          Consultar anticipos aplicables
+        </button>
+        <form [formGroup]="advance" (ngSubmit)="apply()">
+          <fieldset [disabled]="locked()">
+            <label for="advance-id">Anticipo disponible</label
+            ><select id="advance-id" formControlName="anticipo">
+              <option value="">Seleccionar anticipo</option>
+              @for (item of facade.advances(); track item.id) {
+                <option [value]="item.id">
+                  Anticipo #{{ item.id }} · {{ item.metodo }} · Disponible
+                  {{ money(item.disponible) }}
+                </option>
+              }</select
+            ><label for="advance-amount">Monto a aplicar (PEN)</label
+            ><input id="advance-amount" formControlName="monto" inputmode="decimal" /><label
+              class="check-row"
+              ><input type="checkbox" formControlName="revisado" /> Verifiqué que este anticipo
+              corresponde a esta atención.</label
+            ><button mat-flat-button type="submit" [disabled]="advance.invalid">
+              Aplicar anticipo sin nuevo cobro
+            </button>
+          </fieldset>
+        </form>
+      </section>
+    }
+    @if (session.hasPermission('negocio.view_articulos')) {
+      <section class="surface section-gap">
+        <h2>Existencias oficiales actuales</h2>
+        <button mat-stroked-button [disabled]="locked()" (click)="facade.refreshStock()">
+          Consultar existencias de la venta
+        </button>
+        @if (facade.stockError(); as error) {
+          <bm-alert [message]="error" />
+        }
+        @if (facade.stock().length) {
+          <bm-stock-cards [rows]="facade.stock()" />
+        }
+      </section>
+    }
+  }
+  <section class="surface section-gap">
+    <h2>Historial de pagos</h2>
+    <p>Las aplicaciones de anticipos aparecen aparte; no son nuevos cobros.</p>
+    @if (facade.payments.error(); as error) {
+      <bm-alert [message]="error" />
+    }
+    @if (facade.payments.loading()) {
+      <bm-loading />
+    }
+    @for (payment of facade.payments.rows(); track payment.id) {
+      <article class="record-row">
+        <div>
+          <h3>Pago #{{ payment.id }} · {{ payment.metodo }}</h3>
+          <p>{{ money(payment.monto) }} · {{ payment.estado }} · {{ date(payment.pagado_en) }}</p>
+          <p>Referencia: {{ payment.referencia || 'Efectivo sin referencia' }}</p>
+        </div>
+        @if (payment.estado === 'CONFIRMADO' && session.hasPermission('finanzas.void_payment')) {
+          <button
+            mat-button
+            [disabled]="locked() || reason.invalid || !reason.controls.error_confirmado.value"
+            (click)="voidPayment(payment)"
+          >
+            Anular error de pago #{{ payment.id }}
+          </button>
+        }
+      </article>
+    } @empty {
+      <p>No hay pagos en esta página.</p>
+    }
+    <bm-pager
+      [count]="facade.payments.count()"
+      [page]="Number(facade.payments.query()['page'])"
+      [busy]="facade.payments.loading()"
+      (changed)="facade.payments.page($event)"
+    />
+    <h3>Aplicaciones de anticipos</h3>
+    @for (application of sale.aplicaciones_anticipo; track application.id) {
+      <p>
+        Aplicación #{{ application.id }} · Anticipo #{{ application.anticipo_id }} ·
+        {{ money(application.monto) }} · {{ date(application.creada_en) }}
+      </p>
+    } @empty {
+      <p>
+        Sin aplicaciones nuevas. Cualquier anticipo heredado conciliado se incluye en el saldo del
+        servidor.
+      </p>
+    }
+  </section>
+  @if (
+    (sale.estado === 'BORRADOR' && session.hasPermission('finanzas.manage_sales')) ||
+    session.hasPermission('finanzas.void_payment')
+  ) {
+    <form class="surface phase4-form section-gap" [formGroup]="reason" (ngSubmit)="cancel()">
+      <h2>Correcciones con historial</h2>
+      <label for="financial-reason">Motivo de la corrección (8–250 caracteres)</label
+      ><input id="financial-reason" formControlName="motivo" maxlength="250" />
+      @if (sale.estado === 'BORRADOR' && session.hasPermission('finanzas.manage_sales')) {
+        <button mat-button type="submit" [disabled]="locked() || reason.invalid">
+          Anular borrador
+        </button>
+      }
+      @if (session.hasPermission('finanzas.void_payment')) {
+        <label class="check-row"
+          ><input type="checkbox" formControlName="error_confirmado" /> Confirmo un error de
+          registro. La anulación del pago no devuelve dinero.</label
+        >
+        <p class="muted">
+          Selecciona el pago concreto en el historial. Una venta confirmada requiere un flujo de
+          compensación para su devolución; no se revierte desde esta pantalla.
+        </p>
+      }
+    </form>
+  }
+}

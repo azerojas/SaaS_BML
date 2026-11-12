@@ -23,7 +23,13 @@ export function canAccess(user: CurrentUser | null, permission: string): boolean
 export function safeReturnUrl(value: string | null | undefined): string {
   const allowed =
     /^\/admin(?:\/(?:clientas(?:\/(?:nueva|[1-9]\d*(?:\/editar)?))?|catalogo(?:\/(?:servicios|articulos|categorias-servicio|categorias-articulo|unidades)(?:\/(?:nuevo|[1-9]\d*(?:\/editar)?))?)?|inventario(?:\/(?:articulos\/[1-9]\d*|movimientos|alertas|ajustes\/nuevo))?|compras(?:\/(?:nueva|[1-9]\d*(?:\/(?:editar|recepcion))?))?|proveedores(?:\/(?:nuevo|[1-9]\d*))?|visitas|reportes|agenda|acceso-denegado))?$/;
-  return value && allowed.test(value) ? value : '/admin';
+  const phase4 =
+    /^\/admin\/(?:llegadas(?:\/[1-9]\d*)?|puntos-qr|visitas(?:\/(?:nueva|[1-9]\d*))?|ventas(?:\/(?:nueva|[1-9]\d*(?:\/editar)?))?)$/;
+  const phase6 =
+    /^\/admin\/agenda(?:\/(?:profesionales|bloqueos|configuracion|citas\/(?:nueva|[1-9]\d*)|lista-espera(?:\/[1-9]\d*)?))?$/;
+  return value && (allowed.test(value) || phase4.test(value) || phase6.test(value))
+    ? value
+    : '/admin';
 }
 
 export function isCurrentUser(value: unknown): value is CurrentUser {

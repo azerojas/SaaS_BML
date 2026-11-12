@@ -51,10 +51,13 @@ try:
     call_command('migrate',interactive=False,verbosity=0)
     password=secrets.token_urlsafe(26)
     users={}
-    for role,staff in [('admin',True),('limited',True),('regular',False),('second',True)]:
+    for role,staff in [('admin',True),('limited',True),('regular',False),('second',True),('summary',True),('clients',True),('inventory',True),('exporter',True),('agenda_reader',True)]:
         user=get_user_model().objects.create_user('e2e_'+role,password=password,is_staff=staff,first_name='Equipo' if staff else 'Persona',last_name='de prueba E2E')
         if role in ('admin','second'):
             user.user_permissions.add(*Permission.objects.filter(content_type__app_label__in=['negocio','finanzas','agenda','reporting']).exclude(codename__startswith='delete_'))
+        report_roles={'summary':['view_summary'],'clients':['view_clients'],'inventory':['view_inventory'],'exporter':['view_summary','export']}
+        if role in report_roles:user.user_permissions.add(*Permission.objects.filter(content_type__app_label='reporting',codename__in=report_roles[role]))
+        if role=='agenda_reader':user.user_permissions.add(Permission.objects.get(content_type__app_label='agenda',codename='view_agenda'))
         secret=secrets.token_bytes(20)
         recovery=secrets.token_urlsafe(24)
         if staff:MFADevice.objects.create(user=user,secret_encrypted=Fernet(settings.MFA_ENCRYPTION_KEY.encode()).encrypt(secret.hex().encode()).decode(),confirmed=True,recovery_hashes=[hashlib.sha256(recovery.encode()).hexdigest()])
@@ -80,6 +83,37 @@ try:
     for index in range(21):
         m.Proveedores.objects.create(nombre='ZZ proveedor E2E '+str(index).zfill(2),ruc='SYNTH-'+str(index),activo=True)
     inventory_fixture={'supplier':supplier.pk,'articles':articles,'unit':unit.pk}
+    # Separate phase-4 fixtures preserve stock and recipes asserted by prior phases.
+    from decimal import Decimal
+    from apps.inventario import services as inventory_services
+    finance_product=m.Articulos.objects.create(nombre='Producto caja F4 E2E',slug='producto-caja-f4-e2e',tipo='VENTA',unidad=unit,precio_venta='20.00',activo=True)
+    finance_material=m.Articulos.objects.create(nombre='Insumo caja F4 E2E',slug='insumo-caja-f4-e2e',tipo='INSUMO',unidad=unit,activo=True)
+    finance_service=m.Servicios.objects.create(nombre='Tratamiento caja F4 E2E',slug='tratamiento-caja-f4-e2e',precio_base='80.00',activo=True)
+    m.RecetasServicio.objects.create(servicio=finance_service,articulo=finance_material,cantidad_estimada=Decimal('0.250'))
+    purchase=inventory_services.save_purchase({'detalles':[{'articulo_id':item.pk,'unidad_id':unit.pk,'cantidad':Decimal('100.000'),'costo_unitario':Decimal('3.0000')} for item in [finance_product,finance_material]]},admin)
+    inventory_services.receive_purchase(purchase.pk,admin)
+    point=m.PuntosQr.objects.create(nombre='Recepcion F4 E2E',activo=True)
+    finance_client=m.Clientas.objects.create(nombres='Recurrente F4',apellidos='Ficticia',telefono='+51955123000',activa=True,acepta_recordatorios=False,canal_preferido='EMAIL')
+    finance_fixture={'point':point.pk,'token':str(point.token),'product':finance_product.pk,'material':finance_material.pk,'service':finance_service.pk,'unit':unit.pk,'client':finance_client.pk,'phone':finance_client.telefono}
+    # Existing appointment with a confirmed advance for the application-only UI.
+    from datetime import timedelta
+    from django.utils import timezone
+    from django.db import transaction
+    from apps.finanzas.application import visits as finance_visits,sales as finance_sales,advances as finance_advances
+    with transaction.atomic():
+        professional=m.Profesionales.objects.create(nombres='Profesional F4',apellidos='Ficticia')
+        advance_visit=finance_visits.open_visit({'clienta_id':finance_client.pk},admin)['visita_id']
+        now=timezone.now()
+        appointment=m.Citas.objects.create(clienta=finance_client,profesional=professional,visita_id=advance_visit,inicio_en=now,fin_en=now+timedelta(minutes=30),precio_total=Decimal('100.00'))
+        advance_id=finance_advances.create_advance({'cita_id':appointment.pk,'metodo':'EFECTIVO','monto':Decimal('10.00')},admin)['anticipo_id']
+        finance_advances.confirm_advance(advance_id,{'verificado_manualmente':True},admin)
+        advance_sale=finance_sales.create_sale_draft({'visita_id':advance_visit,'lineas':[{'tipo':'PRODUCTO','articulo_id':finance_product.pk,'unidad_id':unit.pk,'cantidad':Decimal('1.000')}]},admin)['venta_id']
+        finance_sales.confirm_sale(advance_sale,{'consumos_revisados':True,'consumos_reales':[]},admin)
+    finance_fixture.update({'advance_sale':advance_sale,'advance':advance_id,'professional':professional.pk})
+    from frontend_analytics_fixture import seed as seed_analytics
+    analytics_fixture=seed_analytics(admin,unit)
+    from frontend_agenda_fixture import seed as seed_agenda
+    agenda_fixture=seed_agenda(admin)
     key=secrets.token_urlsafe(32)
     real_app=get_wsgi_application()
     def application(environ,start_response):
@@ -96,10 +130,13 @@ try:
                     for values in users.values():
                         MFADevice.objects.filter(user__username=values['username']).update(recovery_hashes=[hashlib.sha256(values['recovery_code'].encode()).hexdigest()])
                     settings.LOGIN_RATE_LIMIT=1000
+                    settings.CHECKIN_POST_IP_LIMIT=1000
                     settings.CATALOG_IMAGE_ALLOWED_HOSTS=['images.example.test']
+                    m.Auditoria.objects.filter(entidad='reporting',accion='EXPORTAR_XLSX').delete()
                 elif path=='/__test__/expire':Session.objects.all().delete()
                 elif path=='/__test__/throttle':settings.LOGIN_RATE_LIMIT=1
                 elif path=='/__test__/images-disabled':settings.CATALOG_IMAGE_ALLOWED_HOSTS=[]
+                elif path=='/__test__/checkin-throttle':settings.CHECKIN_POST_IP_LIMIT=1
                 elif path=='/__test__/shutdown':threading.Thread(target=server.shutdown,daemon=True).start()
                 else:
                     start_response('404 Not Found',[('Content-Type','application/json')]);return [b'{}']
@@ -114,7 +151,7 @@ try:
     from local_certificates import create
     certificate_folder=fixture.parent/'certificates'
     create(certificate_folder)
-    values={'backend_port':server.server_port,'control_key':key,'users':users,'synthetic':True,'catalog':catalog_fixture,'inventory':inventory_fixture,
+    values={'backend_port':server.server_port,'control_key':key,'users':users,'synthetic':True,'catalog':catalog_fixture,'inventory':inventory_fixture,'finance':finance_fixture,'analytics':analytics_fixture,'agenda':agenda_fixture,
         'certificate':str(certificate_folder/'server.crt'),'certificate_key':str(certificate_folder/'server.key')}
     fixture.parent.mkdir(parents=True,exist_ok=True)
     with os.fdopen(os.open(fixture,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'w',encoding='utf-8') as file:json.dump(values,file)

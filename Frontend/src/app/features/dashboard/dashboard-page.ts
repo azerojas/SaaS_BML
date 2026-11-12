@@ -3,10 +3,11 @@ import { RouterLink } from '@angular/router';
 import { SessionStore } from '../../core/auth/application/session-store';
 import { visibleNavigation } from '../../core/config/navigation';
 import { Icon } from '../../shared/ui/icon';
+import { DashboardAnalytics } from './presentation/dashboard-analytics';
 
 @Component({
   selector: 'bm-dashboard-page',
-  imports: [RouterLink, Icon],
+  imports: [RouterLink, Icon, DashboardAnalytics],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.scss',

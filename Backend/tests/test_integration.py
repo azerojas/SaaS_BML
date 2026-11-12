@@ -11,7 +11,7 @@ class SchemaIntegrationTests(TestCase):
     def test_documented_routes_and_schema_references(self):
         document = json.loads((settings.BASE_DIR / 'docs/openapi.json').read_text(encoding='utf-8'))
         for path in document['paths']:
-            resolve(path.replace('{id}', '1').replace('{slug}', 'ficticio').replace('{token}', '550e8400-e29b-41d4-a716-446655440000'))
+            resolve(path.replace('{id}', '1').replace('{slug}', 'ficticio').replace('{token}', '550e8400-e29b-41d4-a716-446655440000').replace('{key}', '550e8400-e29b-41d4-a716-446655440000'))
         def validate_refs(value):
             if isinstance(value, dict):
                 if '$ref' in value:

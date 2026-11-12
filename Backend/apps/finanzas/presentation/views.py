@@ -43,6 +43,45 @@ class FinanceViewSet(viewsets.GenericViewSet):
         return Response(body,status=response_status)
 
 
+class IntentViewSet(FinanceViewSet):
+    """Actor-scoped recovery; never returns request payloads or another actor's records."""
+    permission_classes = [FinancePermission]
+    action_permissions = {}
+    http_method_names = ['get', 'head', 'options']
+    lookup_value_regex = '[0-9a-fA-F-]{36}'
+
+    def retrieve(self, request, pk=None):
+        from uuid import UUID
+        from apps.finanzas.models import IdempotencyRecord
+        from django.db import connection, transaction
+        ensure_ready()
+        try:
+            key = UUID(pk)
+            if not key.int:
+                raise ValueError
+        except (ValueError, TypeError, AttributeError):
+            raise ValidationError({'clave': 'UUID no nula requerida.'}) from None
+        operation = request.query_params.get('operacion', '')
+        permissions = {'visita.abrir': 'manage_visits', 'visita.notas': 'manage_visits',
+            'visita.cancelar': 'manage_visits', 'visita.finalizar': 'manage_visits',
+            'venta.crear': 'manage_sales', 'venta.editar': 'manage_sales',
+            'venta.confirmar': 'confirm_sale', 'venta.anular': 'manage_sales',
+            'pago.registrar': 'register_payment', 'pago.anular': 'void_payment',
+            'anticipo.aplicar': 'apply_advance'}
+        if operation not in permissions:
+            raise ValidationError({'operacion': 'Operacion no soportada.'})
+        if not request.user.has_perm('finanzas.' + permissions[operation]):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied()
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute('SELECT pg_advisory_xact_lock(718302453)')
+            record = IdempotencyRecord.objects.filter(actor=request.user, operation=operation, key=key).first()
+            return Response({'encontrado': record is not None, 'operacion': operation,
+                'resultado': record.response_body if record else None,
+                'estado_http': record.response_status if record else None})
+
+
 class VisitViewSet(mixins.ListModelMixin,mixins.RetrieveModelMixin,FinanceViewSet):
     serializer_class=s.VisitOutput
     action_permissions={'create':'manage_visits','partial_update':'manage_visits','cancelar':'manage_visits','finalizar':'manage_visits'}

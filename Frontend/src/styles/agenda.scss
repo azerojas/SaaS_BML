@@ -1,0 +1,147 @@
+bm-calendar-page,
+bm-booking-page,
+bm-appointment-page,
+bm-professionals-page,
+bm-blocks-page,
+bm-waitlist-page,
+bm-agenda-configuration {
+  button:not([mat-stroked-button]):not([mat-button]):not([mat-flat-button]) {
+    min-height: 44px;
+    padding: 0.65rem 1rem;
+    border: 1px solid var(--forest);
+    border-radius: 9px;
+    background: var(--forest);
+    color: white;
+    font: inherit;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: background 0.15s;
+    &:hover:not(:disabled) {
+      background: #426355;
+    }
+    &:disabled {
+      cursor: default;
+      opacity: 0.48;
+    }
+    &:focus-visible {
+      outline: 3px solid #9a6b2f;
+      outline-offset: 3px;
+    }
+  }
+  .surface {
+    margin-block: 1rem;
+  }
+  form:not(.agenda-filters) {
+    display: grid;
+    gap: 1rem;
+  }
+}
+.agenda-options > a {
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: white;
+  text-decoration: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.agenda-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin: 1rem 0;
+  align-items: center;
+}
+.agenda-options a,
+.agenda-options button {
+  white-space: normal;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.agenda-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 1rem;
+  align-items: end;
+  margin-block: 1rem;
+}
+.agenda-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-block: 1.5rem;
+}
+.agenda-day {
+  grid-template-columns: 1fr;
+}
+.agenda-cell {
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.6rem;
+  min-width: 0;
+}
+.agenda-cell h2 {
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+.agenda-event {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  background: #edf4ef;
+  border: 1px solid #668270;
+  border-left: 4px solid #39634b;
+  border-radius: 8px;
+  padding: 0.65rem;
+  margin-block: 0.6rem;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+  color: var(--forest);
+  font-size: 0.8rem;
+}
+.agenda-event[data-state='CANCELADA'],
+.agenda-event[data-state='EXPIRADA'],
+.agenda-event[data-state='NO_ASISTIO'] {
+  background: #f4eeed;
+  border-color: #a07970;
+}
+.agenda-event[data-state='PENDIENTE_PAGO'] {
+  background: #fff5df;
+  border-color: #9b7836;
+}
+.agenda-hours {
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+.agenda-block {
+  padding: 0.5rem;
+  border: 1px dashed #87584b;
+  background: #f8e9e4;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+bm-slot-picker,
+bm-advances-panel {
+  display: block;
+  margin-block: 1rem;
+}
+@media (max-width: 1050px) {
+  .agenda-calendar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 650px) {
+  .agenda-calendar {
+    grid-template-columns: 1fr;
+  }
+  .agenda-options > * {
+    max-width: 100%;
+  }
+  .agenda-month .agenda-cell {
+    padding: 0.8rem;
+  }
+}

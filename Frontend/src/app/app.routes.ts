@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard, anonymousGuard, permissionGuard } from './core/guards/auth-guards';
 import { NAVIGATION } from './core/config/navigation';
+import { reportingGuard } from './features/dashboard/reporting-guard';
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'admin' },
   {
@@ -21,6 +22,60 @@ export const routes: Routes = [
     canActivateChild: [authGuard],
     loadComponent: () => import('./layouts/admin-layout/admin-layout').then((m) => m.AdminLayout),
     children: [
+      {
+        path: 'agenda',
+        canActivate: [permissionGuard],
+        data: { permission: 'agenda.view_agenda' },
+        loadChildren: () => import('./features/agenda/agenda.routes').then((m) => m.AGENDA_ROUTES),
+      },
+      {
+        path: 'reportes',
+        canActivate: [reportingGuard],
+        title: 'Reportes · Lasheo',
+        loadComponent: () =>
+          import('./features/dashboard/presentation/reports-page').then((m) => m.ReportsPage),
+      },
+      {
+        path: 'llegadas',
+        canActivate: [permissionGuard],
+        data: { permission: 'negocio.view_llegadas' },
+        children: [
+          {
+            path: '',
+            pathMatch: 'full',
+            loadComponent: () =>
+              import('./features/registro-qr/presentation/arrival-inbox').then(
+                (m) => m.ArrivalInbox,
+              ),
+          },
+          {
+            path: ':id',
+            loadComponent: () =>
+              import('./features/registro-qr/presentation/arrival-detail').then(
+                (m) => m.ArrivalDetailPage,
+              ),
+          },
+        ],
+      },
+      {
+        path: 'puntos-qr',
+        canActivate: [permissionGuard],
+        data: { permission: 'negocio.view_puntosqr' },
+        loadComponent: () =>
+          import('./features/registro-qr/presentation/qr-management').then((m) => m.QrManagement),
+      },
+      {
+        path: 'visitas',
+        canActivate: [permissionGuard],
+        data: { permission: 'finanzas.view_finance' },
+        loadChildren: () => import('./features/visitas/visitas.routes').then((m) => m.VISIT_ROUTES),
+      },
+      {
+        path: 'ventas',
+        canActivate: [permissionGuard],
+        data: { permission: 'finanzas.view_finance' },
+        loadChildren: () => import('./features/ventas/ventas.routes').then((m) => m.SALE_ROUTES),
+      },
       {
         path: 'inventario',
         loadChildren: () =>
@@ -68,6 +123,12 @@ export const routes: Routes = [
             '/admin/inventario',
             '/admin/compras',
             '/admin/proveedores',
+            '/admin/visitas',
+            '/admin/ventas',
+            '/admin/llegadas',
+            '/admin/puntos-qr',
+            '/admin/reportes',
+            '/admin/agenda',
           ].includes(item.path),
       ).map((item) => ({
         path: item.path.slice('/admin/'.length),
@@ -128,12 +189,14 @@ export const routes: Routes = [
       {
         path: '',
         title: 'Bienvenida · Lasheo',
-        loadComponent: () => import('./features/foundation/public-page').then((m) => m.PublicPage),
+        loadComponent: () =>
+          import('./features/registro-qr/presentation/public-checkin').then((m) => m.PublicCheckin),
       },
       {
         path: ':token',
         title: 'Bienvenida · Lasheo',
-        loadComponent: () => import('./features/foundation/public-page').then((m) => m.PublicPage),
+        loadComponent: () =>
+          import('./features/registro-qr/presentation/public-checkin').then((m) => m.PublicCheckin),
       },
     ],
   },

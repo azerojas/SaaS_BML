@@ -8,6 +8,27 @@ interface TestUser {
   recovery_code: string;
 }
 interface Fixture {
+  agenda: {
+    date: string;
+    professional: number;
+    service: number;
+    clients: number[];
+    appointment: number;
+    expired: number;
+    qr: number;
+    synthetic_only: boolean;
+  };
+  analytics: {
+    sale: number;
+    client: number;
+    service: number;
+    material: number;
+    payment: number;
+    advance: number;
+    desde: string;
+    hasta: string;
+    synthetic_only: boolean;
+  };
   synthetic: boolean;
   catalog: {
     category: number;
@@ -18,9 +39,33 @@ interface Fixture {
     hidden_slug: string;
   };
   inventory: { supplier: number; articles: number[]; unit: number };
+  finance: {
+    point: number;
+    token: string;
+    product: number;
+    material: number;
+    service: number;
+    unit: number;
+    client: number;
+    phone: string;
+    advance_sale: number;
+    advance: number;
+    professional: number;
+  };
   backend_port: number;
   control_key: string;
-  users: Record<'admin' | 'limited' | 'regular' | 'second', TestUser>;
+  users: Record<
+    | 'admin'
+    | 'limited'
+    | 'regular'
+    | 'second'
+    | 'summary'
+    | 'clients'
+    | 'inventory'
+    | 'exporter'
+    | 'agenda_reader',
+    TestUser
+  >;
 }
 export const fixture: Fixture = JSON.parse(readFileSync(process.env['BM_E2E_FIXTURE']!, 'utf8'));
 if (!fixture.synthetic) throw new Error('Synthetic fixture required.');
@@ -42,14 +87,23 @@ export async function control(request: APIRequestContext, action: string) {
   );
   expect(response.status()).toBe(200);
 }
-export async function firstFactor(page: Page, role: 'admin' | 'limited' | 'second' = 'admin') {
+export type ReportingRole =
+  | 'admin'
+  | 'limited'
+  | 'second'
+  | 'summary'
+  | 'clients'
+  | 'inventory'
+  | 'exporter'
+  | 'agenda_reader';
+export async function firstFactor(page: Page, role: ReportingRole = 'admin') {
   const user = fixture.users[role];
   await page.getByLabel('Usuario', { exact: true }).fill(user.username);
   await page.getByLabel('Contraseña', { exact: true }).fill(user.password);
   await page.getByRole('button', { name: 'Entrar a mi espacio' }).click();
   await expect(page.getByRole('heading', { name: 'Confirmemos que eres tú.' })).toBeVisible();
 }
-export async function login(page: Page, role: 'admin' | 'limited' | 'second' = 'admin') {
+export async function login(page: Page, role: ReportingRole = 'admin') {
   await firstFactor(page, role);
   await page.getByLabel('Código de verificación').fill(totp(fixture.users[role].totp_secret));
   await page.getByRole('button', { name: 'Verificar y entrar' }).click();

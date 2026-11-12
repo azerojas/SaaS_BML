@@ -1,6 +1,10 @@
-# Lasheo · Beauty Manager — frontend fases 1 y 2
+# Lasheo · Beauty Manager — frontend fases 1 a 5
 
-Angular standalone integrado con sesiones Django, MFA y permisos reales. Clientas y catálogo ya tienen pantallas funcionales; los demás módulos conservan su aviso de preparación. No se presentan métricas ficticias.
+Angular standalone integrado con sesiones Django, MFA y permisos reales. Incluye clientas, catálogo, inventario, compras, recepción/atención/caja y dashboard financiero/reportes. Agenda mantiene su aviso de preparación. No se presentan métricas ficticias.
+
+La [entrega de Fase 5](docs/frontend-fase-5.md) incluye indicadores, evolución, rankings, gastos, alertas y Excel generado por Django. La [auditoría de analítica](docs/phase5-api-inventory.md) explica fechas inclusivas/exclusivas, permisos separados y caja condicionada a conciliación. Accesos: `/admin` con `reporting.view_summary`; `/admin/reportes` con alguno de los permisos de lectura de reportes. Exportar requiere además `reporting.export` y el permiso del reporte seleccionado.
+
+La [entrega de Fase 4](docs/frontend-fase-4.md) documenta las pantallas QR, llegadas, visitas, consumos reales, ventas, pagos y anticipos existentes. Consulta la [matriz de contratos y permisos](docs/phase4-api-inventory.md) antes de habilitar recepción. `PUBLIC_CHECKIN_URL` debe apuntar a `https://<dominio-frontend>/registro/`; la operación con datos reales requiere aviso de privacidad aprobado y configuración HTTPS verificada.
 
 ## Pantallas de Fase 2
 
@@ -68,3 +72,9 @@ Evidencia ignorada por Git: `.artifacts/e2e-results.json`, `.artifacts/e2e-backe
 Las páginas usan la capa de aplicación. Django decide autenticación, permisos y negocio. No hay JWT ni persistencia de credenciales/tokens en localStorage/sessionStorage. Fase 3 conserva únicamente UUID de intenciones pendientes en sessionStorage para recuperar operaciones sin duplicarlas.
 
 Véanse [contrato de integración](docs/integration-contract.md) e [informe de aceptación](docs/phase1-report.md).
+
+## Agenda y reservas — Fase 6
+
+Implementación en `/admin/agenda`: calendario diario/semanal/mensual, profesionales, especialidades, horarios, bloqueos, citas, anticipos, lista de espera y enlace con llegadas. Consume Django real; no instala nuevas dependencias ni modifica el esquema de producción.
+
+**Cierre bloqueado:** Django todavía expone comisiones a roles de solo lectura de agenda. Las consultas dependientes se restringen a administración en esta interfaz. No está validada para producción ni habilitada íntegramente para roles operativos limitados. Véanse el [informe técnico de Fase 6](docs/frontend-fase-6.md) y el [contrato, permisos y dependencias](docs/phase6-api-inventory.md), incluido el límite de recuperación de operaciones tras recargar.

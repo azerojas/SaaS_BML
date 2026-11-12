@@ -1,0 +1,154 @@
+.phase4-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  label {
+    font-size: 0.9rem;
+    font-weight: 650;
+  }
+  input:not([type='checkbox']),
+  select,
+  textarea {
+    width: 100%;
+    min-height: 46px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper);
+    padding: 0.7rem;
+    font: inherit;
+    color: var(--ink);
+  }
+  textarea {
+    min-height: 110px;
+    resize: vertical;
+  }
+  fieldset {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    border: 0;
+    padding: 0;
+  }
+  fieldset.sale-line {
+    border: 1px solid var(--line);
+    padding: 1rem;
+  }
+  .check-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    font-weight: 500;
+    line-height: 1.7;
+    padding: 0.5rem 0;
+  }
+  input[type='checkbox'] {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    accent-color: var(--forest);
+  }
+  details {
+    padding: 0.8rem 0;
+  }
+  summary {
+    cursor: pointer;
+  }
+  button {
+    min-height: 44px;
+  }
+}
+.phase4-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+.phase4-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.sale-line {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem;
+  min-width: 0;
+}
+.sale-line legend {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.consumption-item {
+  border-bottom: 1px solid var(--line);
+  padding-block: 0.8rem;
+}
+.lookup-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-block: 1rem;
+}
+.lookup-results button {
+  white-space: normal;
+  text-align: left;
+  min-height: 44px;
+  height: auto;
+  padding-block: 0.7rem;
+}
+.checkin-page {
+  max-width: 620px;
+  margin: 1rem auto 3rem;
+  line-height: 1.7;
+}
+.checkin-page h1 {
+  font-size: clamp(2rem, 6vw, 3rem);
+  line-height: 1.2;
+}
+.financial-summary dd {
+  font-size: 1.15rem;
+  overflow-wrap: anywhere;
+}
+.qr-print {
+  text-align: center;
+}
+.qr-print img {
+  width: min(100%, 320px);
+  height: auto;
+  background: white;
+}
+.qr-url {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1000px) {
+  .phase4-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .phase4-form {
+    gap: 1rem;
+  }
+  .financial-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media print {
+  body:has(.qr-print) * {
+    visibility: hidden;
+  }
+  body:has(.qr-print) .qr-print,
+  body:has(.qr-print) .qr-print * {
+    visibility: visible;
+  }
+  body:has(.qr-print) .qr-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border: 0;
+  }
+  body:has(.qr-print) .qr-print button {
+    display: none;
+  }
+}

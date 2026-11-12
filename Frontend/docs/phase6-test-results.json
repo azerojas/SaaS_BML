@@ -1,0 +1,42 @@
+{
+  "phase": 6,
+  "date": "2026-11-12",
+  "closure": "blocked_backend_commission_authorization",
+  "unit_http_components": {
+    "passed": 148,
+    "files": 31,
+    "duration_seconds": 5.87
+  },
+  "django_postgresql": {
+    "passed": 373,
+    "duration_seconds": 107.655,
+    "isolated_database_removed": true
+  },
+  "full_e2e": {
+    "expected": 88,
+    "unexpected": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "duration": 342495.029
+  },
+  "final_phase6_e2e": {
+    "expected": 12,
+    "unexpected": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "duration": 55542.785
+  },
+  "build": "passed",
+  "lint": "passed",
+  "typecheck": "passed",
+  "axe_wcag2a_2aa": "passed_calendar",
+  "responsive_widths": [390, 768, 1440],
+  "production_schema_changed": false,
+  "production_deployed": false,
+  "limitations": [
+    "Backend professional commission field authorization pending",
+    "Reload recovery requires exact original form until actor-scoped intention endpoint exists",
+    "Availability for historical rescheduling uses current catalog; Django remains authoritative"
+  ],
+  "sequence": "Full 88 E2E regression before final button styling and differentiated transactional-policy 403 handling; 148 frontend tests and 12 agenda E2E passed after those changes."
+}
