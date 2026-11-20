@@ -35,9 +35,11 @@ import { Loading } from '../../../shared/ui/loading';
           @if (item.disponible !== undefined) {
             <p>{{ item.disponible ? 'Disponible' : 'No disponible actualmente' }}</p>
           }
-          <p class="muted">
-            Consulta informativa. No se realizan reservas ni cobros desde este catálogo.
-          </p>
+          @if (item.precio_base !== undefined) {
+            <a mat-flat-button routerLink="/reservar" [queryParams]="{ servicio: item.id }"
+              >Elegir especialista y horario</a
+            >
+          }
         </div>
       </article>
     }

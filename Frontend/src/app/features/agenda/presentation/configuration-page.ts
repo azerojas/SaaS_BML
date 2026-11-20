@@ -1,3 +1,4 @@
+import { UnsavedForm } from '../../../core/forms/unsaved-form';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -17,9 +18,13 @@ interface Config {
   minutos_expiracion_pago: number;
   max_citas_activas_por_clienta: number;
 }
+interface ConfigStatus extends Config {
+  anticipos_habilitados: boolean;
+  canal_online_habilitado: boolean;
+}
 @Component({
   selector: 'bm-agenda-configuration',
-  imports: [ReactiveFormsModule, RouterLink, AgendaFeedback, Alert],
+  imports: [ReactiveFormsModule, RouterLink, AgendaFeedback, Alert, UnsavedForm],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<a routerLink="/admin/agenda">Volver a agenda</a>
     <h1>Políticas de reserva</h1>
@@ -33,10 +38,10 @@ interface Config {
       </button>
     }
     @if (state.record()) {
-      <form class="surface" [formGroup]="form" (ngSubmit)="save()">
+      <form bmUnsavedForm class="surface" [formGroup]="form" (ngSubmit)="save()">
         <label
-          ><input type="checkbox" formControlName="reservas_online_activas" />Habilitar consultas
-          públicas según configuración del servidor</label
+          ><input type="checkbox" formControlName="reservas_online_activas" />Habilitar reservas
+          online según configuración del servidor</label
         >
         @for (field of fields; track field.key) {
           <label
@@ -46,7 +51,19 @@ interface Config {
               [attr.inputmode]="field.key === 'anticipo_porcentaje' ? 'decimal' : 'numeric'"
           /></label>
         }
-        <p>Esta fase solo crea reservas privadas. Las políticas definitivas pertenecen a Django.</p>
+        @if (!state.record()?.anticipos_habilitados) {
+          <p>
+            Las citas nuevas se reservan sin anticipo. Los anticipos históricos conservan su
+            registro.
+          </p>
+        }
+        @if (!state.record()?.canal_online_habilitado) {
+          <p>
+            El canal online aún necesita su activación en el servidor. Las solicitudes requieren
+            confirmación del salón.
+          </p>
+        }
+        <p>El plazo de cambios se aplica también a la reprogramación de las clientas.</p>
         @if (session.hasPermission('agenda.configure_agenda')) {
           <button type="submit" [disabled]="intent.busy() || form.invalid">
             Guardar políticas
@@ -59,7 +76,7 @@ export class ConfigurationPage {
   readonly session = inject(SessionStore);
   readonly intent = inject(AgendaIntent);
   private readonly api = inject(AgendaApi);
-  readonly state = new RecordState<Config>();
+  readonly state = new RecordState<ConfigStatus>();
   readonly form = inject(FormBuilder).nonNullable.group({
     reservas_online_activas: false,
     intervalo_slots_minutos: 15,
@@ -84,7 +101,7 @@ export class ConfigurationPage {
     void this.load();
   }
   async load() {
-    await this.state.load(this.api.get<Config>('calendario/configuracion/'));
+    await this.state.load(this.api.get<ConfigStatus>('calendario/configuracion/'));
     const value = this.state.record();
     if (value) this.form.reset(value);
   }

@@ -59,6 +59,21 @@ class CheckinConcurrencyTests(TestCase):
             self.assertEqual(self.isolated(lambda:(m.Clientas.objects.count(),m.Llegadas.objects.count(),m.Visitas.objects.count())),(1,1,0))
         finally:self.cleanup()
 
+    def test_simultaneous_self_registration_opens_only_one_visit(self):
+        try:
+            first = self.seed()
+            second = self.seed()
+            data = {'telefono': '+51999888777', 'nombres': 'Nueva', 'apellidos': 'Ficticia',
+                    'consentimiento_datos': True, 'version_aviso': 'v1'}
+            results = self.race([lambda: commands.register_visit(first, data),
+                                 lambda: commands.register_visit(second, data)])
+            self.assertEqual({status for status, _ in results}, {'ok'})
+            self.assertEqual(len({visit.pk for _, visit in results}), 1)
+            self.assertEqual(self.isolated(lambda: (
+                m.Clientas.objects.count(), m.Llegadas.objects.count(), m.Visitas.objects.count())),
+                (1, 1, 1))
+        finally:self.cleanup()
+
     def test_global_pending_constraint_applies_across_two_qr_points(self):
         try:
             first=self.seed()

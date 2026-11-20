@@ -15,6 +15,24 @@ def future_appointments(professional_id=None):
     return qs.filter(profesional_id=professional_id) if professional_id else qs
 
 
+def personal_calendar(actor):
+    """Reuse the signed-in administrator's account; no second registration form."""
+    required=('view_agenda','manage_professionals','assign_users','manage_schedules')
+    if not actor.is_active or not actor.is_staff or not all(actor.has_perm('agenda.'+name) for name in required):
+        raise AgendaError('PERSONAL_CALENDAR_FORBIDDEN','Tu cuenta no puede activar una agenda administrativa.','forbidden')
+    from apps.agenda.infrastructure.transactions import agenda_transaction
+    with agenda_transaction():
+        account=get_object_or_404(get_user_model().objects.select_for_update(),pk=actor.pk,is_active=True,is_staff=True)
+        existing=m.Profesionales.objects.select_for_update().filter(usuario_id=account.pk).first()
+        if existing:
+            return existing
+        obj=m.Profesionales.objects.create(usuario_id=account.pk,
+            nombres=(account.first_name.strip() or account.username)[:120],
+            apellidos=account.last_name.strip()[:120],activa=True,visible_reservas=True)
+        record(actor,obj,'ACTIVAR_AGENDA_PERSONAL',{'origen':'CUENTA_ADMINISTRATIVA'})
+        return obj
+
+
 def professional(data,actor,pk=None):
     obj=get_object_or_404(m.Profesionales.objects.select_for_update(),pk=pk) if pk else m.Profesionales(visible_reservas=False)
     if 'usuario_id' in data:
@@ -48,7 +66,14 @@ def validate_schedule_coverage(professional_id,exclude=None,replacement=None):
     if replacement:hours.append((replacement['dia_semana'],replacement['hora_inicio'],replacement['hora_fin']))
     rows=list(future_appointments(professional_id).values_list('inicio_en','fin_en')[:10001])
     if len(rows)>10000:raise AgendaError('CALENDAR_TOO_LARGE','Resuelve el cambio de horario con un rango acotado.','invalid')
-    if any(not fits(start,end,hours,1,aligned=False) for start,end in rows):
+    from .daily_schedule import installed as daily_installed
+    from apps.agenda.models import DailySchedule
+    from datetime import time
+    overrides={}
+    if rows and daily_installed():
+        for override in DailySchedule.objects.filter(Q(profesional_id=professional_id)|Q(profesional_id__isnull=True),fecha__in={start.astimezone(ZONE).date() for start,_ in rows}).order_by('-profesional_id'):
+            overrides[override.fecha]=[(override.fecha.isoweekday(),time.fromisoformat(item['inicio']),time.fromisoformat(item['fin'])) for item in override.franjas]
+    if any(not fits(start,end,overrides.get(start.astimezone(ZONE).date(),hours),1,aligned=False) for start,end in rows):
         raise AgendaError('SCHEDULE_HAS_BOOKINGS','El cambio dejaria citas futuras fuera del horario; reprograma primero.')
 
 

@@ -11,7 +11,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         /></svg></span
     ><span class="brand-name"
       >lasheo<span class="brand-caption">{{
-        compact() ? 'BEAUTY MANAGER' : 'TU ESPACIO, EN ARMONÍA'
+        ' ' + (compact() ? 'BEAUTY MANAGER' : 'TU ESPACIO, EN ARMONÍA')
       }}</span></span
     >`,
   styles: `

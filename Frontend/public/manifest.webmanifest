@@ -1,0 +1,6 @@
+{
+  "id":"/", "name":"Lasheo Beauty Manager", "short_name":"Lasheo",
+  "start_url":"/", "scope":"/", "display":"standalone", "lang":"es-PE",
+  "background_color":"#f8f9f4", "theme_color":"#2e4d42",
+  "icons":[{"src":"/icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any"},{"src":"/icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any"}]
+}

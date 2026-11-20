@@ -1,6 +1,7 @@
 from datetime import datetime,time,date,timedelta
 from decimal import Decimal as D
 from unittest.mock import patch
+from django.test import override_settings
 import uuid
 from apps.reporting.tests.base import ReportTestCase
 from apps.agenda.domain.rules import ZONE
@@ -14,6 +15,7 @@ START=datetime.combine(_tuesday,time(10),ZONE)
 NOW=START-timedelta(hours=26)
 
 
+@override_settings(AGENDA_REQUIRE_DEPOSITS=True)
 class AgendaTestCase(ReportTestCase):
     def setUp(self):
         super().setUp()

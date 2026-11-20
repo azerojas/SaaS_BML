@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Lasheo — API fase 1",
-    "version": "8.4.2",
-    "description": "Solo personal activo is_staff. Sesiones Django y CSRF. No hay registro público, PUT ni DELETE físico. Respuestas privadas sin caché. Errores 403 para anónimos usando SessionAuthentication. Fase 2: catalogo privado y publico, recetas estimadas e imagenes por URL aprobada. No realiza compras, reservas ni movimientos de inventario. Fase 3: proveedores, compras, recepcion idempotente, ledger, ajustes y estimados historicos privados. Fase 4: check-in QR no enumerativo, verificacion presencial y visitas sin cobros. Fase 5: visitas, ventas, consumos reales, pagos parciales y aplicaciones de anticipos; activacion requiere migracion aditiva aprobada. Fase 6: dashboard, series, rankings, inventario y Excel; recaudacion neta bloqueada hasta disponer de ledger conciliable de reembolsos. Fase 7: agenda privada, profesionales, horarios/bloqueos, reservas atomicas, anticipos, expiracion, enlace QR y lista de espera; consulta publica opcional sin alta/gestion anonima. Frontend Fase 1: identidad administrativa incluye permissions efectivos; sesion solo tras MFA cuando es obligatorio. Contrato de caja vigente: reembolsos y conciliaciones trazables disponibles; recaudacion conciliada exige cierres validos, no queda habilitada por inferencia."
+    "title": "Lasheo ? API de gesti?n y reservas",
+    "version": "8.3.0",
+    "description": "Gesti?n privada con sesiones staff, MFA, permisos y CSRF. Cat?logo y disponibilidad p?blicos limitados a registros visibles. Solicitudes de reserva sin correo/SMS ni anticipo: horario retenido temporalmente, confirmaci?n expl?cita del personal y gesti?n mediante telefono y clave de gestion. Las respuestas API son no-store. Las escrituras financieras y de agenda usan UUID idempotentes. OCR y emisi?n tributaria no forman parte del m?dulo de reservas."
   },
   "servers": [
     {
@@ -2621,7 +2621,7 @@
             }
           }
         },
-        "description": "La misma respuesta 202 para telefono existente, desconocido con datos incompletos, inactivo o solicitud pendiente. No devuelve identidad, IDs ni existencia de ficha. Alta nueva provisional requiere nombres/apellidos, consentimiento JSON true y aviso vigente; no activa historial ni crea visita."
+        "description": "La misma respuesta 202 para telefono existente, desconocido con datos incompletos o inactivo. No devuelve identidad, IDs ni existencia de ficha. Datos validos registran automaticamente una visita ABIERTA sin confirmacion de recepcion. Alta nueva requiere nombres/apellidos, consentimiento JSON true y aviso vigente. Se reutiliza una visita abierta ante reenvios, incluso entre puntos QR. No registra pagos ni movimientos de inventario."
       }
     },
     "/api/public/checkin/aviso-prueba/": {
@@ -11945,6 +11945,16 @@
               "type": "integer",
               "minimum": 1
             }
+          },
+          {
+            "name": "excluir_profesional_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Excluye a este profesional al consultar el calendario del equipo. Se mantienen los permisos de la sesion."
           }
         ],
         "responses": {
@@ -12559,6 +12569,16 @@
               "type": "integer",
               "minimum": 1
             }
+          },
+          {
+            "name": "excluir_profesional_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Excluye a este profesional al consultar el calendario del equipo. Se mantienen los permisos de la sesion."
           }
         ],
         "responses": {
@@ -13106,6 +13126,16 @@
               "format": "date",
               "description": "Limite exclusivo; rango maximo93 dias. Interseccion de intervalos."
             }
+          },
+          {
+            "name": "excluir_profesional_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Excluye a este profesional al consultar el calendario del equipo. Se mantienen los permisos de la sesion."
           }
         ],
         "responses": {
@@ -13668,6 +13698,16 @@
               "format": "date",
               "description": "Limite exclusivo; rango maximo93 dias. Interseccion de intervalos."
             }
+          },
+          {
+            "name": "excluir_profesional_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Excluye a este profesional al consultar el calendario del equipo. Se mantienen los permisos de la sesion."
           }
         ],
         "responses": {
@@ -15464,6 +15504,16 @@
               "description": "Limite exclusivo; rango maximo93 dias. Interseccion de intervalos."
             },
             "required": true
+          },
+          {
+            "name": "excluir_profesional_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Excluye a este profesional al consultar el calendario del equipo. Se mantienen los permisos de la sesion."
           }
         ],
         "responses": {
@@ -16948,6 +16998,1002 @@
           }
         }
       }
+    },
+    "/api/v1/agenda/intentos/{key}/": {
+      "get": {
+        "summary": "Recover own agenda or advance intent",
+        "description": "Requires agenda.view_agenda and action permission. Same actor only; no request payload.",
+        "security": [
+          {
+            "sessionAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "operacion",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Found committed result or not found"
+          },
+          "400": {
+            "description": "Invalid operation or UUID"
+          },
+          "403": {
+            "description": "Not authorized"
+          }
+        }
+      }
+    },
+    "/api/v1/public/reservas/configuracion/": {
+      "get": {
+        "tags": [
+          "Reservas online"
+        ],
+        "summary": "Pol?ticas y preparaci?n de sesi?n an?nima",
+        "description": "Sin correo/SMS. Consultas de solicitudes propias mediante sesi?n del navegador o acceso con telefono y clave de gestion. No confirma cobros. Hora America/Lima.",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Operaci?n completada"
+          },
+          "400": {
+            "description": "Validaci?n"
+          },
+          "403": {
+            "description": "CSRF, permisos o acceso privado requerido"
+          },
+          "404": {
+            "description": "Solicitud/enlace no disponible"
+          },
+          "409": {
+            "description": "Horario ocupado, solicitud resuelta/vencida o referencia incompatible"
+          },
+          "429": {
+            "description": "L?mite persistente alcanzado"
+          },
+          "503": {
+            "description": "Canal o migraci?n no habilitados"
+          }
+        }
+      }
+    },
+    "/api/v1/public/reservas/acceso/": {
+      "post": {
+        "tags": [
+          "Reservas online"
+        ],
+        "summary": "Abrir una solicitud con teléfono y clave",
+        "description": "Sin correo/SMS. Consultas de solicitudes propias mediante sesi?n del navegador o acceso con telefono y clave de gestion. CSRF obligatorio. No confirma cobros. Hora America/Lima.",
+        "security": [],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operaci?n completada"
+          },
+          "400": {
+            "description": "Validaci?n"
+          },
+          "403": {
+            "description": "CSRF, permisos o acceso privado requerido"
+          },
+          "404": {
+            "description": "Solicitud/enlace no disponible"
+          },
+          "409": {
+            "description": "Horario ocupado, solicitud resuelta/vencida o referencia incompatible"
+          },
+          "429": {
+            "description": "L?mite persistente alcanzado"
+          },
+          "503": {
+            "description": "Canal o migraci?n no habilitados"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicBookingAccess"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/reservas/salir/": {
+      "post": {
+        "tags": [
+          "Reservas online"
+        ],
+        "summary": "Cerrar acceso a solicitudes de esta sesi?n",
+        "description": "Sin correo/SMS. Consultas de solicitudes propias mediante sesi?n del navegador o acceso con telefono y clave de gestion. CSRF obligatorio. No confirma cobros. Hora America/Lima.",
+        "security": [],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Operaci?n completada"
+          },
+          "400": {
+            "description": "Validaci?n"
+          },
+          "403": {
+            "description": "CSRF, permisos o acceso privado requerido"
+          },
+          "404": {
+            "description": "Solicitud/enlace no disponible"
+          },
+          "409": {
+            "description": "Horario ocupado, solicitud resuelta/vencida o referencia incompatible"
+          },
+          "429": {
+            "description": "L?mite persistente alcanzado"
+          },
+          "503": {
+            "description": "Canal o migraci?n no habilitados"
+          }
+        }
+      }
+    },
+    "/api/v1/public/reservas/solicitudes/": {
+      "get": {
+        "tags": [
+          "Reservas online"
+        ],
+        "summary": "Hasta 50 solicitudes accesibles en esta sesi?n",
+        "description": "Sin correo/SMS. Consultas de solicitudes propias mediante sesi?n del navegador o acceso con telefono y clave de gestion. No confirma cobros. Hora America/Lima.",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Operaci?n completada"
+          },
+          "400": {
+            "description": "Validaci?n"
+          },
+          "403": {
+            "description": "CSRF, permisos o acceso privado requerido"
+          },
+          "404": {
+            "description": "Solicitud/enlace no disponible"
+          },
+          "409": {
+            "description": "Horario ocupado, solicitud resuelta/vencida o referencia incompatible"
+          },
+          "429": {
+            "description": "L?mite persistente alcanzado"
+          },
+          "503": {
+            "description": "Canal o migraci?n no habilitados"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Reservas online"
+        ],
+        "summary": "Solicitar reserva pendiente de confirmaci?n del sal?n",
+        "description": "Sin correo/SMS. Consultas de solicitudes propias mediante sesi?n del navegador o acceso con telefono y clave de gestion. CSRF obligatorio. No confirma cobros. Hora America/Lima.",
+        "security": [],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Operaci?n completada"
+          },
+          "400": {
+            "description": "Validaci?n"
+          },
+          "403": {
+            "description": "CSRF, permisos o acceso privado requerido"
+          },
+          "404": {
+            "description": "Solicitud/enlace no disponible"
+          },
+          "409": {
+            "description": "Horario ocupado, solicitud resuelta/vencida o referencia incompatible"
+          },
+          "429": {
+            "description": "L?mite persistente alcanzado"
+          },
+          "503": {
+            "description": "Canal o migraci?n no habilitados"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicBookingCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/reservas/solicitudes/{request_id}/": {
+      "get": {
+        "tags": [
+          "Reservas online"
+        ],
+        "summary": "Consultar solicitud propia",
+        "description": "Sin correo/SMS. Consultas de solicitudes propias mediante sesi?n del navegador o acceso con telefono y clave de gestion. No confirma cobros. Hora America/Lima.",
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operaci?n completada"
+          },
+          "400": {
+            "description": "Validaci?n"
+          },
+          "403": {
+            "description": "CSRF, permisos o acceso privado requerido"
+          },
+          "404": {
+            "description": "Solicitud/enlace no disponible"
+          },
+          "409": {
+            "description": "Horario ocupado, solicitud resuelta/vencida o referencia incompatible"
+          },
+          "429": {
+            "description": "L?mite persistente alcanzado"
+          },
+          "503": {
+            "description": "Canal o migraci?n no habilitados"
+          }
+        }
+      }
+    },
+    "/api/v1/public/reservas/solicitudes/{request_id}/cancelar/": {
+      "post": {
+        "tags": [
+          "Reservas online"
+        ],
+        "summary": "Cancelar solicitud o cita dentro de pol?tica",
+        "description": "Sin correo/SMS. Consultas de solicitudes propias mediante sesi?n del navegador o acceso con telefono y clave de gestion. CSRF obligatorio. No confirma cobros. Hora America/Lima.",
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operaci?n completada"
+          },
+          "400": {
+            "description": "Validaci?n"
+          },
+          "403": {
+            "description": "CSRF, permisos o acceso privado requerido"
+          },
+          "404": {
+            "description": "Solicitud/enlace no disponible"
+          },
+          "409": {
+            "description": "Horario ocupado, solicitud resuelta/vencida o referencia incompatible"
+          },
+          "429": {
+            "description": "L?mite persistente alcanzado"
+          },
+          "503": {
+            "description": "Canal o migraci?n no habilitados"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicBookingCancel"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/reservas/solicitudes/{request_id}/reprogramar/": {
+      "post": {
+        "tags": [
+          "Reservas online"
+        ],
+        "summary": "Cambiar horario manteniendo cotizaci?n y plazo",
+        "description": "Sin correo/SMS. Consultas de solicitudes propias mediante sesi?n del navegador o acceso con telefono y clave de gestion. CSRF obligatorio. No confirma cobros. Hora America/Lima.",
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operaci?n completada"
+          },
+          "400": {
+            "description": "Validaci?n"
+          },
+          "403": {
+            "description": "CSRF, permisos o acceso privado requerido"
+          },
+          "404": {
+            "description": "Solicitud/enlace no disponible"
+          },
+          "409": {
+            "description": "Horario ocupado, solicitud resuelta/vencida o referencia incompatible"
+          },
+          "429": {
+            "description": "L?mite persistente alcanzado"
+          },
+          "503": {
+            "description": "Canal o migraci?n no habilitados"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicBookingReschedule"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/reservas/solicitudes/{request_id}/disponibilidad/": {
+      "get": {
+        "tags": [
+          "Reservas online"
+        ],
+        "summary": "Horarios para modificar solicitud propia",
+        "description": "Sin correo/SMS. Consultas de solicitudes propias mediante sesi?n del navegador o acceso con telefono y clave de gestion. No confirma cobros. Hora America/Lima.",
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fecha",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operaci?n completada"
+          },
+          "400": {
+            "description": "Validaci?n"
+          },
+          "403": {
+            "description": "CSRF, permisos o acceso privado requerido"
+          },
+          "404": {
+            "description": "Solicitud/enlace no disponible"
+          },
+          "409": {
+            "description": "Horario ocupado, solicitud resuelta/vencida o referencia incompatible"
+          },
+          "429": {
+            "description": "L?mite persistente alcanzado"
+          },
+          "503": {
+            "description": "Canal o migraci?n no habilitados"
+          }
+        }
+      }
+    },
+    "/api/v1/public/reservas/intentos/{key}/": {
+      "get": {
+        "tags": [
+          "Reservas online"
+        ],
+        "summary": "Recuperar resultado en el navegador emisor",
+        "description": "Sin correo/SMS. Consultas de solicitudes propias mediante sesi?n del navegador o acceso con telefono y clave de gestion. No confirma cobros. Hora America/Lima.",
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operaci?n completada"
+          },
+          "400": {
+            "description": "Validaci?n"
+          },
+          "403": {
+            "description": "CSRF, permisos o acceso privado requerido"
+          },
+          "404": {
+            "description": "Solicitud/enlace no disponible"
+          },
+          "409": {
+            "description": "Horario ocupado, solicitud resuelta/vencida o referencia incompatible"
+          },
+          "429": {
+            "description": "L?mite persistente alcanzado"
+          },
+          "503": {
+            "description": "Canal o migraci?n no habilitados"
+          }
+        }
+      }
+    },
+    "/api/v1/agenda/solicitudes/": {
+      "get": {
+        "tags": [
+          "Reservas online"
+        ],
+        "summary": "Listar solicitudes para recepci?n",
+        "description": "agenda.manage_appointments para resolver; agenda.view_agenda para listar. Sesi?n staff/MFA. No confirma cobros. Hora America/Lima.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Operaci?n completada"
+          },
+          "400": {
+            "description": "Validaci?n"
+          },
+          "403": {
+            "description": "CSRF, permisos o acceso privado requerido"
+          },
+          "404": {
+            "description": "Solicitud/enlace no disponible"
+          },
+          "409": {
+            "description": "Horario ocupado, solicitud resuelta/vencida o referencia incompatible"
+          },
+          "429": {
+            "description": "L?mite persistente alcanzado"
+          },
+          "503": {
+            "description": "Canal o migraci?n no habilitados"
+          }
+        }
+      }
+    },
+    "/api/v1/agenda/solicitudes/{request_id}/aprobar/": {
+      "post": {
+        "tags": [
+          "Reservas online"
+        ],
+        "summary": "Confirmar identidad y crear cita sin anticipo",
+        "description": "agenda.manage_appointments para resolver; agenda.view_agenda para listar. Sesi?n staff/MFA. CSRF obligatorio. No confirma cobros. Hora America/Lima.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operaci?n completada"
+          },
+          "400": {
+            "description": "Validaci?n"
+          },
+          "403": {
+            "description": "CSRF, permisos o acceso privado requerido"
+          },
+          "404": {
+            "description": "Solicitud/enlace no disponible"
+          },
+          "409": {
+            "description": "Horario ocupado, solicitud resuelta/vencida o referencia incompatible"
+          },
+          "429": {
+            "description": "L?mite persistente alcanzado"
+          },
+          "503": {
+            "description": "Canal o migraci?n no habilitados"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicBookingApproval"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agenda/solicitudes/{request_id}/rechazar/": {
+      "post": {
+        "tags": [
+          "Reservas online"
+        ],
+        "summary": "Rechazar solicitud y liberar horario",
+        "description": "agenda.manage_appointments para resolver; agenda.view_agenda para listar. Sesi?n staff/MFA. CSRF obligatorio. No confirma cobros. Hora America/Lima.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operaci?n completada"
+          },
+          "400": {
+            "description": "Validaci?n"
+          },
+          "403": {
+            "description": "CSRF, permisos o acceso privado requerido"
+          },
+          "404": {
+            "description": "Solicitud/enlace no disponible"
+          },
+          "409": {
+            "description": "Horario ocupado, solicitud resuelta/vencida o referencia incompatible"
+          },
+          "429": {
+            "description": "L?mite persistente alcanzado"
+          },
+          "503": {
+            "description": "Canal o migraci?n no habilitados"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicBookingCancel"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agenda/disponibilidad-diaria/": {
+      "get": {
+        "tags": [
+          "Agenda"
+        ],
+        "summary": "Consultar o restablecer jornadas por fecha",
+        "description": "agenda.view_agenda para consultar; agenda.manage_schedules para guardar/restablecer. La fecha reemplaza el horario semanal solo para esa profesional. Franjas vacias cierran el dia. Se preservan citas y solicitudes vigentes; idempotencia y auditoria atomicas.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "desde",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "hasta",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "profesional_id",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "excluir_profesional_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Excluye a este profesional al consultar el calendario del equipo. Se mantienen los permisos de la sesion."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resultado de jornada"
+          },
+          "400": {
+            "description": "Fecha/franjas invalidas"
+          },
+          "403": {
+            "description": "Permiso o CSRF requerido"
+          },
+          "409": {
+            "description": "Conflicto con reservas o referencia"
+          },
+          "503": {
+            "description": "Migracion de jornada no activada"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Agenda"
+        ],
+        "summary": "Configurar jornada por fecha",
+        "description": "agenda.view_agenda para consultar; agenda.manage_schedules para guardar/restablecer. La fecha reemplaza el horario semanal solo para esa profesional. Franjas vacias cierran el dia. Se preservan citas y solicitudes vigentes; idempotencia y auditoria atomicas.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resultado de jornada"
+          },
+          "400": {
+            "description": "Fecha/franjas invalidas"
+          },
+          "403": {
+            "description": "Permiso o CSRF requerido"
+          },
+          "409": {
+            "description": "Conflicto con reservas o referencia"
+          },
+          "503": {
+            "description": "Migracion de jornada no activada"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DailyScheduleInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agenda/disponibilidad-diaria/restablecer/": {
+      "post": {
+        "tags": [
+          "Agenda"
+        ],
+        "summary": "Consultar o restablecer jornadas por fecha",
+        "description": "agenda.view_agenda para consultar; agenda.manage_schedules para guardar/restablecer. La fecha reemplaza el horario semanal solo para esa profesional. Franjas vacias cierran el dia. Se preservan citas y solicitudes vigentes; idempotencia y auditoria atomicas.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resultado de jornada"
+          },
+          "400": {
+            "description": "Fecha/franjas invalidas"
+          },
+          "403": {
+            "description": "Permiso o CSRF requerido"
+          },
+          "409": {
+            "description": "Conflicto con reservas o referencia"
+          },
+          "503": {
+            "description": "Migracion de jornada no activada"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DailyScheduleRestore"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agenda/profesionales/mi-agenda/": {
+      "post": {
+        "operationId": "agendaOwnAdministratorCalendar",
+        "summary": "Abrir la agenda de la cuenta administrativa actual",
+        "description": "Devuelve el profesional vinculado al usuario de la sesion. Si no existe, lo crea con los nombres de su cuenta. Repetir la solicitud no duplica el registro. Requiere view_agenda, manage_professionals, assign_users y manage_schedules. No admite datos de otro usuario ni modifica fichas ya existentes.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Agenda personal de la cuenta autenticada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "usuario_id": {
+                      "type": "integer"
+                    },
+                    "nombres": {
+                      "type": "string"
+                    },
+                    "apellidos": {
+                      "type": "string"
+                    },
+                    "activa": {
+                      "type": "boolean"
+                    },
+                    "visible_reservas": {
+                      "type": "boolean"
+                    },
+                    "publicacion_propia": {
+                      "type": "boolean"
+                    },
+                    "servicios": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "usuario_id",
+                    "nombres",
+                    "apellidos",
+                    "activa",
+                    "servicios"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "El cuerpo debe ser un objeto vacio"
+          },
+          "403": {
+            "description": "Sesion administrativa sin los permisos requeridos"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -17493,6 +18539,18 @@
             "type": "string",
             "format": "date-time",
             "readOnly": true
+          },
+          "profesionales_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            },
+            "maxItems": 200,
+            "uniqueItems": true,
+            "description": "Personas que atienden el tratamiento. Solo ellas se ofrecen al reservar; cambiar la asignacion requiere agenda.manage_professionals. Omitir el campo conserva la asignacion existente.",
+            "readOnly": true
           }
         }
       },
@@ -17516,7 +18574,8 @@
           "descripcion": {
             "type": "string",
             "nullable": true,
-            "maxLength": 20000
+            "minLength": 10,
+            "maxLength": 2000
           },
           "duracion_minutos": {
             "type": "integer",
@@ -17547,6 +18606,17 @@
           },
           "activo": {
             "type": "boolean"
+          },
+          "profesionales_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            },
+            "maxItems": 200,
+            "uniqueItems": true,
+            "description": "Personas que atienden el tratamiento. Solo ellas se ofrecen al reservar; cambiar la asignacion requiere agenda.manage_professionals. Omitir el campo conserva la asignacion existente."
           }
         },
         "required": [
@@ -17575,7 +18645,8 @@
           "descripcion": {
             "type": "string",
             "nullable": true,
-            "maxLength": 20000
+            "minLength": 10,
+            "maxLength": 2000
           },
           "duracion_minutos": {
             "type": "integer",
@@ -17606,6 +18677,17 @@
           },
           "activo": {
             "type": "boolean"
+          },
+          "profesionales_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            },
+            "maxItems": 200,
+            "uniqueItems": true,
+            "description": "Personas que atienden el tratamiento. Solo ellas se ofrecen al reservar; cambiar la asignacion requiere agenda.manage_professionals. Omitir el campo conserva la asignacion existente."
           }
         },
         "additionalProperties": false
@@ -17724,7 +18806,8 @@
           "descripcion": {
             "type": "string",
             "nullable": true,
-            "maxLength": 20000
+            "minLength": 10,
+            "maxLength": 2000
           },
           "sku": {
             "type": "string",
@@ -17794,7 +18877,8 @@
           "descripcion": {
             "type": "string",
             "nullable": true,
-            "maxLength": 20000
+            "minLength": 10,
+            "maxLength": 2000
           },
           "sku": {
             "type": "string",
@@ -19487,7 +20571,7 @@
           "requiere_confirmacion_presencial": {
             "type": "boolean",
             "enum": [
-              true
+              false
             ]
           },
           "consentimiento_preseleccionado": {
@@ -23103,6 +24187,277 @@
           "estado_http": {
             "type": "integer",
             "nullable": true
+          }
+        }
+      },
+      "PublicBookingCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "nombres": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "apellidos": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "telefono": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "profesional_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "servicios": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "minItems": 1,
+            "maxItems": 10
+          },
+          "inicio_en": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "consentimiento_datos": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "version_aviso": {
+            "type": "string",
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "nombres",
+          "apellidos",
+          "telefono",
+          "profesional_id",
+          "servicios",
+          "inicio_en",
+          "consentimiento_datos",
+          "version_aviso"
+        ]
+      },
+      "PublicBookingReschedule": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "inicio_en": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "inicio_en"
+        ]
+      },
+      "PublicBookingCancel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 250
+          }
+        },
+        "required": [
+          "motivo"
+        ]
+      },
+      "CustomerBooking": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nombres": {
+            "type": "string"
+          },
+          "apellidos": {
+            "type": "string"
+          },
+          "cita_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "codigo_reserva": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "inicio_en": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fin_en": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "profesional": {
+            "type": "string"
+          },
+          "precio_total": {
+            "type": "string",
+            "pattern": "^[0-9]+[.][0-9]{2}$"
+          },
+          "anticipo_requerido": {
+            "type": "string"
+          },
+          "anticipo_confirmado": {
+            "type": "string"
+          },
+          "expira_en": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "limite_cambios_en": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "puede_cancelar": {
+            "type": "boolean"
+          },
+          "puede_reprogramar": {
+            "type": "boolean"
+          },
+          "servicios": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "management_code": {
+            "type": "string",
+            "pattern": "^[0-9]{8}$",
+            "description": "Solo al crear o recuperar la solicitud propia en la misma sesión."
+          }
+        }
+      },
+      "PublicBookingAccess": {
+        "description": "Elige teléfono y clave para acceso nuevo, o token para compatibilidad con enlaces ya emitidos.",
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "telefono",
+              "codigo"
+            ],
+            "properties": {
+              "telefono": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "codigo": {
+                "type": "string",
+                "pattern": "^[0-9]{8}$"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "token"
+            ],
+            "properties": {
+              "token": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          }
+        ]
+      },
+      "PublicBookingApproval": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "identidad_verificada",
+          "consentimiento_verificado"
+        ],
+        "properties": {
+          "identidad_verificada": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "consentimiento_verificado": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        }
+      },
+      "DailyScheduleInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "profesional_id",
+          "fecha",
+          "franjas"
+        ],
+        "properties": {
+          "profesional_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date"
+          },
+          "franjas": {
+            "type": "array",
+            "maxItems": 12,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "inicio",
+                "fin"
+              ],
+              "properties": {
+                "inicio": {
+                  "type": "string",
+                  "pattern": "^[0-2][0-9]:[0-5][0-9]$"
+                },
+                "fin": {
+                  "type": "string",
+                  "pattern": "^[0-2][0-9]:[0-5][0-9]$"
+                }
+              }
+            }
+          }
+        }
+      },
+      "DailyScheduleRestore": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "profesional_id",
+          "fecha"
+        ],
+        "properties": {
+          "profesional_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date"
           }
         }
       }

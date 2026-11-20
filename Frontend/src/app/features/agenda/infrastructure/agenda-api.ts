@@ -1,18 +1,38 @@
 import { inject, Injectable } from '@angular/core';
-import { EMPTY, expand, map, reduce, switchMap, from, mergeMap, toArray, of } from 'rxjs';
+import { EMPTY, expand, map, reduce } from 'rxjs';
 import { ResourceApi } from '../../../shared/infrastructure/resource-api';
 import { Query } from '../../../shared/domain/records';
 import {
   Appointment,
-  AppointmentDetail,
   Availability,
   MutationResult,
   WriteMethod,
   Advance,
+  intentOperation,
 } from '../domain/agenda';
 const BASE = '/api/v1/agenda/';
+export interface IntentStatus {
+  encontrado: boolean;
+  cerrado?: boolean;
+  resultado: MutationResult | null;
+}
 @Injectable({ providedIn: 'root' })
 export class AgendaApi {
+  status(key: string, path: string, method: WriteMethod) {
+    return this.get<IntentStatus>(
+      'intentos/' +
+        encodeURIComponent(key) +
+        '/?operacion=' +
+        encodeURIComponent(intentOperation(path, method)),
+    );
+  }
+  resolve(key: string, path: string, method: WriteMethod) {
+    return this.resource.write<IntentStatus>(
+      'POST',
+      BASE + 'intentos/' + encodeURIComponent(key) + '/resolver/',
+      { operacion: intentOperation(path, method) },
+    );
+  }
   readonly resource = inject(ResourceApi);
   get<T>(path: string) {
     return this.resource.get<T>(BASE + path);
@@ -36,31 +56,19 @@ export class AgendaApi {
     );
   }
   calendar(query: Query, service: number | null) {
-    return this.all<Appointment>('calendario/', query).pipe(
-      switchMap((rows) =>
-        service
-          ? rows.length
-            ? from(rows).pipe(
-                mergeMap((row) => this.get<AppointmentDetail>('citas/' + row.id + '/'), 6),
-                toArray(),
-                map((details) =>
-                  details
-                    .sort((a, b) => a.inicio_en.localeCompare(b.inicio_en) || a.id - b.id)
-                    .filter((row) => row.servicios.some((item) => item.servicio_id === service)),
-                ),
-              )
-            : of([])
-          : of(rows),
-      ),
-    );
+    return this.all<Appointment>('calendario/', {
+      ...query,
+      ...(service ? { servicio_id: service } : {}),
+    });
   }
-  availability(date: string, professional: number, services: number[]) {
+  availability(date: string, professional: number, services: number[], appointmentId?: number) {
     return this.get<Availability>(
       'calendario/disponibilidad/?' +
         new URLSearchParams({
           fecha: date,
           profesional_id: String(professional),
           servicios: services.join(','),
+          ...(appointmentId ? { cita_id: String(appointmentId) } : {}),
         }),
     );
   }

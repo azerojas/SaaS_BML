@@ -23,13 +23,17 @@ export const permissionGuard: CanActivateFn = (route) => {
   const router = inject(Router);
   const permission: unknown = route.data['permission'];
   const extras: unknown = route.data['permissions'];
+  const alternatives: unknown = route.data['anyPermissions'];
+  const any = Array.isArray(alternatives) ? alternatives : [];
   const required: unknown[] = [
     ...(typeof permission === 'string' ? [permission] : []),
     ...(Array.isArray(extras) ? extras : []),
   ];
   return (
-    (required.length > 0 &&
-      required.every((value) => typeof value === 'string' && session.hasPermission(value))) ||
+    ((required.length > 0 || any.length > 0) &&
+      required.every((value) => typeof value === 'string' && session.hasPermission(value)) &&
+      (!any.length ||
+        any.some((value) => typeof value === 'string' && session.hasPermission(value)))) ||
     router.createUrlTree(['/admin/acceso-denegado'])
   );
 };

@@ -23,7 +23,7 @@ import { Icon } from './icon';
     }
   </button>`,
   styles:
-    ':host{display:inline-block}:host(.full){display:block}button{min-height:52px;border-radius:12px;letter-spacing:0;font-weight:650;gap:.65rem}.full{width:100%}button span{margin:0 .4rem}mat-spinner{display:inline-block;vertical-align:middle}',
+    ':host{display:inline-block}:host(.full){display:block}button{height:36px;min-height:36px;border-radius:8px;padding-inline:12px;font-size:13px;letter-spacing:0;font-weight:650;gap:8px}.full{width:100%}button span{margin:0}mat-spinner{display:inline-block;vertical-align:middle}',
 })
 export class Button {
   readonly type = input<'button' | 'submit'>('button');

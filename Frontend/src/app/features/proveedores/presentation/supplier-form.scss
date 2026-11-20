@@ -1,0 +1,164 @@
+:host {
+  display: block;
+  color: var(--ink);
+}
+.supplier-modal {
+  max-height: 88dvh;
+  overflow: auto;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 0 24px 0;
+  border-top: 3px solid var(--forest);
+}
+bm-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.supplier-dialog-heading {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  position: sticky;
+  top: 0;
+  background: var(--paper);
+  z-index: 2;
+  border-bottom: 1px solid var(--line);
+  padding: 20px 0;
+  margin-bottom: 22px;
+}
+.heading-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 15px;
+  flex-shrink: 0;
+  background: var(--surface-low);
+  color: var(--forest);
+}
+.heading-icon bm-icon {
+  width: 23px;
+  height: 23px;
+}
+.supplier-dialog-heading > div {
+  flex: 1;
+  min-width: 0;
+}
+.supplier-dialog-heading h2 {
+  padding: 0;
+  margin: 0;
+  font:
+    500 26px/1.3 'Calendar Playfair',
+    Georgia,
+    serif;
+}
+.supplier-dialog-heading h2::before {
+  display: none;
+}
+.modal-eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--forest);
+  margin: 0 0 5px;
+}
+.heading-description {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin: 6px 0 0;
+}
+.supplier-dialog-heading button {
+  flex-shrink: 0;
+}
+.supplier-modal .surface {
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+  background: transparent;
+  margin: 0;
+}
+.form-section {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  margin-bottom: 18px;
+  background: var(--paper);
+}
+.form-section > header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.form-section > header > span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--surface-low);
+  color: var(--forest);
+}
+.form-section h3 {
+  font-size: 14px;
+  font-weight: 650;
+  margin: 0;
+}
+.form-section header p {
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+.supplier-modal .form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: var(--paper);
+  padding: 16px 0;
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+.footer-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.footer-note bm-icon {
+  width: 14px;
+  height: 14px;
+}
+@media (max-width: 600px) {
+  .supplier-modal {
+    padding: 0 16px;
+  }
+  .supplier-dialog-heading {
+    gap: 10px;
+    padding: 16px 0;
+  }
+  .heading-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+  }
+  .supplier-dialog-heading h2 {
+    font-size: 22px;
+  }
+  .heading-description {
+    display: none;
+  }
+  .form-section {
+    padding: 16px;
+  }
+  .footer-note {
+    max-width: 110px;
+    font-size: 9px;
+  }
+}

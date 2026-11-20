@@ -19,12 +19,17 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 fixture=Path(os.environ['BM_E2E_FIXTURE']).resolve()
 assert not fixture.exists(),'Refuse overwriting a test fixture.'
-private=Path.home()/'.codex/lasheo-private/local-operation'
-owner=dict(line.split('=',1) for line in (private/'restore-windows.env').read_text().splitlines() if '=' in line)
-source=urlsplit(owner['DATABASE_URL'])
+if os.environ.get('BM_E2E_DATABASE_URL'):
+    source=urlsplit(os.environ['BM_E2E_DATABASE_URL'])
+    assert os.environ.get('CI')=='true' and source.hostname in ('127.0.0.1','localhost') and source.path in ('/beauty_ci','/postgres'), 'Disposable localhost CI PostgreSQL required.'
+    transport={'sslmode':'disable','connect_timeout':5}
+else:
+    private=Path.home()/'.codex/lasheo-private/local-operation'
+    owner=dict(line.split('=',1) for line in (private/'restore-windows.env').read_text().splitlines() if '=' in line)
+    source=urlsplit(owner['DATABASE_URL'])
+    transport={'sslmode':'verify-full','sslrootcert':owner['DB_SSLROOTCERT'],'connect_timeout':5}
 name='frontend_e2e_'+secrets.token_hex(8)
 assert source.path.strip('/')!=name
-transport={'sslmode':'verify-full','sslrootcert':owner['DB_SSLROOTCERT'],'connect_timeout':5}
 control=psycopg.connect(urlunsplit(source._replace(path='/postgres')),**transport,autocommit=True)
 control.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(name)))
 print('Creating isolated frontend_e2e_* database; primary tables remain untouched.',flush=True)
@@ -51,13 +56,17 @@ try:
     call_command('migrate',interactive=False,verbosity=0)
     password=secrets.token_urlsafe(26)
     users={}
-    for role,staff in [('admin',True),('limited',True),('regular',False),('second',True),('summary',True),('clients',True),('inventory',True),('exporter',True),('agenda_reader',True)]:
+    for role,staff in [('admin',True),('limited',True),('regular',False),('second',True),('summary',True),('clients',True),('inventory',True),('exporter',True),('agenda_reader',True),('agenda_manager',True),('specialist',True)]:
         user=get_user_model().objects.create_user('e2e_'+role,password=password,is_staff=staff,first_name='Equipo' if staff else 'Persona',last_name='de prueba E2E')
         if role in ('admin','second'):
             user.user_permissions.add(*Permission.objects.filter(content_type__app_label__in=['negocio','finanzas','agenda','reporting']).exclude(codename__startswith='delete_'))
         report_roles={'summary':['view_summary'],'clients':['view_clients'],'inventory':['view_inventory'],'exporter':['view_summary','export']}
         if role in report_roles:user.user_permissions.add(*Permission.objects.filter(content_type__app_label='reporting',codename__in=report_roles[role]))
         if role=='agenda_reader':user.user_permissions.add(Permission.objects.get(content_type__app_label='agenda',codename='view_agenda'))
+        if role=='specialist':user.user_permissions.add(Permission.objects.get(content_type__app_label='agenda',codename='view_own_agenda'))
+        if role=='agenda_manager':
+            user.user_permissions.add(*Permission.objects.filter(content_type__app_label='agenda',codename__in=['view_agenda','manage_appointments']))
+            user.user_permissions.add(*Permission.objects.filter(content_type__app_label='negocio',codename__in=['view_clientas','view_servicios']))
         secret=secrets.token_bytes(20)
         recovery=secrets.token_urlsafe(24)
         if staff:MFADevice.objects.create(user=user,secret_encrypted=Fernet(settings.MFA_ENCRYPTION_KEY.encode()).encrypt(secret.hex().encode()).decode(),confirmed=True,recovery_hashes=[hashlib.sha256(recovery.encode()).hexdigest()])
@@ -114,6 +123,10 @@ try:
     analytics_fixture=seed_analytics(admin,unit)
     from frontend_agenda_fixture import seed as seed_agenda
     agenda_fixture=seed_agenda(admin)
+    m.Profesionales.objects.filter(pk=agenda_fixture['professional']).update(usuario=get_user_model().objects.get(username='e2e_specialist'))
+    if os.environ.get('BM_E2E_BACKUP_CHECK')=='1':
+        from frontend_phase7_ops import verify_backup
+        verify_backup(transport,ROOT.parent/'Frontend/.artifacts/phase7-restore.json')
     key=secrets.token_urlsafe(32)
     real_app=get_wsgi_application()
     def application(environ,start_response):
@@ -125,14 +138,29 @@ try:
                 assert connection.settings_dict['NAME']==name and name.startswith('frontend_e2e_')
                 path=environ['PATH_INFO']
                 if path=='/__test__/reset':
+                    settings.FRONTEND_CONTRACT_VERSION=''
                     Session.objects.all().delete();LoginAttempt.objects.all().delete()
                     MFADevice.objects.all().update(last_step=-1,attempts=0,locked_until=None)
                     for values in users.values():
                         MFADevice.objects.filter(user__username=values['username']).update(recovery_hashes=[hashlib.sha256(values['recovery_code'].encode()).hexdigest()])
                     settings.LOGIN_RATE_LIMIT=1000
+                    settings.AGENDA_REQUIRE_DEPOSITS=True
+                    settings.AGENDA_PUBLIC_WRITE_ENABLED=False
+                    get_user_model().objects.get(username='e2e_specialist').user_permissions.remove(Permission.objects.get(content_type__app_label='agenda',codename='manage_own_schedule'))
+                    m.ConfiguracionReservas.objects.filter(pk=1).update(reservas_online_activas=False)
                     settings.CHECKIN_POST_IP_LIMIT=1000
                     settings.CATALOG_IMAGE_ALLOWED_HOSTS=['images.example.test']
                     m.Auditoria.objects.filter(entidad='reporting',accion='EXPORTAR_XLSX').delete()
+                elif path=='/__test__/booking-mode':
+                    settings.AGENDA_REQUIRE_DEPOSITS=False
+                    settings.AGENDA_PUBLIC_WRITE_ENABLED=True
+                    m.ConfiguracionReservas.objects.filter(pk=1).update(reservas_online_activas=True)
+                    m.Profesionales.objects.filter(pk=agenda_fixture['professional']).update(visible_reservas=True)
+                    m.Servicios.objects.filter(pk=agenda_fixture['service']).update(visible_catalogo=True,reservable_online=True)
+                elif path=='/__test__/specialist-mode':
+                    get_user_model().objects.get(username='e2e_specialist').user_permissions.add(Permission.objects.get(content_type__app_label='agenda',codename='manage_own_schedule'))
+                elif path=='/__test__/contract-on':settings.FRONTEND_CONTRACT_VERSION='1'
+                elif path=='/__test__/contract-next':settings.FRONTEND_CONTRACT_VERSION='2'
                 elif path=='/__test__/expire':Session.objects.all().delete()
                 elif path=='/__test__/throttle':settings.LOGIN_RATE_LIMIT=1
                 elif path=='/__test__/images-disabled':settings.CATALOG_IMAGE_ALLOWED_HOSTS=[]

@@ -8,6 +8,29 @@ import { SessionStore } from '../../../core/auth/application/session-store';
 import { ApiFailure } from '../../../core/http/api-failure';
 import { MutationResult } from '../domain/agenda';
 describe('Agenda: idempotencia sin persistir datos personales', () => {
+  it('recupera una intención tras recarga sin reenviar la mutación', async () => {
+    const user = signal({ id: 7 });
+    const key = '3c90c2b8-a3d4-4f30-a4ac-4cb045ce7d63';
+    sessionStorage.setItem(
+      'lasheo.agenda.7',
+      JSON.stringify({
+        key,
+        path: '/api/v1/agenda/citas/',
+        method: 'POST',
+        digest: 'a'.repeat(64),
+      }),
+    );
+    const mutate = vi.fn(),
+      status = vi.fn(() => of({ encontrado: true, resultado: { cita_id: 41 } }));
+    TestBed.overrideProvider(AgendaApi, { useValue: { mutate, status } });
+    const state = TestBed.inject(AgendaIntent);
+    TestBed.tick();
+    expect(user().id).toBe(7);
+    expect(await state.recover()).toEqual({ cita_id: 41 });
+    expect(status).toHaveBeenCalledWith(key, '/api/v1/agenda/citas/', 'POST');
+    expect(mutate).not.toHaveBeenCalled();
+    expect(sessionStorage.length).toBe(0);
+  });
   const user = signal<{ id: number } | null>({ id: 7 });
   let mutate: ReturnType<typeof vi.fn>;
   const path = '/api/v1/agenda/citas/';
@@ -33,6 +56,46 @@ describe('Agenda: idempotencia sin persistir datos personales', () => {
     TestBed.tick();
     return intent;
   };
+  it('cierra un intento sin cambios antes de permitir guardar otro formulario', async () => {
+    const resolve = vi.fn(() => of({ encontrado: false, cerrado: true, resultado: null }));
+    TestBed.overrideProvider(AgendaApi, { useValue: { mutate, resolve } });
+    mutate.mockReturnValueOnce(throwError(() => new ApiFailure(0, 'network', 'Sin respuesta')));
+    const state = create();
+    await state.send(path, body);
+    const key = mutate.mock.calls[0][2];
+    expect(await state.resolve()).toBeNull();
+    expect(resolve).toHaveBeenCalledWith(key, path, 'POST');
+    expect(state.pending()).toBe(false);
+    expect(sessionStorage.length).toBe(0);
+    expect(state.notice()).toContain('no realizó cambios');
+    await state.send('/api/v1/agenda/horarios/', { dia_semana: 1 });
+    expect(mutate).toHaveBeenCalledTimes(2);
+    expect(mutate.mock.calls[1][2]).not.toBe(key);
+  });
+  it('resolver recupera lo guardado sin reenviar la mutación', async () => {
+    const resolve = vi.fn(() => of({ encontrado: true, resultado: { cita_id: 3 } }));
+    TestBed.overrideProvider(AgendaApi, { useValue: { mutate, resolve } });
+    mutate.mockReturnValueOnce(throwError(() => new ApiFailure(0, 'network', 'Sin respuesta')));
+    const state = create();
+    await state.send(path, body);
+    expect(await state.resolve()).toEqual({ cita_id: 3 });
+    expect(state.pending()).toBe(false);
+    expect(mutate).toHaveBeenCalledTimes(1);
+    expect(state.notice()).toContain('ya estaba guardada');
+  });
+  it('un fallo al resolver conserva la clave y bloquea otro formulario', async () => {
+    const resolve = vi.fn(() => throwError(() => new ApiFailure(0, 'network', 'Sin respuesta')));
+    TestBed.overrideProvider(AgendaApi, { useValue: { mutate, resolve } });
+    mutate.mockReturnValueOnce(throwError(() => new ApiFailure(0, 'network', 'Sin respuesta')));
+    const state = create();
+    await state.send(path, body);
+    const stored = sessionStorage.getItem('lasheo.agenda.7');
+    await state.resolve();
+    expect(state.pending()).toBe(true);
+    expect(sessionStorage.getItem('lasheo.agenda.7')).toBe(stored);
+    await state.send(path, { ...body, clienta_id: 9 });
+    expect(mutate).toHaveBeenCalledTimes(1);
+  });
   it('doble clic solo envía una solicitud con UUID', async () => {
     const source = new Subject<MutationResult>();
     mutate.mockReturnValue(source);

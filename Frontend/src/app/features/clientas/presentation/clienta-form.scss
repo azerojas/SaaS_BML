@@ -1,0 +1,76 @@
+:host {
+  display: block;
+  min-width: 0;
+  color: var(--ink);
+}
+.edit-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 22px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.edit-heading .edit-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  color: var(--forest);
+  background: var(--surface-low);
+  flex-shrink: 0;
+}
+.edit-heading bm-icon {
+  width: 20px;
+  height: 20px;
+}
+.edit-heading .eyebrow {
+  color: var(--forest);
+  margin: 0 0 5px;
+}
+.edit-heading h2 {
+  font-size: 21px;
+  font-weight: 600;
+  padding: 0;
+  margin: 0;
+  line-height: 1.4;
+}
+.edit-heading h2::before {
+  display: none;
+}
+.edit-heading > button {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.client-editor mat-dialog-content {
+  padding: 24px;
+}
+.client-editor mat-dialog-actions {
+  padding: 16px 24px;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+}
+.client-editor mat-dialog-actions > button {
+  min-height: 44px;
+  border-radius: 10px;
+}
+.client-editor .muted {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 20px 0 0;
+}
+@media (max-width: 600px) {
+  .edit-heading {
+    padding: 18px 16px;
+  }
+  .edit-heading h2 {
+    font-size: 19px;
+  }
+  .client-editor mat-dialog-content {
+    padding: 20px 16px;
+  }
+  .client-editor mat-dialog-actions {
+    padding: 14px 16px;
+  }
+}

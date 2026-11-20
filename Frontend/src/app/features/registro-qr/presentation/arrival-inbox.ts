@@ -1,3 +1,4 @@
+import { DateField } from '../../../shared/ui/date-field';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -10,7 +11,16 @@ import { Pager } from '../../../shared/ui/pager';
 import { dateLima } from '../../inventario/domain/inventory';
 @Component({
   selector: 'bm-arrival-inbox',
-  imports: [RouterLink, ReactiveFormsModule, MatButtonModule, FinanceNav, Alert, Loading, Pager],
+  imports: [
+    DateField,
+    RouterLink,
+    ReactiveFormsModule,
+    MatButtonModule,
+    FinanceNav,
+    Alert,
+    Loading,
+    Pager,
+  ],
   providers: [ArrivalsFacade],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<bm-finance-nav />
@@ -42,8 +52,12 @@ import { dateLima } from '../../inventario/domain/inventory';
           <option value="false">Vencidas</option>
         </select></label
       >
-      <label>Desde<input formControlName="desde" type="date" /></label
-      ><label>Hasta<input formControlName="hasta" type="date" /></label>
+      <div class="calendar-field-label">
+        <span>Desde</span><bm-date-field ariaLabel="Desde" formControlName="desde" />
+      </div>
+      <div class="calendar-field-label">
+        <span>Hasta</span><bm-date-field ariaLabel="Hasta" formControlName="hasta" />
+      </div>
       <button mat-flat-button type="submit">Aplicar filtros</button>
     </form>
     @if (facade.list.error(); as error) {

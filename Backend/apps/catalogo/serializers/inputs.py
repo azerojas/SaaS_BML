@@ -46,10 +46,17 @@ class UnidadInput(InputSerializer):
 
 
 class ServicioInput(InputSerializer):
+    profesionales_ids = serializers.ListField(child=serializers.IntegerField(min_value=1), max_length=200, required=False)
+
+    def validate_profesionales_ids(self, value):
+        if len(value) != len(set(value)):
+            raise serializers.ValidationError('Selecciona personas distintas.')
+        return value
+
     categoria_id = serializers.IntegerField(min_value=1, required=False, allow_null=True)
     nombre = NameField(max_length=150)
     slug = SlugField(max_length=160, required=False)
-    descripcion = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=20000)
+    descripcion = serializers.CharField(required=False, allow_blank=True, allow_null=True, min_length=10, max_length=2000)
     duracion_minutos = serializers.IntegerField(min_value=1, max_value=2147483647, required=False, allow_null=True)
     precio_base = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0'))
     visible_catalogo = serializers.BooleanField(required=False)
@@ -64,7 +71,7 @@ class ArticuloInput(InputSerializer):
     unidad_id = serializers.IntegerField(min_value=1)
     nombre = NameField(max_length=160)
     slug = SlugField(max_length=180, required=False)
-    descripcion = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=20000)
+    descripcion = serializers.CharField(required=False, allow_blank=True, allow_null=True, min_length=10, max_length=2000)
     sku = NormalizedCodeField(max_length=45, required=False, allow_null=True)
     tipo = serializers.ChoiceField(choices=['INSUMO', 'VENTA', 'AMBOS'])
     precio_venta = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0'), required=False)
@@ -84,7 +91,7 @@ class RecetaInput(InputSerializer):
 
 
 class ImagenInput(InputSerializer):
-    url = serializers.URLField(max_length=500)
+    url = serializers.CharField(max_length=500)
     texto_alt = serializers.CharField(max_length=200, required=False, allow_null=True, allow_blank=True)
     orden = serializers.IntegerField(required=False, min_value=0, max_value=2147483647)
     es_principal = serializers.BooleanField(required=False)
@@ -94,7 +101,7 @@ class ImagenInput(InputSerializer):
 
 
 class ImagenEditInput(InputSerializer):
-    url = serializers.URLField(max_length=500, required=False)
+    url = serializers.CharField(max_length=500, required=False)
     texto_alt = serializers.CharField(max_length=200, required=False, allow_null=True, allow_blank=True)
     orden = serializers.IntegerField(required=False, min_value=0, max_value=2147483647)
 

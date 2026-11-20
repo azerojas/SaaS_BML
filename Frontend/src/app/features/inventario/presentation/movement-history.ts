@@ -1,3 +1,4 @@
+import { DateField } from '../../../shared/ui/date-field';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,7 +11,7 @@ import { Pager } from '../../../shared/ui/pager';
 import { MovementCards } from './stock-ui';
 @Component({
   selector: 'bm-movement-history',
-  imports: [MatButtonModule, OperationsNav, Alert, Loading, Pager, MovementCards],
+  imports: [DateField, MatButtonModule, OperationsNav, Alert, Loading, Pager, MovementCards],
   providers: [InventoryFacade],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<bm-operations-nav />
@@ -43,11 +44,19 @@ import { MovementCards } from './stock-ui';
         </div>
         <div>
           <label for="movement-from">Desde</label
-          ><input id="movement-from" type="date" (change)="filter('desde', $event)" />
+          ><bm-date-field
+            ariaLabel="Desde"
+            inputId="movement-from"
+            (valueChanged)="filter('desde', $event)"
+          />
         </div>
         <div>
           <label for="movement-until">Hasta</label
-          ><input id="movement-until" type="date" (change)="filter('hasta', $event)" />
+          ><bm-date-field
+            ariaLabel="Hasta"
+            inputId="movement-until"
+            (valueChanged)="filter('hasta', $event)"
+          />
         </div>
       </div>
       @if (state.query()['articulo'] || state.query()['compra']) {
@@ -97,10 +106,10 @@ export class MovementHistory {
     }
     this.state.filter(query);
   }
-  filter(key: string, event: Event) {
+  filter(key: string, event: Event | string) {
     const query = { ...this.state.query() };
     delete query[key];
-    const value = (event.target as HTMLInputElement).value;
+    const value = typeof event === 'string' ? event : (event.target as HTMLInputElement).value;
     if (value) query[key] = value;
     this.state.query.set(query);
     this.state.filter({});

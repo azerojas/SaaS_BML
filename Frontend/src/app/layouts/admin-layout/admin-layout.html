@@ -1,127 +1,167 @@
 @if (session.isAuthenticated()) {
-  <div class="workspace">
-    <aside class="sidebar" aria-label="Navegación principal">
-      <a class="brand-link" routerLink="/admin"><bm-brand /></a>
-      <div class="workspace-label">
-        <span class="salon-mark" aria-hidden="true">L</span
-        ><span>Mi espacio de trabajo<small>Administración del salón</small></span
-        ><bm-icon name="chevron" />
-      </div>
-      <p class="nav-caption">TU DÍA A DÍA</p>
-      <nav>
-        @for (item of navigation(); track item.path) {
-          <a
-            [routerLink]="item.path"
-            routerLinkActive="active"
-            [routerLinkActiveOptions]="{ exact: item.path === '/admin' }"
-            ariaCurrentWhenActive="page"
-            ><bm-icon [name]="item.icon" /><span>{{ item.label }}</span>
-            @if (!item.available && item.path !== '/admin') {
-              <span class="nav-dot" aria-label="Módulo en preparación"></span>
-            }
-          </a>
-        }
-      </nav>
-      <div class="sidebar-bottom">
-        <div class="little-note">
-          <bm-icon name="sparkles" />
-          <p>El detalle hace<br />la diferencia.</p>
-          <span>Un día a la vez.</span>
-        </div>
-        <button mat-button type="button" class="logout-link" (click)="logout()">
-          <bm-icon name="logout" /> Cerrar sesión
-        </button>
-      </div>
-    </aside>
-    <div class="workspace-main">
-      <header class="topbar">
-        <div class="topbar-left">
+  <div class="workspace" [class.compact]="compact()">
+    <header class="workspace-header">
+      <div class="topbar">
+        @if (mobile()) {
           <button
-            class="mobile-menu"
+            class="mobile-menu-trigger"
             mat-icon-button
             type="button"
-            aria-label="Abrir menú"
-            [attr.aria-expanded]="menuOpen()"
-            (click)="menuOpen.set(true)"
+            aria-label="Abrir menú de navegación"
+            aria-haspopup="dialog"
+            [attr.aria-expanded]="mobileMenuOpen()"
+            (click)="openMobileMenu(mobileNavigation)"
           >
-            <bm-icon name="menu" /></button
-          ><span class="breadcrumb">Mi espacio <span>/</span> <strong>Administración</strong></span>
-        </div>
-        <div class="topbar-right">
-          <span class="session-status"><i aria-hidden="true"></i> Sesión activa</span
-          ><span class="topbar-divider"></span
-          ><span class="avatar" aria-hidden="true">{{ initials() }}</span
-          ><span class="user-name"
-            >{{ session.displayName() }}<small>Acceso administrativo</small></span
-          >
-        </div>
-      </header>
-      <main id="main-content" tabindex="-1" class="content">
-        @if (events.notice(); as notice) {
-          <div class="global-notice">
-            <bm-alert [message]="notice" /><button
-              mat-icon-button
-              type="button"
-              aria-label="Cerrar aviso"
-              (click)="events.notice.set(null)"
-            >
-              <bm-icon name="close" />
-            </button>
-          </div>
+            <bm-icon name="menu" />
+          </button>
         }
-        <router-outlet />
-      </main>
-      <footer class="workspace-footer">
-        <span>Diseñado para acompañar tu día.</span><span>Lasheo · Beauty Manager</span>
-      </footer>
-    </div>
-  </div>
-  @if (menuOpen()) {
-    <div class="mobile-overlay" (keydown.escape)="menuOpen.set(false)" tabindex="-1">
-      <button
-        class="drawer-scrim"
-        type="button"
-        aria-label="Cerrar menú"
-        (click)="menuOpen.set(false)"
-      ></button>
-      <section
-        class="mobile-drawer"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Menú de navegación"
-        cdkTrapFocus
-        [cdkTrapFocusAutoCapture]="true"
-      >
-        <div class="drawer-head">
-          <bm-brand /><button
+        <a class="brand-link" routerLink="/admin" aria-label="Lasheo Beauty Manager · Inicio"
+          ><bm-brand
+        /></a>
+        @if (!mobile()) {
+          <nav class="grouped-nav" aria-label="Navegación principal">
+            <a
+              class="home-link"
+              routerLink="/admin"
+              routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: true }"
+              ariaCurrentWhenActive="page"
+              ><bm-icon name="home" /><span>Inicio</span></a
+            >
+            @for (group of groups(); track group.label) {
+              <button
+                class="group-trigger"
+                type="button"
+                [matMenuTriggerFor]="groupMenu"
+                [class.active]="isGroupActive(group)"
+                [attr.aria-label]="group.label"
+              >
+                <bm-icon [name]="group.icon" /><span>{{ group.label }}</span
+                ><bm-icon class="group-chevron" name="chevron" />
+              </button>
+              <mat-menu #groupMenu="matMenu">
+                <div class="group-caption">{{ group.label }}</div>
+                @for (item of group.items; track item.path) {
+                  <a
+                    mat-menu-item
+                    [routerLink]="item.path"
+                    routerLinkActive="selected-item"
+                    ariaCurrentWhenActive="page"
+                    [attr.aria-label]="item.label"
+                    [title]="item.description"
+                    ><bm-icon [name]="item.icon" /><span>{{ item.label }}</span></a
+                  >
+                }
+              </mat-menu>
+            }
+          </nav>
+        }
+        <div class="topbar-right">
+          <bm-theme-toggle />
+          <span class="session-status"><i aria-hidden="true"></i> Sesión activa</span>
+          <button
+            class="user-trigger"
+            type="button"
+            [matMenuTriggerFor]="userMenu"
+            [attr.aria-label]="
+              'Menú de usuario de ' +
+              initials() +
+              ' ' +
+              (showUsername() ? session.currentUser()?.username : session.displayName()) +
+              ' Mi cuenta'
+            "
+          >
+            <span class="avatar" aria-hidden="true">{{ initials() + ' ' }}</span>
+            <span class="user-name"
+              >{{ (showUsername() ? session.currentUser()?.username : session.displayName()) + ' '
+              }}<small>Mi cuenta</small></span
+            >
+            <bm-icon class="account-chevron" name="chevron" />
+          </button>
+          <mat-menu #userMenu="matMenu" xPosition="before">
+            <div class="account-summary">
+              <strong>{{ session.displayName() }}</strong
+              ><span>{{ session.currentUser()?.username }}</span>
+            </div>
+            <button mat-menu-item type="button" (click)="configureProfile()">
+              <bm-icon name="users" /><span>Configurar perfil</span>
+            </button>
+            <button mat-menu-item type="button" class="account-logout" (click)="logout()">
+              <bm-icon name="logout" /><span>Cerrar sesión</span>
+            </button>
+          </mat-menu>
+        </div>
+      </div>
+    </header>
+    <ng-template #mobileNavigation>
+      <section class="mobile-navigation-panel">
+        <header class="mobile-nav-heading">
+          <div>
+            <p class="eyebrow">TU ESPACIO DE TRABAJO</p>
+            <h2>Menú</h2>
+          </div>
+          <button
+            class="mobile-nav-close"
             mat-icon-button
             type="button"
-            aria-label="Cerrar menú"
-            cdkFocusInitial
-            (click)="menuOpen.set(false)"
+            aria-label="Cerrar menú de navegación"
+            (click)="closeMobileMenu()"
+          >
+            <bm-icon name="close" />
+          </button>
+        </header>
+        <nav class="mobile-nav" aria-label="Navegación principal">
+          <a
+            class="mobile-home"
+            routerLink="/admin"
+            routerLinkActive="selected-item"
+            [routerLinkActiveOptions]="{ exact: true }"
+            ariaCurrentWhenActive="page"
+            (click)="closeMobileMenu()"
+            ><bm-icon name="home" /><span>Inicio</span></a
+          >
+          @for (group of groups(); track group.label) {
+            <details [open]="isGroupActive(group)">
+              <summary [class.active]="isGroupActive(group)">
+                <bm-icon [name]="group.icon" /><span>{{ group.label }}</span
+                ><bm-icon class="mobile-group-chevron" name="chevron" />
+              </summary>
+              <div class="mobile-group-items">
+                @for (item of group.items; track item.path) {
+                  <a
+                    [routerLink]="item.path"
+                    routerLinkActive="selected-item"
+                    ariaCurrentWhenActive="page"
+                    (click)="closeMobileMenu()"
+                    ><bm-icon [name]="item.icon" /><span>{{ item.label }}</span></a
+                  >
+                }
+              </div>
+            </details>
+          }
+        </nav>
+        <p class="mobile-nav-footer">Lasheo · Beauty Manager</p>
+      </section>
+    </ng-template>
+    <main id="main-content" tabindex="-1" class="content">
+      @if (events.notice(); as notice) {
+        <div class="global-notice">
+          <bm-alert [message]="notice" /><button
+            mat-icon-button
+            type="button"
+            aria-label="Cerrar aviso"
+            (click)="events.notice.set(null)"
           >
             <bm-icon name="close" />
           </button>
         </div>
-        <p class="nav-caption">TU DÍA A DÍA</p>
-        <nav>
-          @for (item of navigation(); track item.path) {
-            <a
-              [routerLink]="item.path"
-              routerLinkActive="active"
-              [routerLinkActiveOptions]="{ exact: item.path === '/admin' }"
-              ariaCurrentWhenActive="page"
-              (click)="menuOpen.set(false)"
-              ><bm-icon [name]="item.icon" />{{ item.label }}</a
-            >
-          }
-        </nav>
-        <button mat-button type="button" class="logout-link" (click)="logout()">
-          <bm-icon name="logout" /> Cerrar sesión
-        </button>
-      </section>
-    </div>
-  }
+      }
+      <router-outlet />
+    </main>
+    <footer class="workspace-footer">
+      <span>Diseñado para acompañar tu día.</span><span>Lasheo · Beauty Manager</span>
+    </footer>
+  </div>
 } @else {
   <bm-loading label="Verificando tu sesión…" />
 }

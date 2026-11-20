@@ -15,6 +15,7 @@ const mime = {
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2',
   '.png': 'image/png',
+  '.webmanifest': 'application/manifest+json',
 };
 const server = createServer(
   { cert: readFileSync(fixture.certificate), key: readFileSync(fixture.certificate_key) },
@@ -48,12 +49,19 @@ const server = createServer(
       res.end();
       return;
     }
-    if (!existsSync(path) || !statSync(path).isFile()) path = resolve(root, 'index.html');
+    if (!existsSync(path) || !statSync(path).isFile()) {
+      if (extname(url.pathname)) {
+        res.writeHead(404, { 'Cache-Control': 'no-store' });
+        res.end();
+        return;
+      }
+      path = resolve(root, 'index.html');
+    }
     res.writeHead(200, {
       'Content-Type': mime[extname(path)] ?? 'application/octet-stream',
       'Cache-Control': 'no-store',
       'Content-Security-Policy':
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://images.example.test; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://images.example.test; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
     });
     res.end(readFileSync(path));
   },

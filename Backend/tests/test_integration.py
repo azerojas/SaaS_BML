@@ -11,7 +11,7 @@ class SchemaIntegrationTests(TestCase):
     def test_documented_routes_and_schema_references(self):
         document = json.loads((settings.BASE_DIR / 'docs/openapi.json').read_text(encoding='utf-8'))
         for path in document['paths']:
-            resolve(path.replace('{id}', '1').replace('{slug}', 'ficticio').replace('{token}', '550e8400-e29b-41d4-a716-446655440000').replace('{key}', '550e8400-e29b-41d4-a716-446655440000'))
+            resolve(path.replace('{id}', '1').replace('{request_id}', '550e8400-e29b-41d4-a716-446655440000').replace('{slug}', 'ficticio').replace('{token}', '550e8400-e29b-41d4-a716-446655440000').replace('{key}', '550e8400-e29b-41d4-a716-446655440000'))
         def validate_refs(value):
             if isinstance(value, dict):
                 if '$ref' in value:
@@ -25,7 +25,7 @@ class SchemaIntegrationTests(TestCase):
 
     def test_legacy_tables_views_and_links(self):
         with connection.cursor() as c:
-            c.execute("SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tablename NOT LIKE 'auth_%' AND tablename NOT LIKE 'django_%' AND tablename <> 'autenticacion_loginattempt' AND tablename NOT LIKE 'operaciones_%' AND tablename NOT LIKE 'finanzas_%' AND tablename NOT IN ('idempotency_records','aplicaciones_anticipo')")
+            c.execute("SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tablename NOT LIKE 'auth_%' AND tablename NOT LIKE 'django_%' AND tablename <> 'autenticacion_loginattempt' AND tablename NOT LIKE 'operaciones_%' AND tablename NOT LIKE 'finanzas_%' AND tablename NOT LIKE 'agenda_%' AND tablename NOT IN ('idempotency_records','aplicaciones_anticipo','catalogo_uploadedphoto')")
             self.assertEqual(c.fetchone()[0], 34)
             c.execute("SELECT count(*) FROM pg_views WHERE schemaname='public'")
             self.assertEqual(c.fetchone()[0], 7)
@@ -33,7 +33,7 @@ class SchemaIntegrationTests(TestCase):
             self.assertEqual(c.fetchone()[0], 13)
             c.execute("SELECT data_type FROM information_schema.columns WHERE table_name='auth_user' AND column_name='id'")
             self.assertEqual(c.fetchone()[0], 'integer')
-            c.execute("SELECT count(*) FROM pg_constraint WHERE connamespace='public'::regnamespace AND contype='f' AND conrelid NOT IN (SELECT oid FROM pg_class WHERE relname LIKE 'auth_%' OR relname LIKE 'django_%' OR relname LIKE 'operaciones_%' OR relname LIKE 'finanzas_%' OR relname IN ('idempotency_records','aplicaciones_anticipo'))")
+            c.execute("SELECT count(*) FROM pg_constraint WHERE connamespace='public'::regnamespace AND contype='f' AND conrelid NOT IN (SELECT oid FROM pg_class WHERE relname LIKE 'auth_%' OR relname LIKE 'django_%' OR relname LIKE 'operaciones_%' OR relname LIKE 'finanzas_%' OR relname LIKE 'agenda_%' OR relname IN ('idempotency_records','aplicaciones_anticipo'))")
             self.assertEqual(c.fetchone()[0], 58)
 
     def test_all_legacy_models_unmanaged(self):

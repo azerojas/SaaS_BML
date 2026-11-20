@@ -23,7 +23,7 @@ import { Overview, KPIS, Metric, money } from '../domain/analytics';
         </article>
       }
     </div>
-    @if (data().indicadores['numero_ventas'] === 0) {
+    @if (showEmpty() && data().indicadores['numero_ventas'] === 0) {
       <p class="empty-panel" role="status">
         Sin ventas confirmadas en este período. Los cobros de otras fechas y anticipos se muestran
         por separado si existen.
@@ -31,6 +31,7 @@ import { Overview, KPIS, Metric, money } from '../domain/analytics';
     }`,
 })
 export class KpiGrid {
+  readonly showEmpty = input(true);
   readonly data = input.required<Overview>();
   readonly kpis = KPIS;
   value(value: Metric | undefined, count = false) {

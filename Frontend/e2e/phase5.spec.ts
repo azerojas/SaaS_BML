@@ -1,8 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { execFileSync } from 'node:child_process';
-import { resolve } from 'node:path';
-import { fixture, control, login, ReportingRole } from './helpers';
+import { fixture, control, login, ReportingRole, backendPython } from './helpers';
 const f = fixture.analytics;
 const query = 'desde=2026-10-01&hasta=2026-11-01&granularidad=day&timezone=America%2FLima';
 test.beforeEach(async ({ request }) => control(request, 'reset'));
@@ -45,9 +44,11 @@ test('dashboard real: ventas, caja conciliada, anticipo de otra fecha, descuento
   expect(body.calidad.recaudacion_conciliada).toBe(true);
   expect(body.indicadores.numero_ventas).toBe(1);
   expect(body.indicadores.visitas_finalizadas).toBe(1);
+  await page.locator('bm-dashboard-ranking').first().locator('summary').click();
   await expect(
     page.locator('bm-report-table').filter({ hasText: '=Tratamiento analitica F5' }),
   ).toBeVisible();
+  await page.locator('bm-dashboard-ranking[data-report="top-clients"]').locator('summary').click();
   await expect(
     page.locator('bm-report-table').filter({ hasText: '=Clienta analitica F5' }),
   ).toBeVisible();
@@ -136,7 +137,7 @@ for (const report of reports)
     await download.saveAs(file);
     const verification = JSON.parse(
       execFileSync(
-        resolve('../Backend/.venv/Scripts/python.exe'),
+        backendPython,
         [
           '-c',
           "import sys,json,zipfile,openpyxl; w=openpyxl.load_workbook(sys.argv[1],data_only=False); cells=[c for s in w for row in s for c in row]; assert all(c.data_type!='f' and c.hyperlink is None for c in cells); assert not any('externalLinks/' in p for p in zipfile.ZipFile(sys.argv[1]).namelist()); meta={r[0].value:r[1].value for r in w['Resumen'] if len(r)>1}; assert meta['desde']=='2026-10-01' and meta['hasta']=='2026-11-01' and meta['timezone']=='America/Lima'; assert '+51955123555' not in [str(c.value) for c in cells]; print(json.dumps({'sheets':w.sheetnames,'formula_like_text':any(isinstance(c.value,str) and c.value.startswith(('=','@')) for c in cells)}))",
@@ -200,12 +201,14 @@ test('error parcial de red conserva otros widgets y permite reintentar solo la c
   await enter(page);
   const panel = page
     .locator('bm-report-panel')
-    .filter({ has: page.getByRole('heading', { name: 'Resumen del período', exact: true }) });
+    .filter({ has: page.getByRole('heading', { name: 'Indicadores principales', exact: true }) });
   await expect(panel.getByRole('alert')).toBeVisible();
-  await expect(page.locator('bm-financial-trend')).toBeVisible();
+  await expect(page.locator('bm-dashboard-trend')).toBeVisible();
   await page.unroute('**/api/v1/analytics/overview/**');
-  await panel.getByRole('button', { name: 'Reintentar Resumen del período', exact: true }).click();
-  await expect(page.getByTestId('kpi-ventas_confirmadas')).toBeVisible();
+  await panel
+    .getByRole('button', { name: 'Reintentar Indicadores principales', exact: true })
+    .click();
+  await expect(page.getByTestId('dashboard-kpi-ventas_confirmadas')).toBeVisible();
 });
 test('errores JSON de exportación, límite real y sesión caducada no descargan archivos falsos', async ({
   page,
@@ -236,7 +239,7 @@ for (const width of [390, 820, 1440])
         await page.goto(path);
         await page.getByLabel('Reporte', { exact: true }).selectOption('revenue-series');
         await range(page);
-        await expect(page.locator('bm-financial-trend')).toBeVisible();
+        await expect(page.locator('bm-dashboard-trend')).toHaveCount(0);
       }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,

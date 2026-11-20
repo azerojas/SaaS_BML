@@ -1,29 +1,35 @@
+@use './styles/dropdowns';
+
 .feature-heading {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 1.5rem;
   flex-wrap: wrap;
-  margin: 1.5rem 0 2rem;
+  margin: 0.75rem 0 1.8rem;
 }
 .feature-heading h1 {
-  font-size: clamp(1.8rem, 4vw, 2.7rem);
-  letter-spacing: -1.3px;
+  font-size: clamp(1.7rem, 3.5vw, 2.3rem);
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  line-height: 1.25;
   margin: 0.5rem 0;
 }
 .feature-heading p {
   color: var(--muted);
+  font-size: 0.85rem;
   line-height: 1.7;
 }
 .surface {
   background: var(--paper);
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 13px;
   padding: clamp(1.2rem, 3vw, 2rem);
   min-width: 0;
 }
 .surface h2 {
-  font-size: 1.2rem;
+  font-size: 1.05rem;
+  letter-spacing: -0.025em;
   margin-top: 0;
 }
 .surface + .surface,
@@ -50,7 +56,8 @@ textarea {
   width: 100%;
   min-width: 0;
   min-height: 46px;
-  border: 1px solid #89998d;
+  box-shadow: none;
+  border: 1px solid var(--outline);
   border-radius: 9px;
   padding: 0.75rem;
   font: inherit;
@@ -64,6 +71,14 @@ textarea {
 input[readonly] {
   background: var(--canvas);
   color: var(--muted);
+}
+input:not([type='checkbox']):focus,
+select:focus,
+textarea:focus {
+  border-color: var(--forest);
+  outline: 2px solid var(--forest);
+  outline-offset: -2px;
+  box-shadow: none;
 }
 select {
   padding-right: 1.5rem;
@@ -130,8 +145,8 @@ small {
   color: var(--forest);
 }
 .badge.inactive {
-  background: #f2e9e2;
-  color: #805039;
+  background: var(--sage);
+  color: var(--muted);
 }
 .record-price {
   font-size: 0.9rem;
@@ -165,8 +180,32 @@ small {
 }
 .field-error {
   font-size: 0.8rem;
-  color: #9d3625;
+  color: var(--error);
   line-height: 1.6;
+}
+.field-feedback {
+  display: block;
+  block-size: 36px;
+  min-block-size: 36px;
+  margin-top: 4px;
+  overflow: auto;
+  scrollbar-width: thin;
+  box-sizing: border-box;
+}
+.field-feedback .field-error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.form-field input.ng-invalid.ng-touched,
+.form-field select.ng-invalid.ng-touched,
+.form-field textarea.ng-invalid.ng-touched {
+  border-color: var(--error);
+}
+.character-limit {
+  color: var(--muted);
+  font-size: 11px;
 }
 .check {
   display: flex;
@@ -257,6 +296,16 @@ small {
   padding: 1rem;
   background: var(--canvas);
 }
+.filters > bm-reference-picker,
+.filters > bm-supplier-picker {
+  display: block;
+  min-width: 0;
+}
+.filters .reference-picker {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
 .reference-picker label:not(:first-child) {
   margin-top: 0.8rem;
 }
@@ -327,48 +376,127 @@ small {
   color: var(--muted);
 }
 .public-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: end;
-  gap: 1.5rem;
-  flex-wrap: wrap;
+  display: grid;
+  min-width: 0;
+  gap: 1.25rem;
   margin-bottom: 2rem;
 }
-.public-toolbar > div:last-child {
-  min-width: min(100%, 270px);
+.public-toolbar > .feature-tabs {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  gap: 0.5rem;
+}
+.public-toolbar .feature-tabs button {
+  border-radius: 12px;
+  min-height: 44px;
+  padding-inline: 1.25rem;
+}
+.public-toolbar .feature-tabs button[aria-pressed='true'] {
+  background: var(--forest);
+  color: var(--on-primary);
+}
+.catalog-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: end;
+  gap: 1rem;
+}
+.catalog-filters > label {
+  display: grid;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+.catalog-filters input,
+.catalog-filters select {
+  box-sizing: border-box;
+  width: 100%;
+  height: 46px;
+  margin: 0;
+  font-size: 0.9rem;
 }
 .public-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
   gap: 1.5rem;
   margin: 2rem 0;
 }
 .public-card {
-  text-decoration: none;
+  display: flex;
+  flex-direction: column;
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 18px;
-  padding: 1rem;
+  overflow: hidden;
   min-width: 0;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+.public-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--ink) 9%, transparent);
+}
+.public-card-link {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  padding: 1rem 1rem 0;
+  color: inherit;
+  text-decoration: none;
+}
+.public-card-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+.public-card .eyebrow {
+  margin: 1rem 0 0.35rem;
 }
 .public-card h2 {
   font-size: 1.2rem;
   overflow-wrap: anywhere;
-  line-height: 1.5;
+  line-height: 1.35;
+  min-height: 2.7em;
+  margin: 0.35rem 0 0.5rem;
 }
-.public-card .eyebrow {
-  margin-top: 1.3rem;
+.public-card-description {
+  display: -webkit-box;
+  min-height: 4.8em;
+  margin: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 .card-bottom {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
+  margin-top: auto;
+  padding: 1rem 0;
   font-size: 0.8rem;
   flex-wrap: wrap;
   color: var(--forest);
 }
 .card-bottom > span:first-child {
   font-weight: 700;
+}
+.public-card-actions {
+  display: flex;
+  padding: 0 1rem 1rem;
+}
+.public-card-actions a {
+  width: 100%;
+  min-height: 44px;
+  justify-content: center;
 }
 .public-note {
   text-align: center;
@@ -416,6 +544,32 @@ header:has(> a[aria-label='Lasheo, catálogo público']) {
   .public-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+  .catalog-filters {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+  .public-toolbar > .feature-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .public-toolbar .feature-tabs button {
+    width: 100%;
+    min-width: 0;
+    padding-inline: 0.75rem;
+  }
+  .catalog-filters input,
+  .catalog-filters select {
+    font-size: 16px;
+    min-width: 0;
+  }
+  .public-hero {
+    padding: 1.25rem 0 2rem;
+  }
+  .public-hero h1 {
+    font-size: clamp(2rem, 8vw, 3rem);
+    letter-spacing: -1px;
+    overflow-wrap: anywhere;
+  }
   .record-row {
     flex-wrap: wrap;
     gap: 0.7rem;
@@ -438,4 +592,26 @@ header:has(> a[aria-label='Lasheo, catálogo público']) {
   .surface {
     border-radius: 13px;
   }
+}
+
+// Fieldsets retain grouping and disabled behavior without an extra visual frame.
+fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.calendar-field-label {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+  margin-bottom: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--ink);
+}
+.sales-filter-fields .date-field input {
+  height: 46px;
+  min-height: 46px;
 }

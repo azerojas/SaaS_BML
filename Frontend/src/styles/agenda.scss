@@ -1,4 +1,18 @@
-bm-calendar-page,
+@font-face {
+  font-family: 'Calendar Jakarta';
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url('/fonts/calendar/plus-jakarta-sans-latin-wght-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Calendar Playfair';
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('/fonts/calendar/playfair-display-latin-wght-normal.woff2') format('woff2');
+}
+
 bm-booking-page,
 bm-appointment-page,
 bm-professionals-page,
@@ -11,21 +25,21 @@ bm-agenda-configuration {
     border: 1px solid var(--forest);
     border-radius: 9px;
     background: var(--forest);
-    color: white;
+    color: var(--on-primary);
     font: inherit;
     font-size: 0.82rem;
     line-height: 1.4;
     cursor: pointer;
     transition: background 0.15s;
     &:hover:not(:disabled) {
-      background: #426355;
+      background: var(--forest);
     }
     &:disabled {
       cursor: default;
       opacity: 0.48;
     }
     &:focus-visible {
-      outline: 3px solid #9a6b2f;
+      outline: 3px solid var(--forest);
       outline-offset: 3px;
     }
   }
@@ -41,7 +55,7 @@ bm-agenda-configuration {
   padding: 0.65rem 0.85rem;
   border: 1px solid var(--line);
   border-radius: 9px;
-  background: white;
+  background: var(--paper);
   text-decoration: none;
   min-height: 44px;
   display: inline-flex;
@@ -91,9 +105,9 @@ bm-agenda-configuration {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  background: #edf4ef;
-  border: 1px solid #668270;
-  border-left: 4px solid #39634b;
+  background: var(--surface-low);
+  border: 1px solid var(--forest);
+  border-left: 4px solid var(--forest);
   border-radius: 8px;
   padding: 0.65rem;
   margin-block: 0.6rem;
@@ -105,12 +119,12 @@ bm-agenda-configuration {
 .agenda-event[data-state='CANCELADA'],
 .agenda-event[data-state='EXPIRADA'],
 .agenda-event[data-state='NO_ASISTIO'] {
-  background: #f4eeed;
-  border-color: #a07970;
+  background: var(--error-soft);
+  border-color: var(--error);
 }
 .agenda-event[data-state='PENDIENTE_PAGO'] {
-  background: #fff5df;
-  border-color: #9b7836;
+  background: var(--surface-low);
+  border-color: var(--forest);
 }
 .agenda-hours {
   font-size: 0.75rem;
@@ -118,8 +132,8 @@ bm-agenda-configuration {
 }
 .agenda-block {
   padding: 0.5rem;
-  border: 1px dashed #87584b;
-  background: #f8e9e4;
+  border: 1px dashed var(--forest);
+  background: var(--cream);
   border-radius: 8px;
   font-size: 0.75rem;
   overflow-wrap: anywhere;
@@ -143,5 +157,83 @@ bm-advances-panel {
   }
   .agenda-month .agenda-cell {
     padding: 0.8rem;
+  }
+}
+
+// Month view shares the agenda foundations; daily/weekly geometry remains component-scoped.
+bm-calendar-page {
+  .month-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+  .month-cell {
+    min-height: 135px;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 0.6rem;
+    min-width: 0;
+  }
+  .month-date {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    position: relative;
+    margin-bottom: 0.6rem;
+  }
+  .calendar-page .month-date > button:first-child {
+    border: 0;
+    width: 28px;
+    min-height: 28px;
+    padding: 0;
+    font-size: 0.8rem;
+  }
+  .month-date > span {
+    font-size: 0.61rem;
+    color: var(--muted);
+  }
+  .month-cell.current-day .month-date > button:first-child {
+    background: var(--forest);
+    color: var(--on-primary);
+    border-radius: 50%;
+  }
+  .month-date .edit-day {
+    top: 0;
+    right: 0;
+  }
+  .month-event {
+    display: block;
+    background: var(--cream);
+    color: var(--muted);
+    border-left: 3px solid var(--forest);
+    border-radius: 4px;
+    padding: 0.3rem 0.4rem;
+    font-size: 0.63rem;
+    line-height: 1.6;
+    text-decoration: none;
+    margin: 0.35rem 0;
+    overflow-wrap: anywhere;
+  }
+  .month-block {
+    font-size: 0.62rem;
+    padding: 0.3rem;
+    color: var(--muted);
+    background: var(--cream);
+    border-radius: 4px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+  @media (max-width: 650px) {
+    .month-grid {
+      grid-template-columns: repeat(7, minmax(100px, 1fr));
+      overflow: visible;
+      min-width: 700px;
+    }
+    .calendar-shell:has(.month-grid) {
+      overflow-x: auto;
+    }
+    .month-cell {
+      padding: 0.45rem;
+      min-height: 120px;
+    }
   }
 }

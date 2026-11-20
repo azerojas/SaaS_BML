@@ -30,7 +30,7 @@
               }
             ],
             "styles": [
-              "node_modules/@fontsource-variable/manrope/index.css",
+              "src/fonts.scss",
               "src/styles.scss",
               "src/feature-styles.scss",
               "src/inventory-styles.scss"
@@ -38,6 +38,7 @@
           },
           "configurations": {
             "production": {
+              "serviceWorker": "ngsw-config.json",
               "optimization": {
                 "scripts": true,
                 "styles": {
@@ -49,8 +50,8 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumWarning": "400kB",
+                  "maximumError": "500kB"
                 },
                 {
                   "type": "anyComponentStyle",

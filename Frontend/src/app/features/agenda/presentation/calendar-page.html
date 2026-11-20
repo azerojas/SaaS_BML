@@ -1,0 +1,582 @@
+﻿<div class="calendar-page" [class.compact-calendar]="compactCalendar()">
+  <section class="agenda-notice" aria-label="Resumen de agenda">
+    <div class="notice-copy">
+      <span class="notice-icon"><bm-icon name="sparkles" /></span>
+      <div>
+        <h1>
+          {{
+            readOnly()
+              ? 'Calendario del equipo'
+              : personalCalendar()
+                ? 'Mis fechas y citas'
+                : ownAgenda()
+                  ? 'Mi agenda'
+                  : 'Agenda del salón'
+          }}
+          <span class="notice-badge">{{
+            readOnly() ? 'Solo lectura' : ownAgenda() ? 'Solo mis citas' : 'Vista del administrador'
+          }}</span>
+        </h1>
+        <p>
+          @if (daily.loading()) {
+            Consultando tus horarios…
+          } @else {
+            {{ durationSummary() }} horas disponibles · {{ availabilityCount() }} franjas en esta
+            vista
+          }
+          <span class="notice-separator">·</span>{{ activeCount() }} citas vigentes
+        </p>
+      </div>
+    </div>
+    @if (!ownAgenda() && !readOnly()) {
+      <div class="notice-links">
+        @if (
+          session.hasPermission('agenda.manage_professionals') &&
+          session.hasPermission('agenda.assign_users') &&
+          session.hasPermission('agenda.manage_schedules')
+        ) {
+          <a routerLink="mis-fechas"><bm-icon name="clock" />Mis fechas y citas</a>
+        }
+        <a routerLink="solicitudes"><bm-icon name="calendar" />Solicitudes web</a
+        ><a routerLink="lista-espera"><bm-icon name="users" />Lista de espera</a>
+      </div>
+    }
+  </section>
+  <bm-agenda-feedback (done)="load()" />
+  @if (saved()) {
+    <p class="saved-message" role="status"><bm-icon name="check" />{{ saved() }}</p>
+  }
+  @if (error(); as error) {
+    <bm-alert [message]="error" />
+  }
+  @if (professionals.error(); as error) {
+    <bm-alert [message]="error" /><button type="button" (click)="professionals.load({})">
+      Reintentar especialistas
+    </button>
+  }
+  <section class="control-strip" aria-label="Controles del calendario">
+    <form class="calendar-toolbar" [formGroup]="form" (ngSubmit)="load()">
+      <div class="date-nav">
+        <div class="date-switcher">
+          <button type="button" class="previous" aria-label="Anterior" (click)="move(-1)">
+            <bm-icon name="chevron" /></button
+          ><button type="button" (click)="today()">Hoy</button
+          ><button type="button" aria-label="Siguiente" (click)="move(1)">
+            <bm-icon name="chevron" />
+          </button>
+        </div>
+        <h2 aria-live="polite">{{ rangeTitle() }}</h2>
+        <span class="live-dot" aria-hidden="true"></span>
+      </div>
+      <div class="view-switcher" role="group" aria-label="Vista del calendario">
+        <button type="button" [attr.aria-pressed]="view() === 'day'" (click)="setView('day')">
+          Día</button
+        ><button type="button" [attr.aria-pressed]="view() === 'week'" (click)="setView('week')">
+          Semana</button
+        ><button type="button" [attr.aria-pressed]="view() === 'month'" (click)="setView('month')">
+          Mes
+        </button>
+      </div>
+      <div class="actions" [style.display]="ownAgenda() || readOnly() ? 'none' : null">
+        @if (!ownAgenda() && !readOnly()) {
+          <button
+            type="button"
+            class="icon-button more-button"
+            [matMenuTriggerFor]="calendarMenu"
+            aria-label="Más opciones"
+          >
+            <bm-icon name="menu" />
+          </button>
+          <mat-menu #calendarMenu="matMenu"
+            ><a mat-menu-item routerLink="profesionales">Profesionales y horarios habituales</a>
+            @if (canEditSchedules()) {
+              <button
+                mat-menu-item
+                type="button"
+                [disabled]="intent.busy()"
+                (click)="configureDay()"
+              >
+                Disponibilidad del día
+              </button>
+            }
+            @if (session.hasPermission('agenda.manage_blocks')) {
+              <a mat-menu-item routerLink="bloqueos">Bloquear horario</a>
+            }
+            @if (session.hasPermission('agenda.configure_agenda')) {
+              <a mat-menu-item routerLink="configuracion">Políticas de reserva</a>
+            }
+            @if (session.hasPermission('agenda.manage_appointments')) {
+              <button
+                mat-menu-item
+                type="button"
+                [disabled]="intent.busy()"
+                (click)="createEvent()"
+              >
+                Agendar cita para una clienta</button
+              ><button mat-menu-item type="button" [disabled]="intent.busy()" (click)="expire()">
+                Procesar vencimientos en Django
+              </button>
+            }
+          </mat-menu>
+        }
+      </div>
+      <div class="filter-bar">
+        <div class="scope">
+          <span class="filter-caption">CALENDARIO</span>
+          @if (ownAgenda()) {
+            <span class="scope-pill"><i></i>Mi agenda</span>
+          }
+          @if (!ownAgenda()) {
+            <label class="specialist-filter"
+              >Especialista
+              <select
+                formControlName="professional"
+                (change)="load()"
+                aria-label="Filtrar por especialista"
+              >
+                <option value="">Todas las especialistas</option>
+                @for (professional of professionals.data() ?? []; track professional.id) {
+                  <option [value]="professional.id">
+                    {{ professional.nombres }} {{ professional.apellidos }}
+                  </option>
+                }
+              </select>
+            </label>
+          }
+          <div class="date-filter">
+            <span>Fecha</span
+            ><bm-date-field
+              ariaLabel="Fecha del calendario"
+              formControlName="date"
+              (dateSelected)="setView('day')"
+            />
+          </div>
+        </div>
+        <div class="filters" role="group" aria-label="Mostrar en el calendario">
+          <button type="button" [attr.aria-pressed]="layer() === 'all'" (click)="layer.set('all')">
+            Todo</button
+          ><button
+            type="button"
+            class="available-filter"
+            [attr.aria-pressed]="layer() === 'availability'"
+            (click)="layer.set('availability')"
+          >
+            <i></i>Disponibles ({{ availabilityCount() }})</button
+          ><button
+            type="button"
+            class="confirmed-filter"
+            [attr.aria-pressed]="layer() === 'confirmed'"
+            (click)="layer.set('confirmed')"
+          >
+            <i></i>Confirmadas ({{ confirmedCount() }})</button
+          ><button
+            type="button"
+            class="blocked-filter"
+            [attr.aria-pressed]="layer() === 'blocks'"
+            (click)="layer.set('blocks')"
+          >
+            <i></i>Bloqueos ({{ resource.data()?.blocks?.length ?? 0 }})
+          </button>
+        </div>
+      </div>
+    </form>
+  </section>
+  @if (compactCalendar() && view() === 'week') {
+    <nav class="mobile-week" aria-label="Días de la semana">
+      @for (day of days(); track day) {
+        <button
+          type="button"
+          [attr.aria-pressed]="day === focusDate()"
+          [class.is-today]="day === todayDate"
+          [attr.aria-label]="'Mostrar día ' + day"
+          (click)="selectMobileDay(day)"
+        >
+          <span>{{ weekday(day).slice(0, 3) }}</span
+          ><strong>{{ dayNumber(day) }}</strong>
+        </button>
+      }
+    </nav>
+  }
+  <section class="calendar-shell" aria-label="Calendario del salón">
+    @if (resource.loading()) {
+      <p class="calendar-loading" role="status">Cargando calendario, horarios y bloqueos…</p>
+    }
+    @if (resource.error(); as error) {
+      <bm-alert [message]="error" /><button type="button" (click)="load()">
+        Reintentar calendario
+      </button>
+    }
+    @if (daily.error(); as error) {
+      <div class="daily-warning">
+        <bm-alert [message]="error" /><button type="button" (click)="load()">
+          Reintentar horarios por fecha
+        </button>
+      </div>
+    }
+    @if (resource.data(); as data) {
+      @if (view() !== 'month') {
+        <div class="calendar-frame" [class.week-view]="view() === 'week'">
+          <div class="time-head" [style.grid-template-columns]="columns()">
+            <div class="timezone-label"><strong>HORAS</strong><span>GMT−5</span></div>
+            @for (heading of dayHeadings(); track heading.day + ':' + heading.professionalId) {
+              @let day = heading.day;
+              <div
+                class="day-heading"
+                [class.current-day]="day === todayDate"
+                [class.weekend]="weekday(day).startsWith('sáb') || weekday(day).startsWith('dom')"
+              >
+                @if (heading.professionalId === null) {
+                  <button
+                    type="button"
+                    class="day-number"
+                    (click)="openDay(day)"
+                    [attr.aria-label]="'Ver día ' + day"
+                  >
+                    {{ dayNumber(day) }}
+                  </button>
+                } @else {
+                  <span
+                    class="specialist-avatar"
+                    [style.background]="professionalColor(heading.professionalId)"
+                    >{{ professionalName(heading.professionalId).charAt(0) }}</span
+                  >
+                }
+                <div class="column-detail">
+                  <strong>{{
+                    heading.professionalId === null
+                      ? weekday(day)
+                      : professionalName(heading.professionalId)
+                  }}</strong
+                  ><span>
+                    @if (heading.professionalId !== null) {
+                      {{ professionalCount(heading.professionalId, day) }} citas
+                    } @else {
+                      {{ workingHours(day).length }}
+                      {{
+                        workingHours(day).length === 1 ? 'franja disponible' : 'franjas disponibles'
+                      }}
+                    }
+                  </span>
+                </div>
+                @if (canEditSchedules()) {
+                  <button
+                    type="button"
+                    class="edit-day"
+                    [attr.aria-label]="'Configurar horario del ' + day"
+                    [disabled]="day < todayDate || intent.busy()"
+                    (click)="configureDay(day, undefined, heading.professionalId ?? undefined)"
+                  >
+                    +
+                  </button>
+                }
+              </div>
+            }
+          </div>
+          <div class="time-body" [style.grid-template-columns]="columns()">
+            <div class="hour-column" [style.height.px]="gridHeight()">
+              @for (hour of hours(); track hour) {
+                <span [style.top.px]="top(hour)">{{ hourLabel(hour) }}</span>
+              }
+            </div>
+            @for (day of displayedDays(); track day) {
+              <section
+                class="day-column"
+                [style.grid-column]="groupedByProfessional() ? '2 / -1' : null"
+                [style.height.px]="gridHeight()"
+                [attr.aria-label]="day"
+              >
+                @if (groupedByProfessional()) {
+                  @for (id of professionalIds(); track id; let index = $index) {
+                    @if (index > 0) {
+                      <div
+                        class="specialist-divider"
+                        [style.left.%]="(index * 100) / professionalIds().length"
+                        aria-hidden="true"
+                      ></div>
+                    }
+                  }
+                }
+                @if (canEditSchedules()) {
+                  @for (minute of slots(); track minute) {
+                    <button
+                      type="button"
+                      class="time-slot"
+                      [style.top.px]="top(minute)"
+                      [style.height.px]="30 * scale"
+                      [disabled]="pastSlot(day, minute) || intent.busy()"
+                      [attr.aria-label]="
+                        'Añadir disponibilidad el ' + day + ' a las ' + minuteLabel(minute)
+                      "
+                      [attr.tabindex]="minute === firstSlot(day) ? 0 : -1"
+                      (keydown)="slotKey($event)"
+                      (click)="slotClick(day, minute)"
+                      (pointerdown)="beginSelection($event, day, minute)"
+                      (pointermove)="moveSelection($event)"
+                      (pointerup)="endSelection($event)"
+                      (pointercancel)="cancelSelection()"
+                    >
+                      <span>{{ minuteLabel(minute) }} · Disponible</span>
+                    </button>
+                  }
+                }
+                @for (interval of displayedHours(day); track $index) {
+                  <button
+                    type="button"
+                    class="working-band"
+                    [style.left]="
+                      interval.left === undefined ? null : 'calc(' + interval.left + '% + 6px)'
+                    "
+                    [style.width]="
+                      interval.width === undefined ? null : 'calc(' + interval.width + '% - 12px)'
+                    "
+                    [style.right]="interval.width === undefined ? null : 'auto'"
+                    [class.short-window]="intervalHeight(interval) < 96"
+                    [disabled]="!canEditSchedules() || day < todayDate || intent.busy()"
+                    [attr.aria-label]="
+                      'Editar disponibilidad del ' +
+                      day +
+                      ' de ' +
+                      interval.inicio +
+                      ' a ' +
+                      interval.fin
+                    "
+                    (click)="configureDay(day, undefined, interval.ownerId)"
+                    [style.top.px]="intervalTop(interval)"
+                    [style.height.px]="intervalHeight(interval)"
+                    [title]="
+                      interval.cupo_unico
+                        ? 'Una cita a las ' + interval.inicio + ' · Fin máximo: ' + interval.fin
+                        : 'Disponible: ' + interval.inicio + '–' + interval.fin
+                    "
+                  >
+                    <span class="window-status"
+                      ><i></i>{{ interval.cupo_unico ? 'Cupo disponible' : 'Disponible' }}</span
+                    >
+                    <strong class="window-note">{{
+                      interval.cupo_unico ? 'Una reserva por cupo' : 'Horario de atención'
+                    }}</strong>
+                    <span class="window-time"
+                      ><bm-icon name="clock" />{{ interval.inicio }}
+                      @if (!interval.cupo_unico) {
+                        –{{ interval.fin }}<small>{{ intervalDuration(interval) }}</small>
+                      }
+                    </span>
+                  </button>
+                }
+                @for (block of dayBlocks(day, data.blocks); track block.id) {
+                  <div
+                    class="time-block"
+                    [style.top.px]="blockTop(block, day)"
+                    [style.height.px]="blockHeight(block, day)"
+                    [title]="block.motivo"
+                  >
+                    <strong>Bloqueado</strong><span>{{ block.motivo }}</span>
+                  </div>
+                }
+                @for (event of events(day, data.appointments); track event.appointment.id) {
+                  <a
+                    class="calendar-event"
+                    [attr.data-professional-id]="event.appointment.profesional_id"
+                    [style.--specialist-accent]="
+                      professionalColor(event.appointment.profesional_id)
+                    "
+                    [attr.data-state]="event.appointment.estado"
+                    [class.short-event]="event.end - event.start < 45"
+                    [class.compact-event]="event.end - event.start < 90"
+                    [style.top.px]="top(event.start)"
+                    [style.height.px]="(event.end - event.start) * scale - 2"
+                    [style.left]="'calc(' + (event.lane / event.lanes) * 100 + '% + 6px)'"
+                    [style.width]="'calc(' + 100 / event.lanes + '% - 12px)'"
+                    [attr.href]="readOnly() ? null : '/admin/agenda/citas/' + event.appointment.id"
+                    [attr.role]="readOnly() ? 'button' : null"
+                    [attr.tabindex]="readOnly() ? 0 : null"
+                    (keydown.enter)="readOnly() && previewEvent($event, event.appointment)"
+                    (click)="previewEvent($event, event.appointment)"
+                    [attr.aria-label]="
+                      'Cita #' +
+                      event.appointment.id +
+                      ' · ' +
+                      status(event.appointment.estado) +
+                      ' · ' +
+                      time(event.appointment.inicio_en) +
+                      '–' +
+                      time(event.appointment.fin_en) +
+                      ' · ' +
+                      professionalName(event.appointment.profesional_id)
+                    "
+                    [title]="
+                      professionalName(event.appointment.profesional_id) +
+                      ' · ' +
+                      status(event.appointment.estado)
+                    "
+                    ><span class="event-status">{{ status(event.appointment.estado) }}</span
+                    ><strong>{{
+                      event.appointment.clienta_nombre || 'Cita #' + event.appointment.id
+                    }}</strong
+                    ><span
+                      >{{ time(event.appointment.inicio_en) }}–{{
+                        time(event.appointment.fin_en)
+                      }}</span
+                    ><small>{{ professionalName(event.appointment.profesional_id) }}</small></a
+                  >
+                }
+                @if (selection(); as range) {
+                  @if (range.day === day) {
+                    <div
+                      class="selection-preview"
+                      [style.top.px]="top(range.start)"
+                      [style.height.px]="(range.end - range.start) * scale"
+                      aria-live="polite"
+                    >
+                      <strong>Disponible</strong
+                      ><span>{{ minuteLabel(range.start) }}–{{ minuteLabel(range.end) }}</span>
+                    </div>
+                  }
+                }
+                @if (
+                  day === currentDay() &&
+                  currentMinute() >= bounds().start &&
+                  currentMinute() < bounds().end
+                ) {
+                  <div class="now-line" [style.top.px]="top(currentMinute())" aria-hidden="true">
+                    <i></i><span>{{ minuteLabel(currentMinute()) }}</span>
+                  </div>
+                }
+              </section>
+            }
+          </div>
+        </div>
+      } @else {
+        <div class="month-grid">
+          @for (label of ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']; track label) {
+            <div class="month-weekday">{{ label }}</div>
+          }
+
+          @for (day of days(); track day) {
+            <section
+              class="month-cell"
+              [class.outside-month]="day.slice(0, 7) !== form.controls.date.value.slice(0, 7)"
+              [class.current-day]="day === todayDate"
+              [attr.aria-label]="day"
+            >
+              <div class="month-date">
+                <button type="button" (click)="openDay(day)" [attr.aria-label]="'Ver día ' + day">
+                  {{ dayNumber(day) }}</button
+                ><span>{{ weekday(day) }}</span>
+                @if (day.slice(0, 7) !== form.controls.date.value.slice(0, 7)) {
+                  <span class="month-boundary">{{ monthName(day) }}</span>
+                }
+                @if (canEditSchedules()) {
+                  <button
+                    type="button"
+                    class="edit-day"
+                    [disabled]="day < todayDate"
+                    (click)="configureDay(day)"
+                    [attr.aria-label]="'Configurar horario del ' + day"
+                  >
+                    +
+                  </button>
+                }
+              </div>
+              @if (compactCalendar()) {
+                <button
+                  type="button"
+                  class="month-summary"
+                  (click)="openDay(day)"
+                  [attr.aria-label]="
+                    'Ver ' + dayAppointments(day, data.appointments).length + ' citas del ' + day
+                  "
+                >
+                  @if (dayAppointments(day, data.appointments).length) {
+                    <strong>{{ dayAppointments(day, data.appointments).length }}</strong
+                    ><span>citas</span>
+                  }
+                  @if (displayedHours(day).length) {
+                    <i aria-hidden="true"></i><span class="sr-only">Con disponibilidad</span>
+                  }
+                </button>
+              } @else {
+                @for (cita of dayAppointments(day, data.appointments).slice(0, 3); track cita.id) {
+                  <a
+                    class="month-event"
+                    [attr.href]="readOnly() ? null : '/admin/agenda/citas/' + cita.id"
+                    [attr.role]="readOnly() ? 'button' : null"
+                    [attr.tabindex]="readOnly() ? 0 : null"
+                    (keydown.enter)="readOnly() && previewEvent($event, cita)"
+                    (click)="previewEvent($event, cita)"
+                    [attr.aria-label]="'Cita #' + cita.id + ' · ' + status(cita.estado)"
+                    >{{ time(cita.inicio_en) }} · {{ cita.clienta_nombre || 'Cita #' + cita.id }} ·
+                    {{ professionalName(cita.profesional_id) }}</a
+                  >
+                }
+                @if (dayAppointments(day, data.appointments).length > 3) {
+                  <button type="button" class="month-more" (click)="openDay(day)">
+                    Ver {{ dayAppointments(day, data.appointments).length - 3 }} citas más
+                  </button>
+                }
+                @for (block of dayBlocks(day, data.blocks); track block.id) {
+                  <p class="month-block">{{ block.motivo }}</p>
+                }
+                @for (interval of displayedHours(day); track $index) {
+                  <button
+                    type="button"
+                    class="month-availability"
+                    [disabled]="!canEditSchedules() || day < todayDate"
+                    (click)="configureDay(day)"
+                    [attr.aria-label]="
+                      'Editar disponibilidad del ' +
+                      day +
+                      ' de ' +
+                      interval.inicio +
+                      ' a ' +
+                      interval.fin
+                    "
+                  >
+                    {{ interval.cupo_unico ? 'Cupo' : 'Disponible' }}
+                    · {{ interval.inicio }}–{{ interval.fin }}
+                  </button>
+                }
+                @if (canEditSchedules() && day >= todayDate) {
+                  <button
+                    type="button"
+                    class="month-create"
+                    [attr.aria-label]="'Añadir disponibilidad el ' + day"
+                    (click)="configureDay(day, { inicio: '09:00', fin: '10:00' })"
+                  >
+                    + Disponible
+                  </button>
+                }
+              }
+            </section>
+          }
+        </div>
+      }
+      <div class="calendar-footer">
+        <p role="status">
+          {{ availabilityCount() }} franjas de disponibilidad ·
+          {{ data.appointments.length }} citas.
+        </p>
+        <div class="calendar-legend">
+          <span><i class="legend-work"></i>Disponibilidad</span
+          ><span><i class="legend-appointment"></i>Cita</span
+          ><span><i class="legend-block"></i>Bloqueo</span>
+        </div>
+      </div>
+      <p class="availability-hint">
+        @if (canEditSchedules()) {
+          {{
+            ownAgenda()
+              ? 'Selecciona una hora o el botón + del día para publicar y editar tus cupos.'
+              : 'Haz clic en una franja para editarla o arrastra sobre un espacio vacío para añadir un horario.'
+          }}
+        } @else {
+          {{
+            readOnly()
+              ? 'Calendario de solo lectura. Selecciona una cita para ver sus detalles.'
+              : 'Selecciona una cita para consultar sus detalles. Tu cuenta solo puede consultar tu agenda.'
+          }}
+        }
+      </p>
+    }
+  </section>
+</div>

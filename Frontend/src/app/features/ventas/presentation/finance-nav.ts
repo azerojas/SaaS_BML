@@ -6,9 +6,6 @@ import { SessionStore } from '../../../core/auth/application/session-store';
   imports: [RouterLink, RouterLinkActive],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<nav class="operations-nav" aria-label="Atención y caja">
-    @if (session.hasPermission('negocio.view_llegadas')) {
-      <a routerLink="/admin/llegadas" routerLinkActive="active">Llegadas</a>
-    }
     @if (session.hasPermission('negocio.view_puntosqr')) {
       <a routerLink="/admin/puntos-qr" routerLinkActive="active">Puntos QR</a>
     }

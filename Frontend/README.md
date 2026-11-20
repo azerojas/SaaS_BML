@@ -1,4 +1,6 @@
-# Lasheo · Beauty Manager — frontend fases 1 a 5
+# Lasheo · Beauty Manager — frontend
+
+Reservas online en `/reservar` y gestión por teléfono y clave de ocho cifras en `/mis-reservas`: solicitudes sin correo/SMS ni anticipo, servicios/profesionales compatibles, horarios de Lima, cambios y cancelaciones. El personal confirma o rechaza desde `/admin/agenda/solicitudes`. Véase [configuración y alcance](../Backend/docs/reservas-online.md); el canal requiere activar las migraciones y la configuración del backend.
 
 Angular standalone integrado con sesiones Django, MFA y permisos reales. Incluye clientas, catálogo, inventario, compras, recepción/atención/caja y dashboard financiero/reportes. Agenda mantiene su aviso de preparación. No se presentan métricas ficticias.
 
@@ -65,6 +67,18 @@ Playwright acepta el certificado sintético solo en este ensayo aislado. Esto no
 
 Evidencia ignorada por Git: `.artifacts/e2e-results.json`, `.artifacts/e2e-backend.log`, capturas `.artifacts/*.png` y `playwright-report/`. Las capturas contienen exclusivamente cuentas sintéticas.
 
+## Apariencia
+
+El botón de sol/luna permite alternar entre modo claro y oscuro desde el acceso,
+el catálogo público y el panel administrativo. La primera visita sigue la
+preferencia del sistema; al cambiarla, se guarda únicamente el tema en
+`localStorage` (`lasheo-theme`) y se sincroniza entre pestañas. Si el navegador
+bloquea el almacenamiento, el selector sigue funcionando durante la sesión.
+
+La paleta de ambos modos está en `src/styles/_palette.scss` y se aplica también
+a Angular Material. `public/theme-init.js` restaura el tema antes de cargar la
+interfaz, sin scripts inline.
+
 ## Capas
 
 `core/auth/domain` contiene tipos y reglas puras; `application` coordina Signals/RxJS; `infrastructure` adapta HTTP; `presentation` contiene formularios. `core/http`, `guards` y `config` concentran errores, caducidad y navegación. `shared/ui` ofrece botón, campo, alerta, loading, empty state, iconos y confirmación. Tres layouts y rutas diferidas separan administración, acceso y presentación pública.
@@ -75,6 +89,6 @@ Véanse [contrato de integración](docs/integration-contract.md) e [informe de a
 
 ## Agenda y reservas — Fase 6
 
-Implementación en `/admin/agenda`: calendario diario/semanal/mensual, profesionales, especialidades, horarios, bloqueos, citas, anticipos, lista de espera y enlace con llegadas. Consume Django real; no instala nuevas dependencias ni modifica el esquema de producción.
+Implementación en `/admin/agenda`: calendario diario/semanal/mensual, profesionales, especialidades, horarios, bloqueos, citas, anticipos, lista de espera y enlace con llegadas. Las vistas diaria y semanal muestran una cuadrícula por horas. **Configurar día** permite guardar varias franjas por profesional y fecha, cerrar la jornada o volver al horario semanal. La disponibilidad diaria requiere la migración aditiva `agenda.0003_daily_schedule`, ya aplicada en la instalación local; véase [operación y contrato](../Backend/docs/agenda-disponibilidad-diaria.md).
 
 **Cierre bloqueado:** Django todavía expone comisiones a roles de solo lectura de agenda. Las consultas dependientes se restringen a administración en esta interfaz. No está validada para producción ni habilitada íntegramente para roles operativos limitados. Véanse el [informe técnico de Fase 6](docs/frontend-fase-6.md) y el [contrato, permisos y dependencias](docs/phase6-api-inventory.md), incluido el límite de recuperación de operaciones tras recargar.

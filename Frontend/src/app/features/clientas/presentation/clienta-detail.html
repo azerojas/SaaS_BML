@@ -1,0 +1,198 @@
+<div class="client-profile">
+  <a class="profile-back" routerLink="/admin/clientas"><bm-icon name="arrow" />Volver a clientas</a>
+  @if (facade.loading()) {
+    <bm-loading />
+  }
+  @if (facade.error(); as error) {
+    <bm-alert [message]="error" />
+  }
+  @if (facade.success(); as success) {
+    <bm-alert kind="info" [message]="success" />
+  }
+  @if (facade.record(); as client) {
+    <header class="profile-hero">
+      <div class="identity">
+        <div class="profile-avatar" aria-hidden="true">
+          {{ initials(client.nombres, client.apellidos) }}
+        </div>
+        <div class="identity-copy">
+          <p class="eyebrow">FICHA PERSONAL</p>
+          <h1>{{ client.nombres }} {{ client.apellidos }}</h1>
+          <div class="identity-meta">
+            <span>Clienta #{{ client.id }}</span
+            ><span class="status-tag" [class.inactive]="!client.activa"
+              ><i></i>{{ client.activa ? 'Activa' : 'Inactiva' }}</span
+            >
+          </div>
+        </div>
+      </div>
+      @if (canEdit()) {
+        <div class="profile-actions">
+          <button mat-flat-button type="button" [disabled]="facade.busy()" (click)="edit()">
+            <span class="edit-label"><bm-icon name="edit" /><span>Editar ficha</span></span></button
+          ><button mat-stroked-button type="button" [disabled]="facade.busy()" (click)="toggle()">
+            {{ client.activa ? 'Desactivar' : 'Reactivar' }}
+          </button>
+        </div>
+      }
+    </header>
+
+    <div class="profile-layout">
+      <div class="personal-column">
+        <section class="profile-card">
+          <div class="card-heading">
+            <span class="card-icon"><bm-icon name="users" /></span>
+            <div>
+              <h2>Los detalles que importan</h2>
+              <p>Información personal y de contacto.</p>
+            </div>
+          </div>
+          <dl class="contact-grid">
+            <div>
+              <dt>Teléfono</dt>
+              <dd>
+                <a [href]="'tel:' + client.telefono">{{ client.telefono }}</a>
+              </dd>
+            </div>
+            <div>
+              <dt>Correo electrónico</dt>
+              <dd>
+                @if (client.email) {
+                  <a [href]="'mailto:' + client.email">{{ client.email }}</a>
+                } @else {
+                  <span class="empty-value">Sin registrar</span>
+                }
+              </dd>
+            </div>
+            <div>
+              <dt>Fecha de nacimiento</dt>
+              <dd>{{ displayDate(client.fecha_nacimiento, true) }}</dd>
+            </div>
+            <div>
+              <dt>Fecha de alta · Lima</dt>
+              <dd>{{ displayDate(client.creado_en) }}</dd>
+            </div>
+          </dl>
+        </section>
+        <section class="profile-card notes-card">
+          <div class="card-heading">
+            <span class="card-icon"><bm-icon name="lock" /></span>
+            <div>
+              <h2>Notas privadas</h2>
+              <p>Información de uso interno para el equipo.</p>
+            </div>
+          </div>
+          <div class="private-notes" [class.empty-value]="!client.notas_privadas">
+            {{ client.notas_privadas || 'Todavía no hay notas registradas para esta clienta.' }}
+          </div>
+          <div class="privacy-caption">
+            <bm-icon name="shield" /><span>Solo personal autorizado</span>
+          </div>
+        </section>
+      </div>
+
+      <section class="profile-card consent-card">
+        <div class="card-heading">
+          <span class="card-icon"><bm-icon name="shield" /></span>
+          <div>
+            <h2>Consentimiento de datos</h2>
+            <p>Registro de autorización de la clienta.</p>
+          </div>
+        </div>
+        <div class="consent-summary" [class.granted]="client.consentimiento_datos">
+          <span class="consent-symbol"
+            ><bm-icon [name]="client.consentimiento_datos ? 'check' : 'shield'"
+          /></span>
+          <div>
+            <strong>{{ client.consentimiento_datos ? 'Otorgado' : 'No otorgado' }}</strong>
+            <p>
+              {{
+                client.consentimiento_fecha
+                  ? displayDate(client.consentimiento_fecha)
+                  : 'Sin consentimiento registrado.'
+              }}
+            </p>
+          </div>
+        </div>
+        @if (canEdit()) {
+          @if (noticeUrl(); as url) {
+            <div class="notice-reference">
+              <a [href]="url" target="_blank" rel="noopener noreferrer"
+                >Leer aviso vigente<bm-icon name="arrow" /></a
+              ><span>Versión {{ facade.config()?.privacy_notice?.version }}</span>
+            </div>
+            <form class="consent-form" [formGroup]="consent" (ngSubmit)="saveConsent()">
+              <h3>Actualizar consentimiento</h3>
+              <label class="consent-check" for="consent-otorgado"
+                ><input type="checkbox" id="consent-otorgado" formControlName="otorgado" /><span
+                  >La clienta otorga consentimiento para tratar sus datos</span
+                ></label
+              >
+              <div
+                class="field-feedback"
+                tabindex="0"
+                role="region"
+                aria-label="Avisos del consentimiento"
+              >
+                @for (error of facade.fields()['otorgado'] ?? []; track $index) {
+                  <p class="field-error" role="alert">{{ error }}</p>
+                }
+              </div>
+              <div class="evidence-field">
+                <label for="consent-evidencia"
+                  >Referencia de la evidencia <span aria-hidden="true">*</span></label
+                >
+                <input
+                  id="consent-evidencia"
+                  formControlName="evidencia"
+                  maxlength="500"
+                  required
+                  aria-describedby="evidence-hint evidence-errors"
+                  [attr.aria-invalid]="
+                    consent.controls['evidencia'].touched && consent.controls['evidencia'].invalid
+                      ? 'true'
+                      : null
+                  "
+                  placeholder="Ej. referencia del registro interno"
+                />
+                <small id="evidence-hint"
+                  >Referencia no sensible del consentimiento o retiro. No copies documentos
+                  personales.</small
+                >
+                <div
+                  id="evidence-errors"
+                  class="field-feedback"
+                  tabindex="0"
+                  role="region"
+                  aria-label="Avisos de evidencia"
+                >
+                  @if (
+                    consent.controls['evidencia'].invalid && consent.controls['evidencia'].touched
+                  ) {
+                    <p class="field-error" role="alert">
+                      {{
+                        consent.controls['evidencia'].hasError('required')
+                          ? 'Este campo es obligatorio.'
+                          : 'La referencia debe tener como máximo 500 caracteres.'
+                      }}
+                    </p>
+                  }
+                  @for (error of facade.fields()['evidencia'] ?? []; track $index) {
+                    <p class="field-error" role="alert">{{ error }}</p>
+                  }
+                </div>
+              </div>
+              <bm-button type="submit" [busy]="facade.busy()" [full]="true"
+                >Registrar consentimiento</bm-button
+              >
+            </form>
+          } @else {
+            <p class="notice-unavailable">
+              El registro estará disponible cuando se configure el aviso de privacidad vigente.
+            </p>
+          }
+        }
+      </section>
+    </div>
+  }
+</div>

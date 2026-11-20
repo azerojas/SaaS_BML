@@ -2,24 +2,24 @@ import { ChangeDetectionStrategy, Component, inject, input, OnInit, output } fro
 import { SuppliersFacade } from '../application/suppliers-facade';
 import { Pager } from '../../../shared/ui/pager';
 import { Alert } from '../../../shared/ui/alert';
+import { FormsModule } from '@angular/forms';
 @Component({
   selector: 'bm-supplier-picker',
-  imports: [Pager, Alert],
+  imports: [Pager, Alert, FormsModule],
   providers: [SuppliersFacade],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<div class="reference-picker">
-    <label for="purchase-supplier-search">Buscar proveedor activo</label
-    ><input
-      id="purchase-supplier-search"
-      type="search"
-      maxlength="200"
-      (input)="search($event)"
-    /><label for="purchase-supplier">Proveedor</label
-    ><select id="purchase-supplier" [value]="value()" (change)="choose($event)">
-      <option value="">Sin proveedor</option>
+    <label for="purchase-supplier">Proveedor</label
+    ><select
+      id="purchase-supplier"
+      [ngModel]="value()"
+      [ngModelOptions]="{ standalone: true }"
+      (ngModelChange)="changed.emit($event)"
+    >
+      <option value="">{{ emptyLabel() }}</option>
       @if (value()) {
         <option [value]="value()">
-          {{ currentLabel() || 'Proveedor seleccionado (#' + value() + ')' }}
+          {{ selectionLabel() }}
         </option>
       }
       @for (row of state.rows(); track row.id) {
@@ -33,12 +33,14 @@ import { Alert } from '../../../shared/ui/alert';
         Reintentar opciones
       </button>
     }
-    <bm-pager
-      [count]="state.count()"
-      [page]="Number(state.query()['page'])"
-      [busy]="state.loading()"
-      (changed)="state.page($event)"
-    />
+    @if (state.count() > 20) {
+      <bm-pager
+        [count]="state.count()"
+        [page]="Number(state.query()['page'])"
+        [busy]="state.loading()"
+        (changed)="state.page($event)"
+      />
+    }
   </div>`,
 })
 export class SupplierPicker implements OnInit {
@@ -46,16 +48,17 @@ export class SupplierPicker implements OnInit {
   readonly state = this.facade.list;
   readonly value = input('');
   readonly currentLabel = input('');
+  readonly emptyLabel = input('Sin proveedor');
   readonly changed = output<string>();
   readonly Number = Number;
   readonly String = String;
   ngOnInit() {
     this.state.filter({ activo: 'true' });
   }
-  search(event: Event) {
-    this.state.filter({ search: (event.target as HTMLInputElement).value });
-  }
-  choose(event: Event) {
-    this.changed.emit((event.target as HTMLSelectElement).value);
+  selectionLabel() {
+    const row = this.state.rows().find((item) => String(item.id) === this.value());
+    return row
+      ? row.nombre + (row.ruc ? ' · ' + row.ruc : '')
+      : this.currentLabel() || 'Proveedor seleccionado (#' + this.value() + ')';
   }
 }

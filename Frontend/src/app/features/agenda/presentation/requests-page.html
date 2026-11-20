@@ -1,0 +1,185 @@
+<div class="requests-page">
+  <a class="back-link" routerLink="/admin/agenda"><bm-icon name="chevron" /> Volver a agenda</a>
+  <header class="requests-heading">
+    <div>
+      <p class="eyebrow">AGENDA · RECEPCIÓN</p>
+      <h1>Solicitudes de reserva online</h1>
+      <p>Organiza las próximas visitas desde un solo lugar.</p>
+    </div>
+    <button class="secondary" type="button" [disabled]="busy() || loading()" (click)="load()">
+      <bm-icon name="calendar" /> Actualizar pendientes
+    </button>
+  </header>
+  @if (error()) {
+    <bm-alert [message]="error()" />
+  }
+  @if (message()) {
+    <bm-alert kind="info" [message]="message()" />
+  }
+  <div class="review-notice">
+    <bm-icon name="shield" />
+    <p>
+      <strong>Una última revisión antes de confirmar.</strong> Verifica la identidad y el
+      consentimiento de la clienta. La solicitud mantiene el horario hasta su vencimiento.
+    </p>
+  </div>
+  <div class="requests-workspace">
+    <section class="requests-list" aria-label="Solicitudes pendientes">
+      <div class="list-heading">
+        <h2>Pendientes de revisión</h2>
+        <span>{{ rows().length }} en esta página</span>
+      </div>
+      @if (loading()) {
+        <p class="list-loading" role="status">Consultando solicitudes…</p>
+      }
+      @for (row of rows(); track row.id) {
+        <article class="request-card" [class.selected]="selected()?.id === row.id">
+          <div class="request-top">
+            <div class="client-avatar" aria-hidden="true">
+              {{ row.nombres.charAt(0) }}{{ row.apellidos.charAt(0) }}
+            </div>
+            <div class="client-heading">
+              <h2>{{ row.nombres }} {{ row.apellidos }}</h2>
+              <span class="request-code">SOLICITUD {{ row.codigo_reserva }}</span>
+            </div>
+            <span class="pending-badge">Pendiente</span>
+          </div>
+          <dl class="request-facts">
+            <div>
+              <dt>Fecha y hora</dt>
+              <dd>{{ date(row.inicio_en) }}</dd>
+            </div>
+            <div>
+              <dt>Profesional</dt>
+              <dd>{{ row.profesional }}</dd>
+            </div>
+            <div>
+              <dt>Total de servicios</dt>
+              <dd class="request-amount">{{ money(row.precio_total) }}</dd>
+            </div>
+          </dl>
+          <ul class="service-tags">
+            @for (service of row.servicios; track service.servicio_id) {
+              <li>{{ service.servicio__nombre }}</li>
+            }
+          </ul>
+          <div class="request-contact">
+            <bm-icon name="users" /><span>Contacto declarado</span
+            ><a [href]="'tel:' + row.telefono">{{ row.telefono }}</a>
+          </div>
+          <div class="request-bottom">
+            <p><bm-icon name="clock" /> Revisar antes de {{ date(row.expira_en!) }}</p>
+            @if (session.hasPermission('agenda.manage_appointments')) {
+              <button
+                type="button"
+                [disabled]="busy() || !!pendingKey"
+                (click)="selected.set(row); form.reset()"
+              >
+                Revisar solicitud <bm-icon name="arrow" />
+              </button>
+            }
+          </div>
+        </article>
+      } @empty {
+        @if (!loading()) {
+          <div class="requests-empty">
+            <span class="empty-icon"><bm-icon name="check" /></span>
+            <h3>Todo está al día</h3>
+            <p>
+              No hay solicitudes pendientes. Las próximas aparecerán aquí para que puedas
+              revisarlas.
+            </p>
+          </div>
+        }
+      }
+      @if (next()) {
+        <button
+          class="secondary pagination"
+          type="button"
+          [disabled]="busy() || loading()"
+          (click)="more()"
+        >
+          Ver más solicitudes <bm-icon name="arrow" />
+        </button>
+      }
+    </section>
+    <aside class="resolution-panel" aria-label="Revisión de solicitud">
+      @if (selected(); as row) {
+        <form [formGroup]="form" (ngSubmit)="approve(row)">
+          <p class="eyebrow">REVISIÓN DE RESERVA</p>
+          <h2>Resolver {{ row.codigo_reserva }}</h2>
+          <p class="resolution-intro">
+            {{ row.nombres }} {{ row.apellidos }}<br />{{ date(row.inicio_en) }}
+          </p>
+          <div class="resolution-total">
+            <span>Sin anticipo</span><strong>{{ money(row.precio_total) }}</strong>
+          </div>
+          <div class="verification-checks">
+            <label
+              ><input type="checkbox" formControlName="identity" /><span
+                >Verifiqué la identidad de la clienta</span
+              ></label
+            >
+            <label
+              ><input type="checkbox" formControlName="consent" /><span
+                >Verifiqué el consentimiento para la reserva</span
+              ></label
+            >
+          </div>
+          <button
+            class="approve-button"
+            type="submit"
+            [disabled]="
+              busy() ||
+              !!pendingKey ||
+              !form.controls.identity.value ||
+              !form.controls.consent.value
+            "
+          >
+            <bm-icon name="check" /> Confirmar cita sin anticipo
+          </button>
+          <div class="reject-section">
+            <label
+              >Motivo visible para rechazar<textarea
+                formControlName="reason"
+                maxlength="250"
+                rows="3"
+                placeholder="Explica el motivo a la clienta"
+              ></textarea>
+            </label>
+            <p>
+              Escribe al menos 8 caracteres. La clienta podrá verlo en “Mis reservas” con su
+              teléfono y clave de gestión.
+            </p>
+            <button
+              class="reject-button"
+              type="button"
+              [disabled]="busy() || !!pendingKey || form.controls.reason.value.trim().length < 8"
+              (click)="reject(row)"
+            >
+              Rechazar solicitud
+            </button>
+          </div>
+          @if (pendingKey) {
+            <bm-alert
+              message="Resultado incierto. Reintenta con la misma referencia antes de otra operación."
+            /><button type="button" [disabled]="busy()" (click)="retry()">
+              Reintentar resolución
+            </button>
+          }
+        </form>
+      } @else {
+        <div class="resolution-placeholder">
+          <span class="empty-icon"><bm-icon name="calendar" /></span>
+          <h2>Cada visita empieza <br />con un detalle.</h2>
+          <p>Selecciona una solicitud para revisar los datos y confirmar la próxima cita.</p>
+          <div>
+            <bm-icon name="lock" /><span
+              >Solo el personal autorizado puede resolver solicitudes.</span
+            >
+          </div>
+        </div>
+      }
+    </aside>
+  </div>
+</div>

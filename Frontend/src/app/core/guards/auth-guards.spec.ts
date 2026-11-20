@@ -13,6 +13,31 @@ import { authGuard, permissionGuard } from './auth-guards';
 import { SessionStore } from '../auth/application/session-store';
 
 describe('Guards', () => {
+  it('admite agenda propia como alternativa y sigue exigiendo los permisos obligatorios', () => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    });
+    const store = TestBed.inject(SessionStore);
+    store.currentUser.set({
+      id: 1,
+      username: 'specialist',
+      nombre: '',
+      is_staff: true,
+      permissions: ['agenda.view_own_agenda'],
+    });
+    const check = (data: object) =>
+      TestBed.runInInjectionContext(() =>
+        permissionGuard({ data } as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
+      );
+    expect(check({ anyPermissions: ['agenda.view_agenda', 'agenda.view_own_agenda'] })).toBe(true);
+    expect(
+      check({
+        permission: 'agenda.manage_appointments',
+        anyPermissions: ['agenda.view_agenda', 'agenda.view_own_agenda'],
+      }),
+    ).toBeInstanceOf(UrlTree);
+    expect(check({ anyPermissions: ['reporting.view_summary'] })).toBeInstanceOf(UrlTree);
+  });
   beforeEach(() =>
     TestBed.configureTestingModule({
       providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],

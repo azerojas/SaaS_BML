@@ -1,0 +1,288 @@
+:host {
+  display: block;
+  color: var(--ink);
+}
+.dialog-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 26px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.dialog-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  background: var(--sage);
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.dialog-heading > div {
+  min-width: 0;
+}
+.dialog-close {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.dialog-heading p {
+  margin: 0 0 5px;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  font-weight: 650;
+}
+h2[mat-dialog-title] {
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.04em;
+}
+h2::before {
+  display: none;
+}
+mat-dialog-content {
+  padding: 18px 26px !important;
+  max-height: 65dvh;
+}
+.description {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.8;
+  margin: 0 0 20px;
+}
+.date-label {
+  display: grid;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--muted);
+}
+.schedule-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 20px 0 14px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.duration-pill {
+  color: var(--muted);
+  background: var(--sage);
+  border-radius: 20px;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+.closed-control {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.closed-control input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--primary-container);
+}
+.quick-times {
+  margin: 14px 0 18px;
+}
+.quick-times > span {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  font-weight: 650;
+}
+.quick-times > div {
+  display: flex;
+  gap: 7px;
+  margin-top: 8px;
+}
+.quick-times button {
+  flex: 1;
+  padding: 9px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-low);
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.quick-times small {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  margin-top: 4px;
+}
+.quick-times button:hover:not(:disabled) {
+  border-color: var(--line);
+  background: var(--surface-low);
+}
+.intervals {
+  display: grid;
+  gap: 12px;
+}
+.interval-card {
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--canvas);
+  padding: 12px 14px 16px;
+}
+.interval-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+.interval-caption > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--muted);
+}
+.interval-caption i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary-container);
+}
+.remove-interval {
+  display: grid;
+  place-items: center;
+  min-width: 30px;
+  min-height: 30px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--on-error);
+  cursor: pointer;
+}
+.remove-interval:hover {
+  background: var(--error-soft);
+  color: var(--on-error);
+}
+.remove-interval bm-icon {
+  width: 14px;
+  height: 14px;
+}
+.interval-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+.separator {
+  display: grid;
+  place-items: center;
+  padding-bottom: 16px;
+  color: var(--muted);
+}
+.separator bm-icon {
+  width: 16px;
+  height: 16px;
+}
+.interval-error {
+  color: var(--on-error);
+  font-size: 11px;
+  margin: 10px 0 0;
+}
+.add-interval {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  border: 1px dashed var(--line);
+  border-radius: 11px;
+  color: var(--muted);
+  background: var(--paper);
+  font: inherit;
+  font-size: 12px;
+  margin-top: 13px;
+  cursor: pointer;
+}
+.add-interval > span {
+  font-size: 21px;
+  font-weight: 400;
+}
+.time-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  margin: 20px 0 0;
+}
+.time-note bm-icon {
+  width: 13px;
+  height: 13px;
+}
+mat-dialog-actions {
+  display: flex;
+  gap: 3px;
+  padding: 15px 24px !important;
+  border-top: 1px solid var(--line);
+}
+.actions-spacer {
+  flex: 1;
+}
+.reset-button {
+  font-size: 11px;
+}
+.loading-state {
+  font-size: 12px;
+  padding: 15px 0;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+@media (max-width: 500px) {
+  .dialog-heading {
+    padding: 18px 18px 14px;
+    gap: 10px;
+  }
+  h2[mat-dialog-title] {
+    font-size: 18px;
+  }
+  .dialog-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+  }
+  mat-dialog-content {
+    padding: 16px 18px !important;
+  }
+  .interval-row {
+    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) 12px minmax(0, 1fr);
+  }
+  .interval-card {
+    padding: 10px 10px 14px;
+  }
+  mat-dialog-actions {
+    padding: 12px 14px !important;
+    flex-wrap: wrap;
+  }
+  .reset-button {
+    margin-right: auto;
+  }
+  .actions-spacer {
+    display: none;
+  }
+  .schedule-topline {
+    align-items: start;
+  }
+}

@@ -48,7 +48,7 @@ class PublicCheckinView(PublicBase):
     def get(self, request, token):
         commands.active_point(token)
         return Response({'establecimiento': settings.CHECKIN_PUBLIC_NAME,
-            'requiere_confirmacion_presencial': True, 'consentimiento_preseleccionado': False,
+            'requiere_confirmacion_presencial': False, 'consentimiento_preseleccionado': False,
             'aviso_privacidad': {'url': settings.CHECKIN_PRIVACY_NOTICE_URL,
                 'version': settings.CHECKIN_PRIVACY_NOTICE_VERSION, 'solo_pruebas': settings.CHECKIN_DEMO_MODE},
             'campos': ['telefono', 'nombres', 'apellidos', 'consentimiento_datos', 'version_aviso']})
@@ -57,7 +57,7 @@ class PublicCheckinView(PublicBase):
         serializer.is_valid(raise_exception=True)
         consume_phone(serializer.validated_data['telefono'])
         try:
-            commands.request_arrival(token, serializer.validated_data)
+            commands.register_visit(token, serializer.validated_data)
         except CatalogConflict as exc:
             # The command has rolled back its atomic block; never expose a unique collision publicly.
             if exc.default_code != 'duplicado_checkin':
@@ -73,8 +73,7 @@ class DemoNoticeView(PublicBase):
             raise NotFound()
         return Response({'version': settings.CHECKIN_PRIVACY_NOTICE_VERSION, 'solo_pruebas': True,
             'texto': 'Entorno de pruebas de Lasheo: utiliza unicamente nombres y telefonos ficticios. '
-                     'Los datos enviados se guardan como propuesta de ficha y llegada pendiente. '
-                     'Recepcion debe verificar identidad y consentimiento antes de habilitar una visita. '
+                     'Al enviar datos validos se registra una visita automaticamente, sin confirmacion en recepcion. '
                      'Este texto no es el aviso legal definitivo del establecimiento. No se envian mensajes ni se realizan cobros.',
             'consentimiento_preseleccionado': False})
 

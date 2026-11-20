@@ -1,0 +1,30 @@
+@if (administrator) {
+  <div class="calendar-scope-switch" role="group" aria-label="Calendarios">
+    <button type="button" [attr.aria-pressed]="!teamView()" (click)="teamView.set(false)">
+      Mi calendario
+    </button>
+    <button
+      type="button"
+      [attr.aria-pressed]="teamView()"
+      [disabled]="loading() || !profile()"
+      (click)="teamView.set(true)"
+    >
+      Calendario del equipo
+    </button>
+  </div>
+  @if (loading()) {
+    <p role="status">Cargando tu calendario...</p>
+  }
+  @if (error()) {
+    <bm-alert [message]="error()" /><button type="button" (click)="load()">Reintentar</button>
+  }
+  <bm-calendar-page
+    [personalMode]="!teamView()"
+    [personalLoading]="loading() || !profile()"
+    [personalProfessional]="teamView() ? null : profile()"
+    [readOnly]="teamView()"
+    [excludedProfessional]="teamView() ? (profile()?.id ?? null) : null"
+  />
+} @else {
+  <bm-calendar-page />
+}

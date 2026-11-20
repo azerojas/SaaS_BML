@@ -9,6 +9,8 @@ from apps.autenticacion.models import LoginAttempt
 from django.contrib.sessions.models import Session
 from apps.agenda.application.expiry import expire_pending
 from apps.checkin.application.commands import expire_pending as expire_checkins
+from apps.agenda.models import PublicBookingRequest
+from django.db.migrations.recorder import MigrationRecorder
 
 log=logging.getLogger('beauty.operations')
 
@@ -42,6 +44,9 @@ def maintenance(limit=500,max_batches=20):
         now=timezone.now()
         keys=list(Session.objects.filter(expire_date__lt=now).order_by('expire_date').values_list('pk',flat=True)[:limit])
         totals['expired_sessions_removed']=Session.objects.filter(pk__in=keys,expire_date__lt=now).delete()[0]
+        if MigrationRecorder(connection).migration_qs.filter(app='agenda',name='0002_public_booking').exists():
+            keys=list(PublicBookingRequest.objects.filter(estado='PENDIENTE',expira_en__lte=now).order_by('expira_en').values_list('pk',flat=True)[:limit])
+            totals['expired_booking_requests']=PublicBookingRequest.objects.filter(pk__in=keys,estado='PENDIENTE',expira_en__lte=now).update(estado='EXPIRADA')
         state.status='SUCCESS'
         state.finished_at=timezone.now()
         state.last_success_at=state.finished_at

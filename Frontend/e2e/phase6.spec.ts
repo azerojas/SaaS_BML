@@ -58,7 +58,8 @@ test('políticas reales y escritura de agenda sin CSRF bloqueada', async ({ page
   const expired = page.waitForResponse(
     (r) => r.url().endsWith('/citas/expirar/') && r.request().method() === 'POST',
   );
-  await page.getByRole('button', { name: 'Procesar vencimientos en Django' }).click();
+  await page.getByRole('button', { name: 'Más opciones', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Procesar vencimientos en Django' }).click();
   expect((await expired).status()).toBe(200);
 });
 const f = fixture.agenda,
@@ -100,15 +101,38 @@ test('calendario real: tres vistas, filtros, bloqueos y responsive accesible', a
   await enter(page);
   await page.goto('/admin/agenda');
   await page.getByLabel('Fecha del calendario').fill(f.date);
-  await page.getByLabel('Profesional del calendario').selectOption(String(f.professional));
   for (const view of ['day', 'week', 'month']) {
-    await page.getByLabel('Vista', { exact: true }).selectOption(view);
-    await page.getByRole('button', { name: 'Aplicar filtros', exact: true }).click();
+    await page
+      .getByRole('button', {
+        name: view === 'day' ? 'Día' : view === 'week' ? 'Semana' : 'Mes',
+        exact: true,
+      })
+      .click();
+    await expect(
+      page.getByRole('button', {
+        name: view === 'day' ? 'Día' : view === 'week' ? 'Semana' : 'Mes',
+        exact: true,
+      }),
+    ).toHaveAttribute('aria-pressed', 'true');
     await expect(
       page.getByRole('link', { name: new RegExp('Cita #' + f.appointment + ' ·') }),
     ).toBeVisible();
     await expect(page.getByText('Pausa sintética F6')).toBeVisible();
+    if (view === 'week') {
+      await page
+        .getByRole('link', { name: new RegExp('Cita #' + f.appointment + ' ·') })
+        .scrollIntoViewIfNeeded();
+      await page.screenshot({ path: '.artifacts/agenda-week-readable.png', fullPage: true });
+    }
   }
+  await page.getByRole('button', { name: /^Bloqueos \(/ }).click();
+  await expect(page.locator('.month-availability')).toHaveCount(0);
+  await expect(page.locator('.month-event')).toHaveCount(0);
+  await expect(page.getByText('Pausa sintética F6')).toBeVisible();
+  await page.getByRole('button', { name: /^Disponibles \(/ }).click();
+  await expect(page.locator('.month-availability').first()).toBeVisible();
+  await expect(page.locator('.month-block')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Todo', exact: true }).click();
   for (const width of [390, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
@@ -118,6 +142,48 @@ test('calendario real: tres vistas, filtros, bloqueos y responsive accesible', a
   }
   const audit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
   expect(audit.violations).toEqual([]);
+});
+
+test('dueña configura las franjas de una fecha y el servidor protege las citas existentes', async ({
+  page,
+}) => {
+  await enter(page);
+  await page.goto('/admin/agenda');
+  await page.getByLabel('Fecha del calendario').fill(f.date);
+  await page.getByRole('button', { name: 'Día', exact: true }).click();
+  await page.locator('.view-switcher button[aria-pressed="true"]').click();
+  await page.getByRole('button', { name: 'Más opciones', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Disponibilidad del día', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Configurar disponibilidad del día' });
+  await expect(dialog.getByLabel('Inicio de franja 1')).toHaveValue('09:00');
+  await dialog.getByLabel('Fin de franja 1').fill('12:00');
+  await dialog.getByRole('button', { name: 'Añadir franja horaria' }).click();
+  await dialog.getByLabel('Inicio de franja 2').fill('14:00');
+  await dialog.getByLabel('Fin de franja 2').fill('17:00');
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.screenshot({ path: '.artifacts/agenda-configurar-dia.png', animations: 'disabled' });
+  await dialog.getByRole('button', { name: 'Guardar disponibilidad', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  const query =
+    '?fecha=' + f.date + '&profesional_id=' + f.professional + '&servicios=' + f.service;
+  const getSlots = async () =>
+    (await (await page.request.get(BASE + 'calendario/disponibilidad/' + query)).json()).slots as {
+      inicio_en: string;
+    }[];
+  expect((await getSlots()).some((slot) => slot.inicio_en.includes('T13:00:00'))).toBe(false);
+  expect((await getSlots()).some((slot) => slot.inicio_en.includes('T14:00:00'))).toBe(true);
+  await expect(page.locator('.working-band')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Más opciones', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Disponibilidad del día', exact: true }).click();
+  await expect(dialog.getByLabel('Fin de franja 1')).toHaveValue('12:00');
+  await dialog.getByRole('checkbox', { name: 'No estaré disponible este día' }).check();
+  await dialog.getByRole('button', { name: 'Guardar disponibilidad', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toContainText('La jornada dejaría citas');
+  await dialog.getByRole('button', { name: 'Restablecer día', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect((await getSlots()).some((slot) => slot.inicio_en.includes('T13:00:00'))).toBe(true);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: '.artifacts/agenda-horaria-dia.png', animations: 'disabled' });
 });
 test('reserva guiada, anticipo verificado y confirmación con importes oficiales', async ({
   page,
@@ -158,10 +224,27 @@ test('reprogramación conserva snapshots y cancelación registra motivo', async 
   await enter(page);
   const id = await reserve(page, '11:00');
   await page.goto('/admin/agenda/citas/' + id);
+  await expect(page.getByRole('heading', { name: 'Detalle de cita', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Cita #' + id + ' · PENDIENTE_PAGO' }),
+  ).toBeVisible();
+  await page.screenshot({ path: '.artifacts/appointment-detail-desktop.png', fullPage: true });
+  await expect(page.locator('bm-slot-picker')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Reprogramar cita', exact: true }).click();
+  const reschedule = page.getByRole('dialog', { name: 'Reprogramar cita', exact: true });
+  await expect(reschedule).toBeVisible();
   await slot(page, '11:30');
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(
+    (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations,
+  ).toEqual([]);
+  await page.screenshot({ path: '.artifacts/appointment-reschedule-mobile.png' });
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByLabel('Motivo de reprogramación').fill('Cambio solicitado por la clienta');
   await page.getByLabel('Confirmo el nuevo profesional y horario').check();
   await page.getByRole('button', { name: 'Guardar reprogramación' }).click();
+  await expect(reschedule).toHaveCount(0);
   await expect
     .poll(async () => (await (await page.request.get(BASE + 'citas/' + id + '/')).json()).inicio_en)
     .toContain('11:30:00');
@@ -280,7 +363,11 @@ test('bloqueos reales se crean y retiran con confirmación', async ({ page }) =>
 test('lectura sin permisos de escritura y protección CSRF real', async ({ page }) => {
   await enter(page, 'agenda_reader');
   await page.goto('/admin/agenda');
-  await expect(page.getByRole('heading', { name: 'Agenda', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Agenda del salón/, level: 1 })).toBeVisible();
+  await page.getByRole('button', { name: 'Más opciones', exact: true }).click();
+  await expect(page.getByRole('menuitem', { name: 'Disponibilidad del día' })).toHaveCount(0);
+  await expect(page.getByRole('menuitem', { name: 'Bloquear horario' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
   await expect(page.getByRole('link', { name: 'Nueva cita', exact: true })).toHaveCount(0);
   await page.goto('/admin/agenda/citas/nueva');
   await expect(

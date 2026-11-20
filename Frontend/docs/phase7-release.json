@@ -1,0 +1,11 @@
+{
+  "production_decision": "NO-GO",
+  "verified_commit": null,
+  "staging_e2e_verified": false,
+  "container_verified": false,
+  "restore_verified": false,
+  "external_alert_verified": false,
+  "rollback_drill_verified": false,
+  "owner_approved": false,
+  "reason": "Local acceptance does not authorize production; remote staging, container, alerts and rollback must be verified for an explicitly approved commit."
+}

@@ -3,7 +3,7 @@ from django.db import IntegrityError, connection, transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.text import slugify
-from rest_framework.exceptions import APIException, ValidationError
+from rest_framework.exceptions import APIException, ValidationError, PermissionDenied
 from negocio import models as m
 from .entities import ENTITIES
 
@@ -17,7 +17,9 @@ class CatalogConflict(APIException):
         super().__init__(detail, code)
 
 
-def catalog_write(function):
+def catalog_write(function=None, *, with_agenda=False):
+    if function is None:
+        return lambda target: catalog_write(target, with_agenda=with_agenda)
     @wraps(function)
     def wrapped(*args, **kwargs):
         try:
@@ -25,6 +27,10 @@ def catalog_write(function):
                 # One shared lock orders cross-entity writes and avoids recipe/type/unit races.
                 # Appropriate for a small administrative catalog; external SQL must follow the same rules.
                 with connection.cursor() as cursor:
+                    if with_agenda:
+                        # Treatment staff changes share reservation locks, in the same order.
+                        for key in (718302453, 718302451, 718302455):
+                            cursor.execute('SELECT pg_advisory_xact_lock(%s)', [key])
                     cursor.execute('SELECT pg_advisory_xact_lock(718302452)')
                 return function(*args, **kwargs)
         except IntegrityError as exc:
@@ -75,11 +81,28 @@ def article_has_quantity_history(pk):
                (m.RecetasServicio, m.DetallesCompra, m.MovimientosInventario, m.ConsumosServicio, m.DetallesVenta))
 
 
-@catalog_write
+@catalog_write(with_agenda=True)
 def save_entity(kind, data, user, pk=None):
     model = ENTITIES[kind][0]
     obj = get_object_or_404(model.objects.select_for_update(), pk=pk) if pk is not None else None
     data = dict(data)
+    professional_ids = data.pop('profesionales_ids', None) if kind == 'servicios' else None
+    if professional_ids is not None:
+        if not user.has_perm('agenda.manage_professionals'):
+            raise PermissionDenied('Se necesita permiso para asignar las personas que atienden el tratamiento.')
+        existing = set(m.ProfesionalServicios.objects.filter(servicio_id=pk).values_list('profesional_id', flat=True)) if pk else set()
+        active = set(m.Profesionales.objects.filter(pk__in=professional_ids, activa=True).values_list('pk', flat=True))
+        if set(professional_ids) - existing - active:
+            raise ValidationError({'profesionales_ids': 'Selecciona personas activas registradas.'})
+        removed = existing - set(professional_ids)
+        if removed:
+            from apps.agenda.domain.rules import ACTIVE
+            from apps.agenda.application.public_booking import holds, installed
+            booked = m.CitaServicios.objects.filter(servicio_id=pk, cita__profesional_id__in=removed,
+                cita__estado__in=ACTIVE, cita__fin_en__gt=timezone.now()).exists()
+            pending = installed() and holds().filter(profesional_id__in=removed, servicios__contains=[{'servicio_id':obj.pk}]).exists()
+            if booked or pending:
+                raise CatalogConflict('Reprograma las citas y solicitudes pendientes antes de quitar a la persona que las atiende.', 'persona_con_reservas')
     defaults = {
         'categorias-servicio': {'orden': 0, 'activa': True},
         'servicios': {'activo': True, 'visible_catalogo': False, 'reservable_online': False,
@@ -132,7 +155,11 @@ def save_entity(kind, data, user, pk=None):
     else:
         obj = model.objects.create(**data)
         action = 'CREAR'
-    audit(user, obj, action, {'campos': sorted(data)})
+    if professional_ids is not None:
+        m.ProfesionalServicios.objects.filter(servicio_id=obj.pk).exclude(profesional_id__in=professional_ids).delete()
+        m.ProfesionalServicios.objects.bulk_create([m.ProfesionalServicios(servicio_id=obj.pk, profesional_id=identifier)
+            for identifier in professional_ids if identifier not in existing])
+    audit(user, obj, action, {'campos': sorted([*data, *(['profesionales_ids'] if professional_ids is not None else [])])})
     obj.refresh_from_db()
     return obj
 

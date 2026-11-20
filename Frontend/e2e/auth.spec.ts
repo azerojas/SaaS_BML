@@ -49,7 +49,8 @@ test('login real MFA, permiso recibido, refresh, cookies y logout remoto', async
       session: Object.keys(sessionStorage),
     })),
   ).toEqual({ local: [], session: [] });
-  await page.getByRole('button', { name: 'Cerrar sesión', exact: true }).click();
+  await page.getByRole('button', { name: /Mi cuenta/ }).click();
+  await page.getByRole('menuitem', { name: 'Cerrar sesión', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page
     .getByRole('dialog')
@@ -146,14 +147,15 @@ test('red caída durante logout no se anuncia como cierre remoto exitoso', async
 }) => {
   await page.goto('/login');
   await login(page);
-  await page.getByRole('button', { name: 'Cerrar sesión', exact: true }).click();
+  await page.getByRole('button', { name: /Mi cuenta/ }).click();
+  await page.getByRole('menuitem', { name: 'Cerrar sesión', exact: true }).click();
   await context.setOffline(true);
   await page
     .getByRole('dialog')
     .getByRole('button', { name: 'Cerrar sesión', exact: true })
     .click();
   await expect(page).toHaveURL(/\/login/);
-  await expect(page.getByRole('alert')).toContainText('No pudimos confirmar');
+  await expect(page.getByRole('alert').filter({ hasText: 'No pudimos confirmar' })).toBeVisible();
   await context.setOffline(false);
   await page.getByRole('button', { name: 'Reintentar cierre de sesión' }).click();
   await expect(page.getByRole('button', { name: 'Reintentar cierre de sesión' })).toHaveCount(0);
@@ -210,12 +212,30 @@ for (const width of [320, 390, 768, 1440])
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
-    if (width <= 760) {
-      await page.getByRole('button', { name: 'Abrir menú' }).click();
-      await expect(page.getByRole('dialog', { name: 'Menú de navegación' })).toBeVisible();
-      await page.keyboard.press('Escape');
-      await expect(page.getByRole('dialog', { name: 'Menú de navegación' })).toHaveCount(0);
+    await expect(page.locator('.sidebar')).toHaveCount(0);
+    if (width <= 600) {
+      await expect(page.getByRole('button', { name: 'Abrir menú de navegación' })).toBeVisible();
+      await expect(page.getByRole('navigation', { name: 'Navegación principal' })).toHaveCount(0);
+    } else {
+      await expect(page.getByRole('navigation', { name: 'Navegación principal' })).toBeVisible();
+      await expect(page.getByText('Sesión activa', { exact: true })).toBeVisible();
+      const navBounds = await page
+        .getByRole('navigation', { name: 'Navegación principal' })
+        .boundingBox();
+      const logoBounds = await page
+        .getByRole('link', { name: 'Lasheo Beauty Manager · Inicio' })
+        .boundingBox();
+      expect(
+        Math.abs(navBounds!.y + navBounds!.height / 2 - (logoBounds!.y + logoBounds!.height / 2)),
+      ).toBeLessThan(4);
     }
+    await page.bringToFront();
+    await page.getByRole('button', { name: /Mi cuenta/ }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('menuitem', { name: 'Configurar perfil' })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Configurar perfil' })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', { name: /Mi cuenta/ })).toBeFocused();
     expect(
       (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
         .violations,
@@ -241,4 +261,52 @@ test('formulario accesible por teclado y error de campo', async ({ page }) => {
   await page.keyboard.type(totp(fixture.users.admin.totp_secret));
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/admin$/);
+});
+
+test('menú de usuario configura preferencias y la navegación permanece arriba', async ({
+  page,
+}) => {
+  await page.goto('/login');
+  await login(page);
+  const nav = page.getByRole('navigation', { name: 'Navegación principal' });
+  await expect(nav).toBeVisible();
+  for (const group of ['Operación', 'Negocio', 'Inventario', 'Finanzas'])
+    await expect(nav.getByRole('button', { name: group, exact: true })).toBeVisible();
+  expect(await nav.evaluate((node) => getComputedStyle(node).flexDirection)).toBe('row');
+  await page.getByRole('button', { name: /Mi cuenta/ }).click();
+  await page.screenshot({
+    path: '.artifacts/navegacion-horizontal-perfil.png',
+    animations: 'disabled',
+    fullPage: true,
+  });
+  await page.getByRole('menuitem', { name: 'Configurar perfil' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Configurar perfil' });
+  await expect(dialog).toContainText(fixture.users.admin.username);
+  await dialog.getByRole('checkbox', { name: 'Vista compacta' }).check();
+  await dialog.getByRole('checkbox', { name: 'Mostrar mi nombre de usuario' }).check();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.screenshot({
+    path: '.artifacts/configurar-perfil.png',
+    animations: 'disabled',
+    fullPage: true,
+  });
+  await dialog.getByRole('button', { name: 'Guardar preferencias' }).click();
+  await expect(page.locator('.workspace')).toHaveClass(/compact/);
+  await expect(page.getByRole('button', { name: /Mi cuenta/ })).toContainText(
+    fixture.users.admin.username,
+  );
+  await page.reload();
+  await expect(page.locator('.workspace')).toHaveClass(/compact/);
+  await nav.getByRole('button', { name: 'Negocio', exact: true }).click();
+  await expect(page.getByRole('menuitem', { name: 'Catálogo', exact: true })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Compras', exact: true })).toHaveCount(0);
+  await page.screenshot({ path: '.artifacts/navegacion-agrupada.png', animations: 'disabled' });
+  await page.getByRole('menuitem', { name: 'Clientas', exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/clientas$/);
+  await expect(nav.getByRole('button', { name: 'Negocio', exact: true })).toHaveClass(/active/);
+  await nav.getByRole('button', { name: 'Inventario', exact: true }).click();
+  await expect(page.getByRole('menuitem', { name: 'Inventario', exact: true })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Compras', exact: true })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Proveedores', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
 });

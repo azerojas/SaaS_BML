@@ -1,5 +1,7 @@
 # Lasheo — fase 4: llegada presencial por QR
 
+**Actualización del 18 de noviembre de 2026:** el QR registra la visita automáticamente al enviar datos válidos, sin paso de recepción. Véase [el flujo vigente](visitas-qr-automaticas.md). Las secciones de confirmación manual siguientes documentan el flujo histórico.
+
 Documentación: [contrato API](../apps/checkin/references/api-contract.md), [mapa SQL](../apps/checkin/references/schema-map.md), [seguridad](../apps/checkin/references/security.md), [pruebas](../apps/checkin/references/test-checklist.md).
 Contrato consolidado: [OpenAPI](openapi.json), versión 1.3.0.
 

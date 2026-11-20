@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { SessionStore } from '../../../core/auth/application/session-store';
 import { CatalogImage } from '../domain/catalog';
 import { GalleryFacade } from '../application/gallery-facade';
-import { Field, safeHttps } from '../../../shared/domain/records';
+import { Field, safeCatalogImage } from '../../../shared/domain/records';
 import { buildFields, EditorFields } from '../../../shared/ui/editor-fields';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
 import { Alert } from '../../../shared/ui/alert';
@@ -21,8 +21,8 @@ import { Pager } from '../../../shared/ui/pager';
   template: `<section class="surface section-gap">
     <h2>Fotografías</h2>
     <p class="muted">
-      Referencias por URL HTTPS. Esta API no sube archivos. Cada fotografía pertenece únicamente a
-      esta ficha.
+      Puedes cambiar la foto principal al crear o editar el tratamiento. Aquí puedes gestionar la
+      galería.
     </p>
     @if (facade.error(); as error) {
       <bm-alert [message]="error" />
@@ -33,12 +33,12 @@ import { Pager } from '../../../shared/ui/pager';
     @if (facade.success(); as success) {
       <bm-alert kind="info" [message]="success" />
     }
-    @if (!facade.config()?.image_allowed_hosts?.length) {
+    @if (!facade.config()?.image_allowed_hosts?.length && !editing()) {
       <div class="empty-panel">
-        <h3>Almacenamiento de imágenes pendiente</h3>
+        <h3>Fotos desde tu dispositivo</h3>
         <p>
-          Django no tiene dominios de imágenes autorizados. Podrás añadir URLs cuando administración
-          configure un proveedor; no se aceptan enlaces arbitrarios de internet.
+          Para subir una foto, abre la edición del tratamiento. Los enlaces externos adicionales
+          requieren un proveedor configurado.
         </p>
       </div>
     } @else if (canAdd() || editing()) {
@@ -159,8 +159,10 @@ export class GalleryEditor implements OnInit {
   }
   imageUrl(image: CatalogImage) {
     if (this.failed().includes(image.id)) return null;
-    const url = safeHttps(image.url);
-    return url && this.facade.config()?.image_allowed_hosts.includes(new URL(url).hostname)
+    const url = safeCatalogImage(image.url);
+    return url &&
+      (url.startsWith('/api/catalogo/fotos/') ||
+        this.facade.config()?.image_allowed_hosts.includes(new URL(url).hostname))
       ? url
       : null;
   }
@@ -186,8 +188,12 @@ export class GalleryEditor implements OnInit {
       return;
     }
     const raw = this.form.getRawValue();
-    const url = safeHttps(String(raw['url']));
-    if (!url || !this.facade.config()?.image_allowed_hosts.includes(new URL(url).hostname)) {
+    const url = safeCatalogImage(String(raw['url']));
+    if (
+      !url ||
+      (!url.startsWith('/api/catalogo/fotos/') &&
+        !this.facade.config()?.image_allowed_hosts.includes(new URL(url).hostname))
+    ) {
       this.localError.set('Usa una URL HTTPS de un dominio autorizado por Django.');
       return;
     }

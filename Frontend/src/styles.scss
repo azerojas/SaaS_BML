@@ -1,11 +1,17 @@
 @use '@angular/material' as mat;
+@use './styles/palette';
+@use './styles/scrollbars';
 @use './styles/phase4';
 @use './styles/analytics';
 @use './styles/agenda';
+@use './styles/agenda-datepicker';
+@use './styles/agenda-month';
+@use './styles/calendar-responsive';
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
 
 html {
+  color-scheme: light;
   @include mat.theme(
     (
       color: (
@@ -16,28 +22,40 @@ html {
       density: 0,
     )
   );
-  @include mat.theme-overrides(
-    (
-      primary: #2e4d42,
-      on-primary: #ffffff,
-      surface: #ffffff,
-      on-surface: #25382d,
-      outline: #8b978d,
-      outline-variant: #dde3da,
-      error: #a53c2b,
-    )
-  );
-  --forest: #2e4d42;
-  --ink: #25382d;
-  --muted: #59685c;
-  --cream: #f0eee4;
-  --sage: #eaf0e7;
-  --line: #e1e5dc;
-  --paper: #fff;
-  --canvas: #f8f9f5;
+  @include mat.theme-overrides(palette.$colors);
+  @include palette.tokens;
+  --forest: var(--elixir-primary);
+  --ink: var(--elixir-on-surface);
+  --muted: var(--elixir-on-surface-variant);
+  --cream: var(--elixir-surface-container);
+  --sage: var(--elixir-primary-fixed);
+  --line: var(--elixir-outline-variant);
+  --paper: var(--elixir-surface-container-lowest);
+  --canvas: var(--elixir-surface);
+  --surface-low: var(--elixir-surface-container-low);
+  --surface-high: var(--elixir-surface-container-high);
+  --on-primary: var(--elixir-on-primary);
+  --secondary: var(--elixir-secondary);
+  --secondary-soft: var(--elixir-secondary-container);
+  --on-secondary: var(--elixir-on-secondary-fixed-variant);
+  --on-primary-soft: var(--elixir-on-primary-fixed-variant);
+  --error: var(--elixir-error);
+  --error-soft: var(--elixir-error-container);
+  --on-error: var(--elixir-on-error-container);
+  --primary-container: var(--elixir-primary-container);
+  --outline: var(--elixir-outline);
+  --secondary-line: var(--elixir-secondary-fixed-dim);
+  --tertiary: var(--elixir-tertiary);
+  --focus-ring: color-mix(in srgb, var(--forest) 15%, transparent);
   font-family: 'Manrope Variable', Arial, sans-serif;
   color: var(--ink);
   background: var(--paper);
+}
+html[data-theme='dark'] {
+  color-scheme: dark;
+  @include mat.theme-overrides(palette.$dark-colors);
+  @include palette.tokens(palette.$dark-colors);
+  --elixir-shadow-rgb: 0 0 0;
 }
 * {
   box-sizing: border-box;
@@ -45,6 +63,18 @@ html {
 body {
   margin: 0;
   min-width: 320px;
+}
+.mobile-nav-dialog .mat-mdc-dialog-surface {
+  border-radius: 0 16px 16px 0;
+  padding: 0;
+  overflow: hidden;
+}
+@media (max-width: 600px), (max-width: 960px) and (max-height: 500px) and (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 button,
 input,
@@ -55,6 +85,11 @@ button,
 input {
   font-family: inherit;
 }
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
 a {
   color: inherit;
 }
@@ -63,7 +98,7 @@ a {
   touch-action: manipulation;
 }
 :focus-visible {
-  outline: 2px solid #53755c;
+  outline: 2px solid var(--elixir-primary);
   outline-offset: 4px;
 }
 .eyebrow {
@@ -80,14 +115,14 @@ a {
   padding: 0.8rem 1.2rem;
   border-radius: 8px;
   background: var(--forest);
-  color: #fff;
+  color: var(--elixir-on-primary);
 }
 .skip-link:focus {
   top: 1rem;
 }
 .mat-mdc-form-field {
   --mdc-outlined-text-field-container-shape: 10px;
-  --mdc-outlined-text-field-outline-color: #d9dfd5;
+  --mdc-outlined-text-field-outline-color: var(--elixir-outline);
 }
 .mat-mdc-dialog-container {
   --mdc-dialog-container-shape: 18px;

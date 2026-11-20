@@ -17,6 +17,7 @@ export interface Field {
     'text' | 'email' | 'date' | 'datetime-local' | 'textarea' | 'checkbox' | 'select' | 'decimal';
   required?: boolean;
   max?: number;
+  min?: number;
   scale?: number;
   options?: readonly Choice[];
   hint?: string;
@@ -41,6 +42,10 @@ export function safeHttps(value: string | null | undefined): string | null {
   } catch {
     return null;
   }
+}
+export function safeCatalogImage(value: string | null | undefined): string | null {
+  if (value && /^\/api\/catalogo\/fotos\/[0-9a-f]{32}\.jpg$/.test(value)) return value;
+  return safeHttps(value);
 }
 export function decimalValid(
   value: unknown,

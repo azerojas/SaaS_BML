@@ -52,13 +52,13 @@ class WorkflowTests(CheckinTestCase):
         arrival=self.propose()
         with override_settings(CHECKIN_PRIVACY_NOTICE_VERSION='v2'):
             self.assertEqual(self.confirm(arrival).status_code,400)
-            self.assertEqual(self.post(nombres='No cambia',apellidos='Tercero',consentimiento_datos=True,version_aviso='v2').status_code,202)
+            self.assertEqual(self.seed_legacy_arrival(nombres='No cambia',apellidos='Tercero',consentimiento_datos=True,version_aviso='v2').status_code,202)
             self.assertEqual(self.confirm(arrival).status_code,200)
         self.assertEqual(m.Clientas.objects.get(pk=arrival.clienta_id).nombres,'Daniela')
 
     def test_sql_pending_unique_is_global_across_points(self):
         person=self.person()
-        self.post()
+        self.seed_legacy_arrival()
         other=m.PuntosQr.objects.create(nombre='Otro punto')
         with self.assertRaises(IntegrityError),transaction.atomic():
             m.Llegadas.objects.create(clienta_id=person.pk,punto_qr_id=other.pk,origen='QR')
@@ -75,7 +75,7 @@ class WorkflowTests(CheckinTestCase):
     def test_appointment_suggestion_and_explicit_link_do_not_charge_or_change_state(self):
         person=self.person()
         appointment=self.appointment(person.pk)
-        self.post()
+        self.seed_legacy_arrival()
         arrival=m.Llegadas.objects.get()
         detail=self.client.get(self.path(arrival)).json()
         self.assertEqual([row['id'] for row in detail['citas_sugeridas']],[appointment])

@@ -2,9 +2,30 @@ import { Routes } from '@angular/router';
 import { permissionGuard } from '../../core/guards/auth-guards';
 export const AGENDA_ROUTES: Routes = [
   {
+    path: 'mis-fechas',
+    canActivate: [permissionGuard],
+    data: {
+      permissions: [
+        'agenda.view_agenda',
+        'agenda.manage_professionals',
+        'agenda.assign_users',
+        'agenda.manage_schedules',
+      ],
+    },
+    loadComponent: () =>
+      import('./presentation/personal-availability-page').then((m) => m.PersonalAvailabilityPage),
+  },
+  {
+    path: 'solicitudes',
+    canActivate: [permissionGuard],
+    data: { permission: 'agenda.view_agenda' },
+    loadComponent: () => import('./presentation/requests-page').then((m) => m.RequestsPage),
+  },
+  {
     path: '',
     pathMatch: 'full',
-    loadComponent: () => import('./presentation/calendar-page').then((m) => m.CalendarPage),
+    loadComponent: () =>
+      import('./presentation/personal-availability-page').then((m) => m.PersonalAvailabilityPage),
   },
   {
     path: 'citas/nueva',
@@ -19,7 +40,7 @@ export const AGENDA_ROUTES: Routes = [
   {
     path: 'profesionales',
     canActivate: [permissionGuard],
-    data: { permission: 'agenda.manage_professionals' },
+    data: { permission: 'agenda.view_agenda' },
     loadComponent: () =>
       import('./presentation/professionals-page').then((m) => m.ProfessionalsPage),
   },

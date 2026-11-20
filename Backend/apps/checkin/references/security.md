@@ -1,11 +1,11 @@
 # Límites de confianza y privacidad
 
 - QR fijo revocable identifica un punto, no una persona ni ubicación. Puede compartirse; no autentica administración.
-- Público: solo formulario mínimo y solicitudes no enumerativas. Sin lookup por teléfono, polling, PII, notas o historial.
+- Público: formulario mínimo y registro automático de una visita; respuesta no enumerativa. Sin lookup por teléfono, polling, PII, notas o historial.
 - Check-in anónimo sin autenticadores de sesión: las cookies de personal no otorgan privilegios al POST público. Solo JSON; CORS existente restrictivo. Sin mensajes externos.
 - Personal: IsAdminUser, sesión y CSRF para toda escritura; conocer token QR no evita permisos.
-- Alta provisional inactiva; no se concede consentimiento por casilla anónima. El personal verifica identidad y declaración vigente antes de activarla. No se sobreescriben datos de clientas existentes.
-- Los marcadores ALTA_QR_PROVISIONAL/DECLARAR_CONSENT_QR/VALIDAR_ALTA_QR están en auditoria y deben conservarse mientras dependan de ellos las propuestas. Eliminar esos marcadores arbitrariamente invalida el flujo de revisión.
+- Alta autónoma activa solo con nombres, apellidos, consentimiento JSON true y versión vigente del aviso. Se registra la declaración y su fecha; no se afirma identidad verificada ni consentimiento revisado por personal. No se sobreescriben datos de clientas existentes. Las fichas inactivas por administración no se reactivan.
+- Los marcadores históricos ALTA_QR_PROVISIONAL/DECLARAR_CONSENT_QR/VALIDAR_ALTA_QR y ACTIVAR_ALTA_QR_AUTONOMA están en auditoria y deben conservarse mientras dependan de ellos las propuestas. Eliminar esos marcadores arbitrariamente invalida el flujo de revisión.
 - Rate limit compartido mediante la tabla de contadores PostgreSQL existente; cada operación de incremento usa atomic y SELECT FOR UPDATE en orden estable. Se usan HMAC-SHA256 con namespace distinto de login, no IP/teléfono/User-Agent en texto.
 - Límites por IP y huella aproximada por minuto, por IP al día y por teléfono normalizado cada 15 minutos. Valores por defecto: POST 15/min, GET 60/min, 200/IP/día, 6/teléfono/15min.
 - El límite de IP se consume antes del parser/lookup; el de teléfono después de normalizar y antes de consultar fichas. X-Forwarded-For no se confía automáticamente. Proxies/NAT pueden compartir límite: configurar el gateway confiable al desplegar.
@@ -21,3 +21,5 @@
 
 Para publicar se requieren aviso real revisado, URLs HTTPS reales, rol SQL mínimo, proxy/rate limit de borde y supervisión de contadores/retención. No se configuraron ni se activaron esas decisiones de producción en esta fase.
 
+
+El POST público usa `register_visit`: transacción y bloqueos compartidos, reutilización de una visita ABIERTA y trazabilidad sin actor administrativo. No genera ventas, pagos ni movimientos. El GET del QR solo abre el formulario. `request_arrival` y las acciones de confirmación se conservan para registros históricos; no son el recorrido público actual.

@@ -18,6 +18,10 @@ export class PurchasesFacade extends RecordState<Purchase> {
     this.session.currentUser()!.id,
   );
   readonly list = new PagedState((query) => this.api.list(query), false);
+  readonly depleted = new PagedState(
+    (query) => this.inventory.stock({ ...query, activo: 'true', agotados: 'true' }),
+    false,
+  );
   readonly stock = new PagedState(
     (query) => this.inventory.stock({ ...query, compra: this.record()!.id, activo: 'all' }),
     false,

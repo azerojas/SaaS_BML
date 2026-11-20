@@ -52,7 +52,7 @@ h2 span {
   right: -78px;
   bottom: 40px;
   width: 310px;
-  color: #8a9b86;
+  color: var(--muted);
   opacity: 0.45;
   transform: rotate(-12deg);
 }
@@ -63,16 +63,22 @@ h2 span {
   align-items: center;
   position: relative;
   z-index: 1;
-  color: #4e6054;
+  color: var(--muted);
 }
 .tiny-mark {
   font-size: 1.3rem;
 }
 .auth-main {
+  position: relative;
   display: flex;
   flex-direction: column;
   padding: 2.5rem clamp(1.5rem, 5vw, 5rem);
   min-width: 0;
+}
+.auth-theme-toggle {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
 }
 .form-stage {
   width: 100%;

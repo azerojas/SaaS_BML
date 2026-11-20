@@ -7,43 +7,57 @@ import { Series, money } from '../domain/analytics';
       Ventas por confirmación; cobros y anticipos por su fecha de recepción. Los anticipos aplicados
       no se vuelven a sumar como ingresos.
     </p>
-    <p class="chart-legend">
-      <span class="legend-sales">Ventas confirmadas</span
-      ><span class="legend-payments">Cobros registrados</span
-      ><span class="legend-advances">Anticipos recibidos</span>
-    </p>
-    @if (plotted().length) {
-      <div
-        class="trend-scroll"
-        tabindex="0"
-        role="region"
-        aria-label="Gráfica de evolución desplazable"
-      >
-        <svg
-          class="financial-chart"
-          [attr.viewBox]="'0 0 720 ' + height()"
-          role="img"
-          aria-label="Evolución de ventas, cobros y anticipos. Los importes exactos están en la tabla siguiente."
+    @if (showChart()) {
+      <p class="chart-legend">
+        <span class="legend-sales">Ventas confirmadas</span
+        ><span class="legend-payments">Cobros registrados</span
+        ><span class="legend-advances">Anticipos recibidos</span>
+      </p>
+      @if (plotted().length) {
+        <div
+          class="trend-scroll"
+          tabindex="0"
+          role="region"
+          aria-label="Gráfica de evolución desplazable"
         >
-          @for (row of plotted(); track row.desde; let index = $index) {
-            <g [attr.transform]="'translate(150,' + (index * 72 + 14) + ')'">
-              <text x="-144" y="22">{{ row.desde }}</text>
-              <rect x="0" y="0" [attr.width]="row.salesWidth" height="13" fill="#2e4d42" />
-              <rect x="0" y="18" [attr.width]="row.paymentsWidth" height="13" fill="#416b9a" />
-              <rect x="0" y="36" [attr.width]="row.advancesWidth" height="13" fill="#a46425" />
-              <title>
-                {{ row.etiqueta }} · Ventas {{ money(row.ventas_confirmadas) }} · Cobros
-                {{ money(row.cobros_registrados) }} · Anticipos {{ money(row.anticipos_recibidos) }}
-              </title>
-            </g>
-          }
-        </svg>
-      </div>
-    } @else {
-      <p class="empty-panel">Sin períodos disponibles para graficar.</p>
+          <svg
+            class="financial-chart"
+            [attr.viewBox]="'0 0 720 ' + height()"
+            role="img"
+            aria-label="Evolución de ventas, cobros y anticipos. Los importes exactos están en la tabla siguiente."
+          >
+            @for (row of plotted(); track row.desde; let index = $index) {
+              <g [attr.transform]="'translate(150,' + (index * 72 + 14) + ')'">
+                <text x="-144" y="22">{{ row.desde }}</text>
+                <rect x="0" y="0" [attr.width]="row.salesWidth" height="13" fill="var(--forest)" />
+                <rect
+                  x="0"
+                  y="18"
+                  [attr.width]="row.paymentsWidth"
+                  height="13"
+                  fill="var(--secondary)"
+                />
+                <rect
+                  x="0"
+                  y="36"
+                  [attr.width]="row.advancesWidth"
+                  height="13"
+                  fill="var(--tertiary)"
+                />
+                <title>
+                  {{ row.etiqueta }} · Ventas {{ money(row.ventas_confirmadas) }} · Cobros
+                  {{ money(row.cobros_registrados) }} · Anticipos
+                  {{ money(row.anticipos_recibidos) }}
+                </title>
+              </g>
+            }
+          </svg>
+        </div>
+      } @else {
+        <p class="empty-panel">Sin períodos disponibles para graficar.</p>
+      }
     }
-    <details class="section-gap">
-      <summary>Tabla accesible con todos los importes exactos</summary>
+    <section class="section-gap">
       <div class="analytics-table-scroll" tabindex="0" role="region" aria-label="Tabla del reporte">
         <table>
           <caption>
@@ -71,9 +85,10 @@ import { Series, money } from '../domain/analytics';
           </tbody>
         </table>
       </div>
-    </details> `,
+    </section> `,
 })
 export class FinancialTrend {
+  readonly showChart = input(true);
   readonly data = input.required<Series>();
   readonly money = money;
   // Floating point is used only for SVG geometry; never for monetary labels or accounting.

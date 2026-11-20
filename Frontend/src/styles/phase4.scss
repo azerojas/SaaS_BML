@@ -31,8 +31,9 @@
     padding: 0;
   }
   fieldset.sale-line {
-    border: 1px solid var(--line);
-    padding: 1rem;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 1rem 0;
   }
   .check-row {
     display: flex;
@@ -115,7 +116,7 @@
 .qr-print img {
   width: min(100%, 320px);
   height: auto;
-  background: white;
+  background: var(--paper);
 }
 .qr-url {
   overflow-wrap: anywhere;
@@ -134,6 +135,35 @@
   }
 }
 @media print {
+  body:has(.qr-print) {
+    background: #fff;
+    .workspace-header,
+    .workspace-footer,
+    .qr-heading,
+    bm-finance-nav,
+    .qr-editor,
+    .preview-heading,
+    .preview-actions,
+    .qr-link,
+    bm-alert,
+    bm-pwa-banner {
+      display: none;
+    }
+    bm-admin-layout,
+    .workspace,
+    .content,
+    .qr-workspace,
+    .preview-panel,
+    .poster-stage {
+      display: block;
+      min-height: 0;
+      height: auto;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      overflow: visible;
+    }
+  }
   body:has(.qr-print) * {
     visibility: hidden;
   }
@@ -142,11 +172,50 @@
     visibility: visible;
   }
   body:has(.qr-print) .qr-print {
-    position: absolute;
-    left: 0;
-    top: 0;
+    position: fixed;
+    inset: 0;
     width: 100%;
+    max-width: none;
+    height: 100%;
+    margin: 0;
+    padding: 16mm;
     border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: #fff;
+    color: #241c17;
+    --ink: #241c17;
+    --forest: #8d4935;
+    --muted: #53433f;
+    --line: #d9c1bb;
+    h2 {
+      font-size: 32pt;
+    }
+    .poster-topline {
+      margin-bottom: 12mm;
+    }
+    .poster-intro {
+      font-size: 11pt;
+    }
+    .qr-frame {
+      width: 72mm;
+      margin-top: 8mm;
+    }
+    .poster-point {
+      font-size: 12pt;
+      margin-block: 6mm;
+    }
+    .poster-instructions {
+      margin-block: 8mm;
+    }
+    .poster-instructions > span,
+    .poster-instructions b {
+      font-size: 9pt;
+    }
+    .poster-footer {
+      margin-top: 10mm;
+      font-size: 9pt;
+    }
   }
   body:has(.qr-print) .qr-print button {
     display: none;

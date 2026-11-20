@@ -9,7 +9,7 @@ from .base import ADMIN, PUBLIC, CheckinTestCase
 class PublicTests(CheckinTestCase):
     def test_unique_collision_never_leaks_as_public_conflict(self):
         from apps.catalogo.services import CatalogConflict
-        with patch('apps.checkin.application.commands.request_arrival',side_effect=CatalogConflict('Conflicto privado','duplicado_checkin')):
+        with patch('apps.checkin.application.commands.register_visit',side_effect=CatalogConflict('Conflicto privado','duplicado_checkin')):
             response=self.post()
         self.assertEqual(response.status_code,202)
         self.assertNotIn('Conflicto privado',str(response.data))
@@ -43,17 +43,18 @@ class PublicTests(CheckinTestCase):
         self.assertEqual(m.Llegadas.objects.count(),1)
         self.assertNotIn('request_id',known.json())
 
-    def test_new_proposal_is_inactive_and_consent_unverified(self):
-        arrival=self.propose()
+    def test_new_registration_opens_visit_with_declared_consent(self):
+        self.post(nombres='Daniela',apellidos='Ficticia',consentimiento_datos=True,version_aviso='v1')
+        arrival=m.Llegadas.objects.get()
         client=arrival.clienta
-        self.assertFalse(client.activa)
-        self.assertFalse(client.consentimiento_datos)
-        self.assertIsNone(client.consentimiento_fecha)
+        self.assertTrue(client.activa)
+        self.assertTrue(client.consentimiento_datos)
+        self.assertIsNotNone(client.consentimiento_fecha)
         self.assertFalse(client.acepta_recordatorios)
-        self.assertEqual(arrival.estado,'PENDIENTE')
+        self.assertEqual(arrival.estado,'CONFIRMADA')
         self.assertEqual(arrival.origen,'QR')
         self.assertEqual(arrival.punto_qr_id,self.point.pk)
-        self.assertEqual(m.Visitas.objects.count(),0)
+        self.assertEqual(m.Visitas.objects.count(),1)
         self.assertEqual(m.Ventas.objects.count(),0)
         self.assertEqual(m.MovimientosInventario.objects.count(),0)
 

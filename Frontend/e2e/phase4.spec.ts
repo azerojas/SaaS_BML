@@ -36,20 +36,31 @@ async function draft(page: Page, quantity = '1.000') {
 async function confirmDialog(page: Page, name = 'Confirmar') {
   await page.getByRole('dialog').getByRole('button', { name, exact: true }).click();
 }
+async function registeredVisit(page: Page, phone: string) {
+  const clients = await (
+    await page.request.get('/api/clientas/?search=' + encodeURIComponent(phone))
+  ).json();
+  expect(clients.count).toBe(1);
+  const visits = await (
+    await page.request.get('/api/visitas/?estado=ABIERTA&clienta=' + clients.results[0].id)
+  ).json();
+  expect(visits.count).toBe(1);
+  return visits.results[0];
+}
 async function publicArrival(page: Page, phone: string, fresh = false) {
   await page.goto('/registro/' + f.token);
   await page.getByLabel('Teléfono', { exact: true }).fill(phone);
   if (fresh) {
-    await page.getByLabel('Quiero proponer mi ficha').check();
+    await page.getByLabel('Es mi primera visita').check();
     await page.getByLabel('Nombres', { exact: true }).fill('Nueva QR F4');
     await page.getByLabel('Apellidos', { exact: true }).fill('Ficticia');
     await expect(page.getByLabel('He leído el aviso')).not.toBeChecked();
     await page.getByLabel('He leído el aviso').check();
   }
-  await page.getByRole('button', { name: 'Registrar mi llegada', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Solicitud recibida' })).toBeVisible();
+  await page.getByRole('button', { name: 'Registrar mi visita', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Registro recibido' })).toBeVisible();
 }
-test('clienta nueva: QR → identidad → visita → tratamiento/producto → consumos → pago real', async ({
+test('clienta nueva: QR → visita automática → tratamiento/producto → consumos → pago real', async ({
   page,
 }) => {
   await publicArrival(page, '+51955123001', true);
@@ -59,23 +70,9 @@ test('clienta nueva: QR → identidad → visita → tratamiento/producto → co
   await enter(page);
   const beforeProduct = await stock(page, f.product);
   const beforeMaterial = await stock(page, f.material);
-  await page.goto('/admin/llegadas');
-  await page.getByLabel('Buscar nombre o teléfono').fill('955123001');
-  await page.getByRole('button', { name: 'Aplicar filtros' }).click();
-  await page.getByRole('link', { name: 'Nueva QR F4 Ficticia', exact: true }).click();
-  await expect(page).toHaveURL(/\/admin\/llegadas\/\d+$/);
-  const arrival = Number(page.url().split('/').at(-1));
-  await expect(page.getByRole('button', { name: 'Confirmar identidad y llegada' })).toBeDisabled();
-  await page.getByLabel('Verifiqué presencialmente la identidad').check();
-  await expect(page.getByRole('button', { name: 'Confirmar identidad y llegada' })).toBeDisabled();
-  await page.getByLabel('Verifiqué su consentimiento').check();
-  await page.getByRole('button', { name: 'Confirmar identidad y llegada' }).click();
-  await confirmDialog(page);
-  await page.getByRole('button', { name: 'Crear visita desde llegada' }).click();
-  await expect(page).toHaveURL(/\/admin\/visitas\/\d+$/);
-  const visit = Number(page.url().split('/').at(-1));
-  const replay = await post(page, '/api/admin/checkin/llegadas/' + arrival + '/crear-visita/', {});
-  expect((await replay.json()).id).toBe(visit);
+  const registered = await registeredVisit(page, '+51955123001');
+  const visit = registered.id;
+  await page.goto('/admin/visitas/' + visit);
   await page.getByRole('link', { name: 'Preparar tratamientos y venta' }).click();
   const services = page
     .locator('bm-catalog-picker')
@@ -137,7 +134,7 @@ test('clienta nueva: QR → identidad → visita → tratamiento/producto → co
     'FINALIZADA',
   );
 });
-test('QR inválido y datos desconocidos no enumeran clientas; solicitudes repetidas quedan pendientes una vez', async ({
+test('QR inválido y datos desconocidos no enumeran clientas; reenvíos conservan una sola visita abierta', async ({
   page,
 }) => {
   await page.goto('/registro/' + randomUUID());
@@ -155,25 +152,13 @@ test('QR inválido y datos desconocidos no enumeran clientas; solicitudes repeti
   expect(unknown.status()).toBe(202);
   expect(await first.json()).toEqual(await unknown.json());
   await enter(page);
-  const arrivals = await (
-    await page.request.get(
-      '/api/admin/checkin/llegadas/?search=955123000&estado=PENDIENTE&vigentes=all',
-    )
-  ).json();
-  expect(arrivals.count).toBe(1);
-  const id = arrivals.results[0].id;
-  expect(
-    (
-      await post(page, '/api/admin/checkin/llegadas/' + id + '/confirmar/', {
-        identidad_verificada: false,
-      })
-    ).status(),
-  ).toBe(400);
-  const results = await Promise.all([
-    post(page, '/api/admin/checkin/llegadas/' + id + '/confirmar/', { identidad_verificada: true }),
-    post(page, '/api/admin/checkin/llegadas/' + id + '/confirmar/', { identidad_verificada: true }),
+  const visit = await registeredVisit(page, f.phone);
+  const responses = await Promise.all([
+    page.request.post('/api/public/checkin/' + f.token + '/', { data: { telefono: f.phone } }),
+    page.request.post('/api/public/checkin/' + f.token + '/', { data: { telefono: f.phone } }),
   ]);
-  expect(results.map((response) => response.status()).sort()).toEqual([200, 409]);
+  expect(responses.map((response) => response.status())).toEqual([202, 202]);
+  expect((await registeredVisit(page, f.phone)).id).toBe(visit.id);
 });
 test('pago con respuesta perdida se recupera tras recargar sin repetir POST ni sumar dos veces', async ({
   page,
@@ -272,13 +257,12 @@ test('QR administrativo real, revocación y formulario móvil accesible', async 
   await page.getByLabel('Nombre del punto', { exact: true }).fill('Cartel móvil F4');
   await page.getByRole('button', { name: 'Crear punto QR', exact: true }).click();
   await page.getByRole('button', { name: 'Ver QR de Cartel móvil F4', exact: true }).click();
-  await expect(
-    page.getByRole('img', { name: 'Código QR para registrar la llegada' }),
-  ).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Código QR para registrar la visita' })).toBeVisible();
+  await page.getByText('Ver enlace de registro', { exact: true }).click();
   const url = await page.locator('.qr-url').innerText();
   expect(url).toMatch(/https:\/\/localhost:4443\/registro\//);
-  const row = page.locator('.record-row').filter({ hasText: 'Cartel móvil F4' });
-  await row.getByRole('button', { name: 'Revocar', exact: true }).click();
+  const row = page.locator('.point-row').filter({ hasText: 'Cartel móvil F4' });
+  await row.getByRole('button', { name: 'Revocar Cartel móvil F4', exact: true }).click();
   await confirmDialog(page, 'Revocar');
   await expect(row.getByText('Revocado', { exact: true })).toBeVisible();
   await page.goto(url);
@@ -335,22 +319,19 @@ test('anticipo existente se aplica una sola vez, separado de pagos nuevos y con 
   await confirmDialog(page);
   await expect(page.getByTestId('sale-balance')).toHaveText(/S\/\s*0\.00/);
 });
-test('móvil y tablet: visita manual, notas seguras, edición de líneas y cancelación con historial', async ({
+test('móvil y tablet: visita QR, notas seguras, edición de líneas y cancelación con historial', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await enter(page);
-  await page.goto('/admin/visitas/nueva');
-  await page.getByLabel('Buscar clienta por nombre o teléfono').fill(f.phone);
-  await page.getByRole('button', { name: 'Buscar clienta', exact: true }).click();
-  await page.getByRole('button', { name: /Recurrente F4 Ficticia/ }).click();
-  await page.getByLabel('Verifiqué presencialmente que esta ficha').check();
+  await page.request.post('/api/public/checkin/' + f.token + '/', { data: { telefono: f.phone } });
+  const visit = await registeredVisit(page, f.phone);
+  await page.goto('/admin/visitas/' + visit.id);
   await page
-    .getByLabel('Notas de la atención', { exact: true })
+    .getByLabel('Notas de atención', { exact: true })
     .fill('<img src=x onerror="window.phase4xss=1">');
-  await page.getByRole('button', { name: 'Confirmar apertura de visita', exact: true }).click();
-  await confirmDialog(page, 'Abrir visita');
-  await expect(page).toHaveURL(/\/admin\/visitas\/\d+$/);
+  await page.getByRole('button', { name: 'Guardar notas', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Notas guardadas' })).toBeVisible();
   expect(await page.evaluate(() => 'phase4xss' in window)).toBe(false);
   await expect(page.locator('.preserve-lines')).toContainText('<img');
   await page
@@ -393,28 +374,26 @@ test('429 público respeta el bloqueo de reintento sin consultar ni mostrar iden
   await page.request.post('/api/public/checkin/' + f.token + '/', {
     data: { telefono: '+51955123112' },
   });
-  await page.getByRole('button', { name: 'Registrar mi llegada', exact: true }).click();
+  await page.getByRole('button', { name: 'Registrar mi visita', exact: true }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'demasiados intentos' })).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Registrar mi llegada', exact: true }),
+    page.getByRole('button', { name: 'Registrar mi visita', exact: true }),
   ).toBeDisabled();
   await expect(page.getByRole('status').filter({ hasText: 'segundos' })).toBeVisible();
 });
-test('llegada rechazada/cancelada conserva historial y pago anulado reabre saldo sin devolver stock', async ({
+test('visita QR cancelada conserva historial y pago anulado reabre saldo sin devolver stock', async ({
   page,
 }) => {
   await publicArrival(page, '+51955123009', true);
   await enter(page);
-  const arrivals = await (
-    await page.request.get(
-      '/api/admin/checkin/llegadas/?search=955123009&estado=PENDIENTE&vigentes=all',
-    )
-  ).json();
-  await page.goto('/admin/llegadas/' + arrivals.results[0].id);
-  await page.getByRole('button', { name: 'Rechazar llegada', exact: true }).click();
-  await confirmDialog(page);
-  await expect(page.locator('.feature-heading .badge')).toHaveText('RECHAZADA');
-  await expect(page.getByText('Última resolución:', { exact: false })).toContainText('RECHAZAR');
+  const visit = await registeredVisit(page, '+51955123009');
+  await page.goto('/admin/visitas/' + visit.id);
+  await page
+    .getByLabel('Motivo de cancelación', { exact: false })
+    .fill('Retiro ficticio de la clienta');
+  await page.getByRole('button', { name: 'Cancelar visita', exact: true }).click();
+  await confirmDialog(page, 'Cancelar visita');
+  await expect(page.locator('.feature-heading .badge')).toHaveText('CANCELADA');
   const sale = await draft(page);
   await post(page, '/api/ventas/' + sale + '/confirmar/', {
     consumos_revisados: true,
@@ -452,7 +431,7 @@ test('formulario público recupera una caída de red sin invalidar el QR ni reen
   await page.unroute('**/api/public/checkin/' + f.token + '/');
   await page.getByRole('button', { name: 'Volver a cargar formulario', exact: true }).click();
   await expect(page.getByLabel('Teléfono', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Solicitud recibida' })).not.toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Registro recibido' })).not.toBeVisible();
 });
 test('cobro registrado con GET posterior perdido permite consultar de nuevo sin otro cobro', async ({
   page,

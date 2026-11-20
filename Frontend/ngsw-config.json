@@ -1,0 +1,8 @@
+{
+  "$schema": "./node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "assetGroups": [{"name":"shell","installMode":"prefetch","resources":{"files":["/index.html","/*.css","/*.js","/manifest.webmanifest","/icons/*.png","/media/*.woff2"]}}],
+  "dataGroups": [],
+  "navigationUrls": ["/**","!/**/*.*","!/api/**","!/health/**","!/privacy/**"],
+  "navigationRequestStrategy":"freshness"
+}

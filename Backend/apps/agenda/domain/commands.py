@@ -18,3 +18,5 @@ class AvailabilityQuery:
     servicios:tuple[int,...]
     fecha:date
     public:bool=False
+    cita_id:int|None=None
+    request_id:str|None=None

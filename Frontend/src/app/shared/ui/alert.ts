@@ -13,7 +13,7 @@ import { Icon } from './icon';
     <p>{{ message() }}</p>
   </div>`,
   styles:
-    ':host{display:block;margin-bottom:1.3rem}div{display:flex;align-items:flex-start;gap:.7rem;padding:1rem;border-radius:12px;background:var(--sage);color:var(--forest);font-size:.83rem;line-height:1.6}.error{background:#fff1ec;color:#943725}p{margin:0}bm-icon{margin-top:.12rem}',
+    ':host{display:block;margin-bottom:1.3rem}div{display:flex;align-items:flex-start;gap:.7rem;padding:1rem;border-radius:12px;background:var(--sage);color:var(--forest);font-size:.83rem;line-height:1.6}.error{background:var(--error-soft);color:var(--on-error)}p{margin:0}bm-icon{margin-top:.12rem}',
 })
 export class Alert {
   readonly message = input.required<string>();

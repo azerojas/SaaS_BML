@@ -1,14 +1,13 @@
-<section class="page-heading">
-  <div>
-    <p class="eyebrow">TU ESPACIO DE TRABAJO</p>
-    <h1>Hola, {{ session.displayName() }}<span class="greeting-dot">.</span></h1>
-    <p>Todo listo para empezar a tu ritmo.</p>
-  </div>
-  <span class="date-chip"><bm-icon name="calendar" />{{ today }}</span>
-</section>
-@if (session.hasPermission('reporting.view_summary')) {
-  <bm-dashboard-analytics />
+@if (canViewReports) {
+  <bm-reports-page />
 } @else {
+  <section class="page-heading">
+    <div>
+      <h1>Hola, {{ session.displayName() }}<span class="greeting-dot">.</span></h1>
+      <p>Tu actividad y tus herramientas, en un solo lugar.</p>
+    </div>
+    <span class="date-chip"><bm-icon name="calendar" />{{ today }}</span>
+  </section>
   <section class="welcome-card">
     <div class="welcome-copy">
       <span class="small-tag">BIENVENIDA A LASHEO</span>
@@ -25,39 +24,3 @@
     </div>
   </section>
 }
-<section class="shortcuts mt-10">
-  <div class="section-title">
-    <div>
-      <p class="eyebrow">UN LUGAR PARA CADA DETALLE</p>
-      <h2>Tu salón, conectado.</h2>
-    </div>
-    <span class="phase-label"><bm-icon name="clock" /> Tus herramientas</span>
-  </div>
-  <div class="shortcut-grid">
-    @for (item of shortcuts(); track item.path) {
-      <a class="shortcut-card" [routerLink]="item.path"
-        ><span class="shortcut-icon"><bm-icon [name]="item.icon" /></span
-        ><span class="shortcut-content"
-          ><span class="shortcut-title">{{ item.label }}</span
-          ><span class="shortcut-description">{{ item.description }}</span
-          ><span class="coming-label">{{
-            item.available ? 'Disponible' : 'Próxima fase'
-          }}</span></span
-        ><bm-icon name="arrow"
-      /></a>
-    } @empty {
-      <div class="no-permissions">
-        <bm-icon name="shield" />
-        <div>
-          <h3>Tu sesión está lista.</h3>
-          <p>La persona administradora podrá asignarte acceso a los módulos que necesitas.</p>
-        </div>
-      </div>
-    }
-  </div>
-</section>
-<section class="quiet-note">
-  <bm-icon name="sparkles" />
-  <p>Cada gran experiencia empieza por los pequeños detalles.</p>
-  <span>Hoy también cuenta.</span>
-</section>

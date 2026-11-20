@@ -35,18 +35,11 @@ export const NAVIGATION = [
     description: 'Todo en su lugar',
   },
   {
-    path: '/admin/llegadas',
-    label: 'Llegadas',
-    icon: 'users',
-    permission: 'negocio.view_llegadas',
-    description: 'Recepción y confirmación presencial',
-  },
-  {
     path: '/admin/puntos-qr',
     label: 'Puntos QR',
     icon: 'box',
     permission: 'negocio.view_puntosqr',
-    description: 'Registro público de llegada',
+    description: 'Registro automático de visitas',
   },
   {
     path: '/admin/ventas',
@@ -76,13 +69,6 @@ export const NAVIGATION = [
     permission: 'negocio.view_proveedores',
     description: 'Alianzas que acompañan tu trabajo',
   },
-  {
-    path: '/admin/reportes',
-    label: 'Reportes',
-    icon: 'chart',
-    permission: 'reporting.view_summary',
-    description: 'Información para tus decisiones',
-  },
 ] as const;
 
 export interface NavigationItem {
@@ -93,23 +79,44 @@ export interface NavigationItem {
   description: string;
   available: boolean;
 }
+export interface NavigationGroup {
+  label: string;
+  icon: string;
+  items: NavigationItem[];
+}
+export function groupedNavigation(items: NavigationItem[]): NavigationGroup[] {
+  const groups = [
+    {
+      label: 'Operación',
+      icon: 'calendar',
+      paths: ['/admin/agenda', '/admin/visitas', '/admin/puntos-qr'],
+    },
+    { label: 'Negocio', icon: 'sparkles', paths: ['/admin/clientas', '/admin/catalogo'] },
+    {
+      label: 'Inventario',
+      icon: 'box',
+      paths: ['/admin/inventario', '/admin/compras', '/admin/proveedores'],
+    },
+    { label: 'Finanzas', icon: 'chart', paths: ['/admin/ventas'] },
+  ];
+  return groups
+    .map((group) => ({
+      label: group.label,
+      icon: group.icon,
+      items: group.paths.flatMap((path) =>
+        items.filter((item) => item.path === path || item.path.startsWith(path + '/')),
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
+}
 export function visibleNavigation(
   hasPermission: (permission: string) => boolean,
 ): NavigationItem[] {
   const catalogModels = [
     ['servicios', 'servicios'],
     ['articulos', 'articulos'],
-    ['categorias-servicio', 'categoriasservicio'],
-    ['categorias-articulo', 'categoriasarticulo'],
-    ['unidades', 'unidadesmedida'],
   ] as const;
   return NAVIGATION.flatMap<NavigationItem>((item) => {
-    if (item.path === '/admin/reportes')
-      return ['reporting.view_summary', 'reporting.view_clients', 'reporting.view_inventory'].some(
-        hasPermission,
-      )
-        ? [{ ...item, available: true }]
-        : [];
     if (item.path === '/admin/catalogo') {
       const allowed = catalogModels.find(([, model]) => hasPermission('negocio.view_' + model));
       return allowed
@@ -122,7 +129,9 @@ export function visibleNavigation(
           ]
         : [];
     }
-    return !item.permission || hasPermission(item.permission)
+    return !item.permission ||
+      hasPermission(item.permission) ||
+      (item.path === '/admin/agenda' && hasPermission('agenda.view_own_agenda'))
       ? [
           {
             ...item,
@@ -130,11 +139,11 @@ export function visibleNavigation(
             available: [
               '/admin',
               '/admin/agenda',
+              '/admin/agenda/mis-fechas',
               '/admin/clientas',
               '/admin/inventario',
               '/admin/compras',
               '/admin/proveedores',
-              '/admin/llegadas',
               '/admin/puntos-qr',
               '/admin/visitas',
               '/admin/ventas',

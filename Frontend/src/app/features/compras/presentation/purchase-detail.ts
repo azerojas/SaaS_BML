@@ -2,7 +2,14 @@ import { ValidationSummary } from '../../../shared/ui/validation-summary';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialog } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
+import { Icon } from '../../../shared/ui/icon';
+import { PurchaseForm } from './purchase-form';
 import { firstValueFrom } from 'rxjs';
 import { SessionStore } from '../../../core/auth/application/session-store';
 import { PurchasesFacade } from '../application/purchases-facade';
@@ -27,10 +34,32 @@ import { StockCards } from '../../inventario/presentation/stock-ui';
     Button,
     Pager,
     StockCards,
+    MatDialogModule,
+    Icon,
   ],
   providers: [PurchasesFacade],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<bm-operations-nav /><a class="back-link" routerLink="/admin/compras">← Compras</a>
+  template: `<div [class.purchase-modal]="dialogRef">
+    @if (dialogRef) {
+      <header class="preview-heading">
+        <span class="toolbar-icon"><bm-icon name="receipt" /></span>
+        <div>
+          <p class="modal-eyebrow">LASHEO · COMPRAS</p>
+          <h2 mat-dialog-title>Detalle de compra</h2>
+        </div>
+        <button
+          mat-icon-button
+          type="button"
+          [disabled]="facade.busy() || confirming()"
+          (click)="dialogRef.close()"
+          aria-label="Cerrar compra"
+        >
+          <bm-icon name="close" />
+        </button>
+      </header>
+    } @else {
+      <bm-operations-nav /><a class="back-link" routerLink="/admin/compras">← Compras</a>
+    }
     @if (facade.error(); as error) {
       <bm-alert [message]="error" />
     }
@@ -42,7 +71,10 @@ import { StockCards } from '../../inventario/presentation/stock-ui';
       <bm-loading />
     }
     @if (facade.record(); as purchase) {
-      <header class="feature-heading">
+      <header class="feature-heading purchase-hero">
+        @if (dialogRef) {
+          <span class="hero-icon"><bm-icon name="box" /></span>
+        }
         <div>
           <p class="eyebrow">
             {{ isReceipt ? 'REVISIÓN ANTES DE RECIBIR' : 'TRAZABILIDAD DE COMPRA' }}
@@ -52,12 +84,34 @@ import { StockCards } from '../../inventario/presentation/stock-ui';
             purchase.estado
           }}</span>
         </div>
+        @if (dialogRef) {
+          <div class="hero-total">
+            <span>Total de la compra</span><strong>{{ money(purchase.total) }}</strong
+            ><small
+              >{{ purchase.detalles?.length ?? 0 }}
+              {{
+                purchase.detalles?.length === 1 ? 'artículo registrado' : 'artículos registrados'
+              }}</small
+            >
+          </div>
+        }
         <div class="form-actions">
           @if (purchase.estado === 'BORRADOR' && session.hasPermission('negocio.change_compras')) {
-            <a mat-stroked-button [routerLink]="['/admin/compras', purchase.id, 'editar']"
-              >Editar borrador</a
-            >
-            @if (!isReceipt) {
+            @if (dialogRef) {
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="editDraft(purchase.id)"
+                [disabled]="facade.busy()"
+              >
+                Editar borrador
+              </button>
+            } @else {
+              <a mat-stroked-button [routerLink]="['/admin/compras', purchase.id, 'editar']"
+                >Editar borrador</a
+              >
+            }
+            @if (!isReceipt && !dialogRef) {
               <a mat-flat-button [routerLink]="['/admin/compras', purchase.id, 'recepcion']"
                 >Preparar recepción</a
               >
@@ -73,7 +127,41 @@ import { StockCards } from '../../inventario/presentation/stock-ui';
           }
         </div>
       </header>
-      <section class="surface">
+      @if (dialogRef && purchase.estado !== 'ANULADA') {
+        <ol class="purchase-progress" aria-label="Seguimiento de la compra">
+          <li class="done">
+            <span><bm-icon name="check" /></span>
+            <div><strong>Compra registrada</strong><small>Documento guardado</small></div>
+          </li>
+          <li [class.done]="purchase.estado === 'RECIBIDA'">
+            <span><bm-icon [name]="purchase.estado === 'RECIBIDA' ? 'check' : 'box'" /></span>
+            <div>
+              <strong>Mercadería recibida</strong
+              ><small>{{
+                purchase.estado === 'RECIBIDA' ? 'Recepción confirmada' : 'Pendiente de recibir'
+              }}</small>
+            </div>
+          </li>
+          <li [class.done]="purchase.estado === 'RECIBIDA'">
+            <span><bm-icon [name]="purchase.estado === 'RECIBIDA' ? 'check' : 'chart'" /></span>
+            <div>
+              <strong>Inventario actualizado</strong
+              ><small>{{
+                purchase.estado === 'RECIBIDA'
+                  ? 'Entradas registradas'
+                  : 'Al confirmar la recepción'
+              }}</small>
+            </div>
+          </li>
+        </ol>
+      }
+      <section class="surface purchase-information">
+        @if (dialogRef) {
+          <div class="section-title">
+            <span><bm-icon name="receipt" /></span>
+            <h2>Datos de la compra</h2>
+          </div>
+        }
         <dl class="details-grid">
           <div>
             <dt>Documento</dt>
@@ -87,24 +175,35 @@ import { StockCards } from '../../inventario/presentation/stock-ui';
             <dt>Fecha de compra (Lima)</dt>
             <dd>{{ date(purchase.fecha) }}</dd>
           </div>
-          <div>
-            <dt>Total oficial (PEN)</dt>
-            <dd>
-              <strong>{{ money(purchase.total) }}</strong>
-            </dd>
-          </div>
+          @if (!dialogRef) {
+            <div>
+              <dt>Total oficial (PEN)</dt>
+              <dd>
+                <strong>{{ money(purchase.total) }}</strong>
+              </dd>
+            </div>
+          }
           <div class="wide">
             <dt>Observaciones</dt>
             <dd class="preserve-lines">{{ purchase.observaciones || 'Sin observaciones' }}</dd>
           </div>
         </dl>
       </section>
-      <section class="surface section-gap">
-        <h2>Mercadería registrada</h2>
+      <section class="surface section-gap merchandise-panel">
+        <div class="section-title">
+          <span><bm-icon name="box" /></span>
+          <h2>Mercadería registrada</h2>
+        </div>
         <div class="purchase-lines-readonly">
           @for (line of purchase.detalles ?? []; track line.id) {
             <article>
-              <h3>{{ line.articulo_nombre }}</h3>
+              <div class="line-title">
+                <span class="item-icon"><bm-icon name="box" /></span>
+                <div>
+                  <h3>{{ line.articulo_nombre }}</h3>
+                  <span class="unit-label">Unidad: {{ line.unidad }}</span>
+                </div>
+              </div>
               <dl class="details-grid">
                 <div>
                   <dt>Cantidad</dt>
@@ -129,16 +228,23 @@ import { StockCards } from '../../inventario/presentation/stock-ui';
           }
         </div>
       </section>
-      @if (isReceipt && purchase.estado === 'BORRADOR') {
-        <section class="surface section-gap">
-          <h2>Confirmación de recepción completa</h2>
+      @if (
+        (isReceipt || dialogRef) &&
+        purchase.estado === 'BORRADOR' &&
+        session.hasPermission('negocio.change_compras')
+      ) {
+        <section class="surface section-gap receipt-review">
+          <div class="section-title">
+            <span><bm-icon name="check" /></span>
+            <h2>Confirmación de recepción completa</h2>
+          </div>
           <p>
-            Comprueba físicamente las cantidades, unidades y vencimientos antes de confirmar. Django
-            validará el borrador y creará una entrada por línea en una sola transacción.
+            Revisa las cantidades, unidades y vencimientos de la mercadería recibida. Al confirmar,
+            se registran las entradas y se actualizan las existencias.
           </p>
           <p class="muted">
-            No se permiten recepciones parciales ni productos vencidos. Reintentar esta misma compra
-            no genera entradas duplicadas.
+            Cada compra se recibe completa una sola vez. Los productos vencidos no se pueden
+            recibir.
           </p>
           <bm-button
             [busy]="facade.busy()"
@@ -148,7 +254,11 @@ import { StockCards } from '../../inventario/presentation/stock-ui';
           >
         </section>
       }
-      @if (purchase.estado === 'RECIBIDA' && session.hasPermission('negocio.view_articulos')) {
+      @if (
+        !dialogRef &&
+        purchase.estado === 'RECIBIDA' &&
+        session.hasPermission('negocio.view_articulos')
+      ) {
         <section class="surface section-gap">
           <h2>Existencias actuales después de consultar</h2>
           <p class="muted">
@@ -172,7 +282,7 @@ import { StockCards } from '../../inventario/presentation/stock-ui';
           />
         </section>
       }
-      @if (session.hasPermission('negocio.view_movimientosinventario')) {
+      @if (!dialogRef && session.hasPermission('negocio.view_movimientosinventario')) {
         <a
           class="back-link section-gap"
           routerLink="/admin/inventario/movimientos"
@@ -180,15 +290,19 @@ import { StockCards } from '../../inventario/presentation/stock-ui';
           >Ver movimientos de esta compra →</a
         >
       }
-    } `,
+    }
+  </div>`,
+  styleUrl: './purchase-detail.scss',
 })
 export class PurchaseDetail {
   readonly facade = inject(PurchasesFacade);
   readonly session = inject(SessionStore);
   private readonly route = inject(ActivatedRoute);
   private readonly dialog = inject(MatDialog);
+  readonly dialogRef = inject<MatDialogRef<PurchaseDetail>>(MatDialogRef, { optional: true });
+  private readonly dialogData = inject<{ id: number }>(MAT_DIALOG_DATA, { optional: true });
   readonly confirming = signal(false);
-  readonly isReceipt = this.route.snapshot.data['receipt'] === true;
+  readonly isReceipt = !this.dialogRef && this.route.snapshot.data['receipt'] === true;
   readonly money = pen;
   readonly cost = unitCost;
   readonly date = dateLima;
@@ -197,12 +311,27 @@ export class PurchaseDetail {
     void this.init();
   }
   private async init() {
-    await this.facade.get(Number(this.route.snapshot.paramMap.get('id')));
+    await this.facade.get(this.dialogData?.id ?? Number(this.route.snapshot.paramMap.get('id')));
     if (
       this.facade.record()?.estado === 'RECIBIDA' &&
       this.session.hasPermission('negocio.view_articulos')
     )
       this.facade.stock.reload();
+  }
+  async editDraft(id: number) {
+    if (!this.session.hasPermission('negocio.change_compras')) return;
+    const saved = await firstValueFrom(
+      this.dialog
+        .open(PurchaseForm, {
+          data: { id },
+          width: '1000px',
+          maxWidth: '96vw',
+          disableClose: true,
+          autoFocus: 'first-heading',
+        })
+        .afterClosed(),
+    );
+    if (saved) await this.facade.get(id);
   }
   async receive() {
     if (this.confirming() || this.facade.busy()) return;

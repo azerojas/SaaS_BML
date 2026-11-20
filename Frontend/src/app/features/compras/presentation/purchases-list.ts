@@ -1,5 +1,15 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { DateField } from '../../../shared/ui/date-field';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
+import { firstValueFrom, forkJoin, map } from 'rxjs';
+import { PurchaseDetail } from './purchase-detail';
+import { StockItem, unitCost } from '../../inventario/domain/inventory';
+import { InventoryApi } from '../../inventario/infrastructure/inventory-api';
+import { CatalogApi } from '../../catalogo/infrastructure/catalog-api';
+import { RecordPreview } from '../../../shared/ui/record-preview';
+import { Icon } from '../../../shared/ui/icon';
+import { PurchaseForm } from './purchase-form';
+import { Purchase } from '../domain/purchase';
 import { MatButtonModule } from '@angular/material/button';
 import { SessionStore } from '../../../core/auth/application/session-store';
 import { PurchasesFacade } from '../application/purchases-facade';
@@ -10,9 +20,20 @@ import { Loading } from '../../../shared/ui/loading';
 import { Pager } from '../../../shared/ui/pager';
 import { pen } from '../../../shared/domain/records';
 import { dateLima } from '../../inventario/domain/inventory';
+import { StockRows } from '../../inventario/presentation/stock-ui';
 @Component({
   selector: 'bm-purchases-list',
-  imports: [RouterLink, MatButtonModule, OperationsNav, SupplierPicker, Alert, Loading, Pager],
+  imports: [
+    Icon,
+    StockRows,
+    DateField,
+    MatButtonModule,
+    OperationsNav,
+    SupplierPicker,
+    Alert,
+    Loading,
+    Pager,
+  ],
   providers: [PurchasesFacade],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<bm-operations-nav />
@@ -22,11 +43,22 @@ import { dateLima } from '../../inventario/domain/inventory';
         <h1>Compras</h1>
         <p>Borradores, recepción completa y existencias trazadas por movimientos.</p>
       </div>
-      @if (session.hasPermission('negocio.add_compras')) {
-        <a mat-flat-button routerLink="nueva">Nueva compra</a>
+      @if (canCreate()) {
+        <button
+          mat-flat-button
+          class="purchase-trigger"
+          type="button"
+          [disabled]="purchaseOpen()"
+          (click)="purchase()"
+        >
+          <span class="purchase-trigger-content"><bm-icon name="plus" /><span>Compra</span></span>
+        </button>
       }
     </header>
-    <section class="surface">
+    <section class="surface" aria-label="Compras registradas">
+      @if (purchaseSuccess()) {
+        <bm-alert kind="info" [message]="purchaseSuccess()!" />
+      }
       <div class="filters">
         <div>
           <label for="purchase-search">Buscar por documento</label
@@ -48,22 +80,28 @@ import { dateLima } from '../../inventario/domain/inventory';
         </div>
         <div>
           <label for="purchase-from">Compras desde</label
-          ><input id="purchase-from" type="date" (change)="filter('desde', $event)" />
+          ><bm-date-field
+            ariaLabel="Compras desde"
+            inputId="purchase-from"
+            (valueChanged)="filter('desde', $event)"
+          />
         </div>
         <div>
           <label for="purchase-until">Compras hasta</label
-          ><input id="purchase-until" type="date" (change)="filter('hasta', $event)" />
+          ><bm-date-field
+            ariaLabel="Compras hasta"
+            inputId="purchase-until"
+            (valueChanged)="filter('hasta', $event)"
+          />
         </div>
-      </div>
-      @if (session.hasPermission('negocio.view_proveedores')) {
-        <details class="filter-extra">
-          <summary>Filtrar por proveedor</summary>
+        @if (session.hasPermission('negocio.view_proveedores')) {
           <bm-supplier-picker
+            emptyLabel="Todos los proveedores"
             [value]="String(state.query()['proveedor'] ?? '')"
             (changed)="set('proveedor', $event)"
           />
-        </details>
-      }
+        }
+      </div>
       @if (state.error(); as error) {
         <bm-alert [message]="error" /><button mat-button (click)="state.reload()">
           Reintentar compras
@@ -74,8 +112,8 @@ import { dateLima } from '../../inventario/domain/inventory';
       } @else {
         <div class="record-list">
           @for (row of state.rows(); track row.id) {
-            <a class="record-row purchase-row" [routerLink]="[row.id]"
-              ><span class="record-main"
+            <article class="record-row purchase-row">
+              <span class="record-main"
                 ><strong>{{ row.numero_documento || 'Compra #' + row.id }}</strong
                 ><span
                   >{{ row.proveedor_nombre || 'Sin proveedor' }} · {{ date(row.fecha) }}</span
@@ -84,8 +122,15 @@ import { dateLima } from '../../inventario/domain/inventory';
                 row.estado
               }}</span
               ><strong>{{ money(row.total) }}</strong
-              ><span aria-hidden="true">→</span></a
-            >
+              ><button
+                mat-icon-button
+                type="button"
+                [attr.aria-label]="'Visualizar compra ' + row.id"
+                (click)="viewPurchase(row)"
+              >
+                <bm-icon name="eye" />
+              </button>
+            </article>
           } @empty {
             <div class="empty-panel">
               <h2>No hay compras para estos filtros</h2>
@@ -100,9 +145,70 @@ import { dateLima } from '../../inventario/domain/inventory';
         [busy]="state.loading()"
         (changed)="state.page($event)"
       />
-    </section>`,
+    </section>
+    @if (session.hasPermission('negocio.view_articulos')) {
+      <section class="surface section-gap" aria-labelledby="replenishment-title" id="reposicion">
+        <h2 id="replenishment-title">Reposición</h2>
+        <p class="muted">Productos e insumos agotados, con existencia de cero o menos.</p>
+        @if (facade.depleted.error(); as error) {
+          <bm-alert [message]="error" /><button
+            mat-button
+            type="button"
+            (click)="facade.depleted.reload()"
+          >
+            Reintentar reposición
+          </button>
+        }
+        @if (facade.depleted.loading()) {
+          <bm-loading label="Consultando productos agotados…" />
+        } @else if (facade.depleted.rows().length) {
+          <bm-stock-rows
+            [rows]="facade.depleted.rows()"
+            mode="replenishment"
+            [canBuy]="canCreate()"
+            [busy]="purchaseOpen()"
+            (viewed)="viewArticle($event)"
+            (purchased)="purchase($event)"
+          />
+        } @else if (!facade.depleted.error()) {
+          <div class="empty-panel">
+            <h3>No hay productos agotados</h3>
+            <p>Los artículos que se queden sin existencias aparecerán aquí.</p>
+          </div>
+        }
+        <bm-pager
+          [count]="facade.depleted.count()"
+          [page]="Number(facade.depleted.query()['page'])"
+          [busy]="facade.depleted.loading()"
+          (changed)="facade.depleted.page($event)"
+        />
+      </section>
+    }`,
+  styles: `
+    .purchase-trigger {
+      min-height: 44px;
+      padding-inline: 24px;
+    }
+    .purchase-trigger-content {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      line-height: 1;
+      vertical-align: middle;
+    }
+    .purchase-trigger-content bm-icon {
+      width: 20px;
+      height: 20px;
+    }
+  `,
 })
 export class PurchasesList {
+  private readonly inventory = inject(InventoryApi);
+  private readonly catalog = inject(CatalogApi);
+  private readonly dialog = inject(MatDialog);
+  readonly purchaseOpen = signal(false);
+  readonly purchaseSuccess = signal<string | null>(null);
   readonly facade = inject(PurchasesFacade);
   readonly state = this.facade.list;
   readonly session = inject(SessionStore);
@@ -112,9 +218,138 @@ export class PurchasesList {
   readonly date = dateLima;
   constructor() {
     this.state.reload();
+    if (this.session.hasPermission('negocio.view_articulos')) this.facade.depleted.reload();
   }
-  filter(key: string, event: Event) {
-    this.set(key, (event.target as HTMLInputElement).value);
+  canCreate() {
+    return (
+      this.session.hasPermission('negocio.add_compras') &&
+      this.session.hasPermission('negocio.view_articulos')
+    );
+  }
+  async purchase(article?: StockItem) {
+    if (this.purchaseOpen() || !this.canCreate()) return;
+    this.purchaseOpen.set(true);
+    try {
+      const saved = await firstValueFrom(
+        this.dialog
+          .open<PurchaseForm, unknown, Purchase>(PurchaseForm, {
+            data: { article },
+            width: '1000px',
+            maxWidth: '96vw',
+            maxHeight: '92dvh',
+            disableClose: true,
+            autoFocus: 'first-heading',
+            panelClass: 'purchase-editor-dialog',
+          })
+          .afterClosed(),
+      );
+      if (saved) {
+        this.purchaseSuccess.set('Compra #' + saved.id + ' guardada.');
+        this.state.reload();
+      }
+    } finally {
+      this.purchaseOpen.set(false);
+    }
+  }
+  async viewPurchase(row: Purchase) {
+    await firstValueFrom(
+      this.dialog
+        .open(PurchaseDetail, {
+          data: { id: row.id },
+          width: '900px',
+          maxWidth: '96vw',
+          autoFocus: 'first-heading',
+          ariaLabel: 'Detalle de compra',
+          closePredicate: (_r, _c, instance) =>
+            !(
+              instance instanceof PurchaseDetail &&
+              (instance.facade.busy() || instance.confirming())
+            ),
+        })
+        .afterClosed(),
+    );
+    this.state.reload();
+    this.facade.depleted.reload();
+  }
+  viewArticle(row: StockItem) {
+    this.dialog.open(RecordPreview, {
+      width: '760px',
+      maxWidth: '96vw',
+      data: {
+        title: row.nombre,
+        subtitle: 'Detalle de reposición',
+        action: this.canCreate()
+          ? {
+              label: 'Comprar',
+              run: () => {
+                void this.purchase(row);
+              },
+            }
+          : undefined,
+        load: () =>
+          forkJoin({
+            stock: this.inventory.stock({ articulo: row.articulo_id }),
+            article: this.catalog.get('articulos', row.articulo_id),
+          }).pipe(
+            map(({ stock, article }) => {
+              const item = stock.results[0] ?? row;
+              return {
+                kind: 'stock',
+                status: {
+                  label:
+                    Number(item.existencia) <= 0
+                      ? 'Agotado'
+                      : item.bajo_minimo
+                        ? 'Por reponer'
+                        : 'Disponible',
+                  positive: !item.bajo_minimo && Number(item.existencia) > 0,
+                },
+                metrics: [
+                  {
+                    label: 'Existencia actual',
+                    value: item.existencia + ' ' + item.unidad,
+                    icon: 'box',
+                  },
+                  { label: 'Mínimo', value: item.stock_minimo + ' ' + item.unidad, icon: 'chart' },
+                  {
+                    label: 'Costo unitario estimado',
+                    value: unitCost(item.costo_unitario_estimado),
+                    icon: 'receipt',
+                  },
+                ],
+                stock: {
+                  current: Number(item.existencia),
+                  minimum: Number(item.stock_minimo),
+                  unit: item.unidad,
+                },
+                fields: [
+                  { label: 'SKU', value: item.sku ?? 'Sin SKU', icon: 'receipt' },
+                  {
+                    label: 'Categoría',
+                    value: item.categoria_nombre ?? 'Sin categoría',
+                    icon: 'box',
+                  },
+                  {
+                    label: 'Tipo',
+                    value:
+                      item.tipo === 'VENTA'
+                        ? 'Producto de venta'
+                        : item.tipo === 'AMBOS'
+                          ? 'Producto e insumo'
+                          : 'Insumo',
+                    icon: 'sparkles',
+                  },
+                  { label: 'Precio de venta', value: pen(String(article['precio_venta'])) },
+                ],
+                note: String(article['descripcion'] ?? ''),
+              };
+            }),
+          ),
+      },
+    });
+  }
+  filter(key: string, event: Event | string) {
+    this.set(key, typeof event === 'string' ? event : (event.target as HTMLInputElement).value);
   }
   set(key: string, value: string) {
     const query = { ...this.state.query() };

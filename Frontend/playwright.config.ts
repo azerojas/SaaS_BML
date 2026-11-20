@@ -11,6 +11,12 @@ export default defineConfig({
     ['json', { outputFile: '.artifacts/e2e-results.json' }],
   ],
   use: {
+    serviceWorkers: 'block',
+    launchOptions: {
+      args: process.env['BM_E2E_CERT_SPKI']
+        ? ['--ignore-certificate-errors-spki-list=' + process.env['BM_E2E_CERT_SPKI']]
+        : [],
+    },
     baseURL: 'https://localhost:4443',
     ignoreHTTPSErrors: true,
     trace: 'off',

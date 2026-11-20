@@ -1,0 +1,118 @@
+﻿:host {
+  display: block;
+}
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+.metric {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--paper);
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgb(55 35 25 / 5%);
+  padding: 23px 22px 0;
+  display: flex;
+  flex-direction: column;
+}
+.metric::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, var(--forest), var(--primary-container));
+}
+.metric[data-tone='1']::before {
+  background: linear-gradient(90deg, var(--secondary), var(--secondary-line));
+}
+.metric[data-tone='2']::before {
+  background: linear-gradient(90deg, var(--primary-container), var(--sage));
+}
+.metric[data-tone='3']::before {
+  background: linear-gradient(90deg, var(--tertiary), var(--line));
+}
+.metric-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 38px;
+}
+.metric-heading > span {
+  font-size: 10px;
+  line-height: 1.6;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.metric-heading bm-icon {
+  width: 19px;
+  height: 19px;
+  padding: 9px;
+  box-sizing: content-box;
+  border-radius: 50%;
+  color: var(--forest);
+  background: var(--sage);
+}
+.metric[data-tone='1'] bm-icon {
+  color: var(--secondary);
+  background: var(--secondary-soft);
+}
+.metric[data-tone='1'] > strong {
+  color: var(--secondary);
+}
+.metric > strong {
+  display: block;
+  font-size: clamp(24px, 2.5vw, 33px);
+  line-height: 1.3;
+  letter-spacing: -1px;
+  font-weight: 750;
+  margin: 17px 0 7px;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.metric > p {
+  font-size: 10px;
+  line-height: 1.7;
+  color: var(--muted);
+  margin: 0 0 20px;
+  flex: 1;
+}
+.metric-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 -22px;
+  padding: 13px 22px;
+  background: var(--surface-low);
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.metric-foot b {
+  color: var(--ink);
+  font-weight: 650;
+  text-align: right;
+}
+@media (max-width: 1100px) {
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+}
+@media (max-width: 520px) {
+  .metric-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+  .metric > strong {
+    font-size: 30px;
+  }
+  .metric-heading {
+    min-height: 32px;
+  }
+}

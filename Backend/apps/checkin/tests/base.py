@@ -26,8 +26,15 @@ class CheckinTestCase(CatalogTestCase):
     def post(self, **changes):
         return self.public.post(self.url,{'telefono':'+51999123456',**changes},format='json')
 
+    def seed_legacy_arrival(self, **changes):
+        """Seed a pending record created before self-service visit registration."""
+        from apps.checkin.application.commands import request_arrival
+        from rest_framework.response import Response
+        request_arrival(str(self.point.token), {'telefono': '+51999123456', **changes})
+        return Response({}, status=202)
+
     def propose(self, phone='+51999123456'):
-        r=self.post(telefono=phone,nombres='Daniela',apellidos='Ficticia',consentimiento_datos=True,version_aviso='v1')
+        r=self.seed_legacy_arrival(telefono=phone,nombres='Daniela',apellidos='Ficticia',consentimiento_datos=True,version_aviso='v1')
         self.assertEqual(r.status_code,202,r.data)
         return m.Llegadas.objects.get(clienta__telefono=phone,estado='PENDIENTE')
 

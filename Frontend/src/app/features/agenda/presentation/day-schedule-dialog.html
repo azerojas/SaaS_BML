@@ -1,0 +1,163 @@
+﻿<div class="dialog-heading">
+  <span class="dialog-icon"><bm-icon name="clock" /></span>
+  <div>
+    <p>TU AGENDA · LASHEO</p>
+    <h2 mat-dialog-title>
+      {{ singleSlots ? 'Publicar mis cupos' : 'Configurar disponibilidad del día' }}
+    </h2>
+  </div>
+  <button
+    class="dialog-close"
+    mat-icon-button
+    type="button"
+    mat-dialog-close
+    aria-label="Cerrar disponibilidad del día"
+    [disabled]="intent.busy()"
+  >
+    <bm-icon name="close" />
+  </button>
+</div>
+<mat-dialog-content>
+  <p class="description">
+    @if (singleSlots) {
+      {{ data.professionalName }} · Elige horas exactas, por ejemplo 16:00, 17:00 y 18:00. Cada hora
+      admite una sola reserva. El fin máximo solo limita la duración del servicio: no habilita horas
+      de inicio intermedias.
+    } @else {
+      Elige cuándo estarás disponible. Puedes añadir una pausa entre tus horarios.
+    }
+  </p>
+  @if (past) {
+    <bm-alert message="La disponibilidad de una fecha pasada no se puede modificar." />
+  }
+  @if (error()) {
+    <bm-alert [message]="error()" />
+  }
+  <bm-agenda-feedback (done)="finish()" />
+  <form [formGroup]="form" id="day-schedule-form" (ngSubmit)="save()">
+    <div class="date-label">
+      <span>Fecha disponible</span
+      ><bm-date-field
+        ariaLabel="Fecha disponible"
+        formControlName="date"
+        [min]="today"
+        [readOnly]="intent.busy() || intent.pending()"
+      />
+    </div>
+    @if (loading()) {
+      <p class="loading-state" role="status">Consultando tus horarios…</p>
+    }
+    @if (loaded()) {
+      <div class="schedule-topline">
+        <span>{{ source() }}</span
+        ><span class="duration-pill">{{ duration }}</span>
+      </div>
+      <label class="closed-control"
+        ><input
+          type="checkbox"
+          [checked]="closed()"
+          (change)="setClosed($any($event.target).checked)"
+          [disabled]="intent.busy() || intent.pending() || past"
+        /><span>No estaré disponible este día</span></label
+      >
+      @if (!closed()) {
+        @if (!singleSlots) {
+          <div class="quick-times">
+            <span>AÑADIR FRANJA RÁPIDA</span>
+            <div>
+              <button
+                type="button"
+                (click)="preset('09:00', '13:00')"
+                [disabled]="intent.busy() || intent.pending() || past"
+              >
+                Mañana <small>09–13 h</small>
+              </button>
+              <button
+                type="button"
+                (click)="preset('14:00', '18:00')"
+                [disabled]="intent.busy() || intent.pending() || past"
+              >
+                Tarde <small>14–18 h</small>
+              </button>
+              <button
+                type="button"
+                (click)="preset('09:00', '18:00')"
+                [disabled]="intent.busy() || intent.pending() || past"
+              >
+                Día completo <small>09–18 h</small>
+              </button>
+            </div>
+          </div>
+        }
+        <div class="intervals" formArrayName="intervals">
+          @for (row of intervals.controls; track row; let index = $index) {
+            <div class="interval-card" [formGroupName]="index">
+              <div class="interval-caption">
+                <span><i></i>{{ singleSlots ? 'Cupo' : 'Franja' }} {{ index + 1 }}</span
+                ><button
+                  type="button"
+                  class="remove-interval"
+                  [attr.aria-label]="'Quitar franja ' + (index + 1)"
+                  [disabled]="intent.busy() || intent.pending() || past"
+                  (click)="remove(index)"
+                >
+                  <bm-icon name="close" />
+                </button>
+              </div>
+              <div class="interval-row">
+                <bm-time-field
+                  [label]="singleSlots ? 'Hora de la cita' : 'Desde'"
+                  [ariaLabel]="'Inicio de franja ' + (index + 1)"
+                  formControlName="inicio"
+                  [readOnly]="intent.busy() || intent.pending() || past"
+                />
+                <span class="separator" aria-hidden="true"><bm-icon name="arrow" /></span>
+                <bm-time-field
+                  [label]="singleSlots ? 'Fin máximo del servicio' : 'Hasta'"
+                  [ariaLabel]="'Fin de franja ' + (index + 1)"
+                  formControlName="fin"
+                  [readOnly]="intent.busy() || intent.pending() || past"
+                />
+              </div>
+              @if (row.controls.inicio.value >= row.controls.fin.value) {
+                <p class="interval-error">La hora de fin debe ser posterior al inicio.</p>
+              }
+            </div>
+          }
+        </div>
+        <button
+          class="add-interval"
+          type="button"
+          (click)="add()"
+          [disabled]="intervals.length >= 12 || intent.busy() || intent.pending() || past"
+        >
+          <span aria-hidden="true">+</span>
+          {{ singleSlots ? 'Añadir otro cupo' : 'Añadir franja horaria' }}
+        </button>
+      }
+      <p class="time-note"><bm-icon name="clock" />Formato de 24 horas · Lima, Perú</p>
+    }
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions>
+  @if (!singleSlots) {
+    <button
+      class="reset-button"
+      mat-button
+      type="button"
+      (click)="restore()"
+      [disabled]="!loaded() || intent.busy() || intent.pending() || past"
+    >
+      Restablecer día
+    </button>
+  }
+  <span class="actions-spacer"></span>
+  <button
+    mat-flat-button
+    type="submit"
+    form="day-schedule-form"
+    [disabled]="!loaded() || intent.busy() || intent.pending() || past"
+  >
+    {{ intent.busy() ? 'Guardando…' : 'Guardar disponibilidad' }}
+  </button>
+</mat-dialog-actions>

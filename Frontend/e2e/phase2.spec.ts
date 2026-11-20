@@ -29,6 +29,17 @@ test('clienta real: crear, consentimiento de servidor, PATCH, desactivar y react
   const path = page.url();
   const id = path.split('/').at(-1)!;
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Clienta creada E2E');
+  await expect(
+    page.getByRole('button', { name: 'Registrar consentimiento', exact: true }),
+  ).toBeVisible();
+  await page.screenshot({ path: '.artifacts/clienta-profile-desktop.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(
+    (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations,
+  ).toEqual([]);
+  await page.screenshot({ path: '.artifacts/clienta-profile-mobile.png', fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 900 });
   let data = await (await page.request.get('/api/clientas/' + id + '/')).json();
   expect(data.telefono).toBe('+51977123456');
   expect(data.consentimiento_datos).toBe(false);
@@ -41,10 +52,22 @@ test('clienta real: crear, consentimiento de servidor, PATCH, desactivar y react
   data = await (await page.request.get('/api/clientas/' + id + '/')).json();
   expect(data.consentimiento_datos).toBe(true);
   expect(data.consentimiento_fecha).toBeTruthy();
-  await page.getByRole('link', { name: 'Editar ficha' }).click();
+  await page.getByRole('button', { name: 'Editar ficha', exact: true }).click();
+  const editor = page.getByRole('dialog', { name: 'Editar ficha', exact: true });
+  await expect(editor).toBeVisible();
+  await expect(page).toHaveURL(path);
   await expect(page.locator('#field-nombres')).toHaveValue('Clienta creada E2E');
   await field(page, 'nombres', 'Clienta editada E2E');
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(
+    (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations,
+  ).toEqual([]);
+  await page.screenshot({ path: '.artifacts/clienta-edit-modal-mobile.png' });
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole('button', { name: 'Guardar clienta', exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  await expect(page).toHaveURL(path);
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Clienta editada E2E');
   await page.getByRole('button', { name: 'Desactivar', exact: true }).click();
   await confirm(page, 'Desactivar');
@@ -89,16 +112,15 @@ test('listado real: paginación, búsqueda, vacío y recuperación de red', asyn
 });
 test('categoría y tratamiento: persistencia, decimales y publicación segura', async ({ page }) => {
   await enter(page);
-  await page.goto('/admin/catalogo/categorias-servicio/nuevo');
-  await field(page, 'nombre', 'Categoría creada E2E');
-  await page.getByRole('button', { name: 'Guardar categoría de tratamiento', exact: true }).click();
-  await expect(page).toHaveURL(/categorias-servicio\/\d+$/);
   await page.goto('/admin/catalogo/servicios/nuevo');
+  await page.locator('#category').selectOption('__other__');
+  await page.locator('#category-new').fill('Categoría creada E2E');
+  await page.getByRole('button', { name: 'Guardar nueva categoría', exact: true }).click();
+  await expect(page.locator('#category-new')).toHaveCount(0);
   await field(page, 'nombre', 'Tratamiento creado E2E');
   await field(page, 'precio_base', '80.10');
   await field(page, 'duracion_minutos', '45');
   await page.locator('#field-visible_catalogo').check();
-  await page.locator('#category-search').fill('Categoría creada E2E');
   await expect(
     page.locator('#category option').filter({ hasText: 'Categoría creada E2E' }),
   ).toHaveCount(1);
@@ -279,30 +301,14 @@ test('staff sin permisos no puede mutar ni abrir administración de catálogo', 
   });
   expect(response.status()).toBe(403);
 });
-test('categorías de artículos y unidades: altas y edición reales sin estados inventados', async ({
-  page,
-}) => {
+test('categorías de artículos se gestionan desde el formulario de producto', async ({ page }) => {
   await enter(page);
   await page.goto('/admin/catalogo/categorias-articulo/nuevo');
-  await field(page, 'nombre', 'Categoría artículos E2E');
-  await page.getByRole('button', { name: 'Guardar categoría de artículo', exact: true }).click();
-  await expect(page).toHaveURL(/categorias-articulo\/\d+$/);
-  await expect(page.getByRole('button', { name: 'Desactivar', exact: true })).toHaveCount(0);
-  await page.goto('/admin/catalogo/unidades/nuevo');
-  await field(page, 'codigo', 'UND-E2E');
-  await field(page, 'nombre', 'Unidad creada E2E');
-  await page.getByRole('button', { name: 'Guardar unidad de medida', exact: true }).click();
-  await expect(page).toHaveURL(/unidades\/\d+$/);
-  const id = page.url().split('/').at(-1)!;
-  await page.getByRole('link', { name: 'Editar unidad de medida', exact: true }).click();
-  await field(page, 'nombre', 'Unidad editada E2E');
-  await page.getByRole('button', { name: 'Guardar unidad de medida', exact: true }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Unidad editada E2E');
-  expect(
-    (await (await page.request.get('/api/admin/catalogo/unidades/' + id + '/')).json()).codigo,
-  ).toBe('UND-E2E');
+  await expect(page).toHaveURL(/\/admin\/catalogo\/articulos$/);
+  await page.getByRole('button', { name: 'Añadir producto', exact: true }).click();
+  await expect(page.getByRole('dialog').locator('#category option').last()).toHaveText('Otros');
 });
-test('ficha pública de producto y búsqueda vacía funcionan sin sesión', async ({ page }) => {
+test('ficha pública de producto y filtro único funcionan sin sesión', async ({ page }) => {
   await page.goto('/catalogo');
   await page.getByRole('button', { name: 'Productos', exact: true }).click();
   await expect(page.getByRole('link').filter({ hasText: 'Producto visible E2E' })).toBeVisible();
@@ -310,10 +316,8 @@ test('ficha pública de producto y búsqueda vacía funcionan sin sesión', asyn
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Producto visible E2E');
   await expect(page.locator('.public-price')).toContainText('27.35');
   await page.goto('/catalogo');
-  await page.getByLabel('Buscar en el catálogo', { exact: true }).fill('no-hay-resultados-phase2');
-  await expect(
-    page.getByRole('heading', { name: 'No hay elementos publicados para esta búsqueda' }),
-  ).toBeVisible();
+  await expect(page.locator('.catalog-filters input')).toHaveCount(0);
+  await expect(page.getByRole('combobox', { name: 'Categoría', exact: true })).toBeVisible();
 });
 for (const width of [360, 390, 768, 1280])
   test('fase 2 responsive y accesible ' + width, async ({ page }) => {

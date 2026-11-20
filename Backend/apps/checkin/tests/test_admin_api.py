@@ -75,7 +75,7 @@ class AdminTests(CheckinTestCase):
 
     def test_existing_confirmation_does_not_forge_consent(self):
         person=self.person()
-        self.post()
+        self.seed_legacy_arrival()
         arrival=m.Llegadas.objects.get()
         self.assertEqual(self.confirm(arrival,consentimiento_verificado=False).status_code,200)
         person.refresh_from_db()
@@ -83,14 +83,14 @@ class AdminTests(CheckinTestCase):
 
     def test_reject_cancel_invalid_transitions_and_historical_arrivals(self):
         person=self.person()
-        self.post()
+        self.seed_legacy_arrival()
         first=m.Llegadas.objects.get()
         r=self.client.post(self.path(first,'rechazar'),{'motivo':'No corresponde a la ficha'},format='json')
         self.assertEqual(r.status_code,200)
         self.assertEqual(r.json()['estado'],'RECHAZADA')
         self.assertEqual(self.confirm(first).status_code,409)
         self.assertEqual(self.client.post(self.path(first,'cancelar'),{},format='json').status_code,409)
-        self.assertEqual(self.post().status_code,202)
+        self.assertEqual(self.seed_legacy_arrival().status_code,202)
         second=m.Llegadas.objects.get(estado='PENDIENTE')
         self.assertNotEqual(first.pk,second.pk)
         self.assertEqual(m.Llegadas.objects.filter(clienta_id=person.pk).count(),2)
@@ -101,9 +101,9 @@ class AdminTests(CheckinTestCase):
 
     def test_private_filters_order_pagination_and_no_notes_in_list(self):
         a=self.person(notas_privadas='SECRETO')
-        self.post()
+        self.seed_legacy_arrival()
         b=self.person('+51999123457',nombres='María')
-        self.post(telefono=b.telefono)
+        self.seed_legacy_arrival(telefono=b.telefono)
         self.assertEqual(self.client.get(ADMIN+'llegadas/',{'search':'maria'}).json()['count'],1)
         response=self.client.get(ADMIN+'llegadas/',{'page_size':1}).json()
         self.assertEqual(response['count'],2)

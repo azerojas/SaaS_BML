@@ -15,9 +15,9 @@ import { ValidationSummary } from '../../../shared/ui/validation-summary';
   providers: [CheckinFacade],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<div class="checkin-page">
-    <p class="eyebrow">TU LLEGADA · LASHEO</p>
+    <p class="eyebrow">TU VISITA · LASHEO</p>
     <h1>Qué gusto recibirte.</h1>
-    <p>Registra tu llegada y acércate a recepción. El equipo confirmará tu identidad en persona.</p>
+    <p>Completa tu teléfono o tus datos. Tu visita se registrará automáticamente.</p>
     @if (facade.loading()) {
       <bm-loading />
     }
@@ -27,9 +27,9 @@ import { ValidationSummary } from '../../../shared/ui/validation-summary';
     <bm-validation-summary [errors]="facade.fields()" />
     @if (facade.state() === 'received') {
       <section class="surface" role="status" tabindex="-1">
-        <h2>Solicitud recibida</h2>
+        <h2>Registro recibido</h2>
         <p>{{ facade.success() }}</p>
-        <p>Este mensaje no confirma una visita ni genera cobros.</p>
+        <p>No necesitas confirmar tu llegada en recepción.</p>
       </section>
     } @else if (facade.record(); as config) {
       @if (config.aviso_privacidad.solo_pruebas) {
@@ -45,7 +45,7 @@ import { ValidationSummary } from '../../../shared/ui/validation-summary';
           (ngSubmit)="submit()"
           autocomplete="off"
         >
-          <h2>{{ config.establecimiento }} · Registro de llegada</h2>
+          <h2>{{ config.establecimiento }} · Registro de visita</h2>
           <label for="checkin-phone">Teléfono</label
           ><input
             id="checkin-phone"
@@ -60,8 +60,8 @@ import { ValidationSummary } from '../../../shared/ui/validation-summary';
             Celular peruano de 9 dígitos o número con prefijo internacional.
           </p>
           <label class="check-row"
-            ><input type="checkbox" formControlName="alta" /> Quiero proponer mi ficha con mis
-            datos</label
+            ><input type="checkbox" formControlName="alta" /> Es mi primera visita: quiero registrar
+            mis datos</label
           >
           <p class="muted">
             Si ya tienes una ficha, puedes enviar solo tu teléfono. No se consulta ni muestra si
@@ -82,7 +82,7 @@ import { ValidationSummary } from '../../../shared/ui/validation-summary';
           >
           @if (invalid) {
             <p role="alert">
-              Revisa el teléfono. Para proponer una ficha, completa nombres, apellidos y
+              Revisa el teléfono. Para registrar una ficha, completa nombres, apellidos y
               consentimiento.
             </p>
           }
@@ -94,7 +94,7 @@ import { ValidationSummary } from '../../../shared/ui/validation-summary';
             type="submit"
             [disabled]="facade.busy() || facade.cooldown() > 0 || facade.state() === 'expired'"
           >
-            {{ facade.busy() ? 'Enviando…' : 'Registrar mi llegada' }}
+            {{ facade.busy() ? 'Enviando…' : 'Registrar mi visita' }}
           </button>
         </form>
       } @else {

@@ -46,7 +46,7 @@ class IntegrityTests(CatalogTestCase):
 
     def test_no_new_tables_or_changed_views(self):
         with connection.cursor() as c:
-            c.execute("SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tablename NOT LIKE 'auth_%' AND tablename NOT LIKE 'django_%' AND tablename <> 'autenticacion_loginattempt' AND tablename NOT LIKE 'operaciones_%' AND tablename NOT LIKE 'finanzas_%' AND tablename NOT IN ('idempotency_records','aplicaciones_anticipo')")
+            c.execute("SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tablename NOT LIKE 'auth_%' AND tablename NOT LIKE 'django_%' AND tablename <> 'autenticacion_loginattempt' AND tablename NOT LIKE 'operaciones_%' AND tablename NOT LIKE 'finanzas_%' AND tablename NOT LIKE 'agenda_%' AND tablename NOT IN ('idempotency_records','aplicaciones_anticipo','catalogo_uploadedphoto')")
             self.assertEqual(c.fetchone()[0],34)
             c.execute("SELECT count(*) FROM pg_views WHERE schemaname='public'")
             self.assertEqual(c.fetchone()[0],7)

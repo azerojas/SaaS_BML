@@ -1,0 +1,407 @@
+@use './appointment-fields' as forms;
+
+:host {
+  display: block;
+  color: var(--ink);
+}
+.detail-page,
+.reschedule-modal {
+  @include forms.fields;
+}
+.detail-page {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding-bottom: 32px;
+}
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--forest);
+  text-decoration: none;
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+.back-link bm-icon {
+  width: 16px;
+  transform: rotate(180deg);
+}
+.page-heading,
+.summary-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.page-heading {
+  margin-bottom: 28px;
+}
+h1 {
+  font:
+    500 clamp(26px, 3vw, 36px)/1.2 'Calendar Playfair',
+    Georgia,
+    serif;
+  margin: 5px 0 10px;
+}
+h2 {
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.4;
+  margin: 0;
+}
+p {
+  margin: 0;
+}
+.page-heading > div > p:last-child,
+.section-heading p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--forest);
+  margin: 0 0 8px;
+}
+.detail-page .primary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+bm-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.panel {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgb(65 40 30 / 3%);
+  min-width: 0;
+}
+.appointment-summary {
+  margin-bottom: 24px;
+  border-top: 3px solid var(--forest);
+}
+.summary-title h2 {
+  font-size: 23px;
+}
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 30px;
+  background: var(--secondary-soft);
+  color: var(--on-secondary);
+  padding: 8px 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.status-badge i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.status-badge:is([data-state='CANCELADA'], [data-state='NO_ASISTIO'], [data-state='EXPIRADA']) {
+  background: var(--error-soft);
+  color: var(--error);
+}
+.summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.5fr 1fr;
+  gap: 24px;
+  margin-top: 28px;
+}
+.summary-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+.summary-item > bm-icon {
+  color: var(--forest);
+  margin-top: 3px;
+}
+.summary-item > div {
+  display: grid;
+  gap: 6px;
+}
+.summary-item span,
+.summary-item small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.summary-item strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.summary-item .total {
+  font-size: 23px;
+  color: var(--forest);
+}
+.reservation-note {
+  background: var(--surface-low);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-top: 24px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.reservation-note strong {
+  display: block;
+  margin-bottom: 3px;
+}
+.reservation-note p {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.visit-link {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--forest);
+  margin-top: 16px;
+  font-size: 13px;
+}
+.detail-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.main-column,
+.side-column {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+.main-column bm-advances-panel {
+  margin: 0;
+}
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.section-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--surface-low);
+  color: var(--forest);
+  flex-shrink: 0;
+}
+.service-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.service-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+.service-list li > div {
+  display: grid;
+  gap: 7px;
+}
+.service-list span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.service-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+  font-size: 14px;
+}
+.service-total strong {
+  color: var(--forest);
+}
+.helper-text {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 8px;
+}
+.timeline li {
+  position: relative;
+  border-left: 1px solid var(--line);
+  padding: 0 0 24px 24px;
+}
+.timeline li:last-child {
+  padding-bottom: 0;
+}
+.timeline li::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 4px;
+  width: 9px;
+  height: 9px;
+  background: var(--forest);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px var(--paper);
+}
+.timeline time {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+.timeline strong {
+  font-size: 13px;
+}
+.timeline p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  margin-top: 5px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.reschedule-modal {
+  color: var(--ink);
+}
+.modal-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 22px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.modal-heading h2 {
+  padding: 0;
+  margin: 0;
+  font-size: 21px;
+}
+.modal-heading h2::before {
+  display: none;
+}
+.modal-heading .eyebrow {
+  margin-bottom: 4px;
+}
+.modal-heading button {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.reschedule-modal mat-dialog-content {
+  padding: 24px;
+}
+.current-booking {
+  background: var(--surface-low);
+  border-radius: 12px;
+  padding: 16px;
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.current-booking > span {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.current-booking strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+.current-booking p {
+  color: var(--muted);
+  font-size: 12px;
+}
+.selected-booking {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--secondary-line);
+  background: var(--secondary-soft);
+  color: var(--on-secondary);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 20px;
+}
+.selected-booking > div {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+}
+.selected-booking strong {
+  font-size: 14px;
+}
+.reschedule-modal mat-dialog-actions {
+  padding: 16px 24px;
+  border-top: 1px solid var(--line);
+  gap: 10px;
+}
+.reschedule-modal button[mat-stroked-button] {
+  background: transparent;
+  color: var(--forest);
+}
+.reschedule-modal mat-dialog-actions button[mat-flat-button] {
+  height: 36px;
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+@media (max-width: 950px) {
+  .summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .detail-columns {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .page-heading,
+  .summary-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .page-heading .primary-action {
+    width: 100%;
+  }
+  .panel {
+    padding: 20px;
+  }
+  .summary-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .modal-heading {
+    padding: 16px;
+  }
+  .modal-heading h2 {
+    font-size: 18px;
+  }
+  .reschedule-modal mat-dialog-content {
+    padding: 16px;
+  }
+  .reschedule-modal mat-dialog-actions {
+    padding: 16px;
+  }
+}

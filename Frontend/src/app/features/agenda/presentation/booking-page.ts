@@ -1,3 +1,4 @@
+import { UnsavedForm } from '../../../core/forms/unsaved-form';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -23,6 +24,7 @@ import { localDateTime, money } from '../../dashboard/domain/analytics';
     SlotPicker,
     AgendaFeedback,
     Alert,
+    UnsavedForm,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<a routerLink="/admin/agenda">Volver a agenda</a>
@@ -55,7 +57,7 @@ import { localDateTime, money } from '../../dashboard/domain/analytics';
         />
       }
     }
-    <form class="surface" [formGroup]="form" (ngSubmit)="submit()">
+    <form bmUnsavedForm class="surface" [formGroup]="form" (ngSubmit)="submit()">
       <label
         >Origen<select formControlName="origin">
           <option value="MANUAL">Presencial / manual</option>
@@ -83,10 +85,12 @@ import { localDateTime, money } from '../../dashboard/domain/analytics';
 })
 export class BookingPage {
   selectClient(client: Clienta) {
+    this.form.markAsDirty();
     this.client.set(client);
     this.selectSlot(null);
   }
   selectSlot(choice: { slot: Slot; availability: Availability } | null) {
+    if (choice) this.form.markAsDirty();
     this.choice.set(choice);
     this.form.controls.reviewed.setValue(false);
   }
@@ -109,10 +113,12 @@ export class BookingPage {
   addService(row: CatalogRecord) {
     if (this.services().length >= 10 || this.services().some((s) => s.id === row.id)) return;
     this.services.update((rows) => [...rows, row]);
+    this.form.markAsDirty();
     this.choice.set(null);
     this.form.controls.reviewed.setValue(false);
   }
   removeService(id: number) {
+    this.form.markAsDirty();
     this.services.update((rows) => rows.filter((s) => s.id !== id));
     this.choice.set(null);
     this.form.controls.reviewed.setValue(false);

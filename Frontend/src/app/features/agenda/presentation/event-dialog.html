@@ -1,0 +1,274 @@
+<header class="event-header">
+  <div class="event-mark"><bm-icon name="calendar" /></div>
+  <div>
+    <p>CALENDARIO · LASHEO</p>
+    <h2 mat-dialog-title>{{ editing ? 'Reprogramar cita' : 'Nueva cita' }}</h2>
+  </div>
+  <button
+    mat-icon-button
+    type="button"
+    aria-label="Cerrar cita"
+    [disabled]="intent.busy()"
+    (click)="close()"
+  >
+    <bm-icon name="close" />
+  </button>
+</header>
+<mat-dialog-content>
+  <bm-agenda-feedback (done)="done($event)" />
+  @if (error(); as error) {
+    <bm-alert [message]="error" />
+  }
+  <form id="calendar-event-form" bmUnsavedForm [formGroup]="form" (ngSubmit)="save()">
+    <fieldset [disabled]="intent.busy() || intent.pending()">
+      <legend class="sr-only">Datos de la cita</legend>
+      <section class="event-section">
+        <bm-icon name="clock" />
+        <div class="section-body">
+          <div class="date-row">
+            <div>
+              <span>Fecha</span
+              ><bm-date-field
+                ariaLabel="Fecha"
+                formControlName="date"
+                [min]="today"
+                [readOnly]="intent.busy() || intent.pending()"
+              />
+            </div>
+            <label>Inicio<input type="time" formControlName="time" step="60" /></label>
+            <span class="date-separator" aria-hidden="true">—</span>
+            <div class="end-time">
+              <span>Fin</span><output>{{ end() }}</output>
+            </div>
+          </div>
+          <p class="field-hint">Hora de Lima · La duración se calcula según los servicios.</p>
+        </div>
+      </section>
+      <section class="event-section">
+        <bm-icon name="users" />
+        <div class="section-body">
+          @if (client(); as selected) {
+            <div class="selected-client">
+              <div>
+                <span class="field-caption">CLIENTA</span
+                ><strong>{{ selected.nombres }} {{ selected.apellidos }}</strong>
+              </div>
+              @if (!editing) {
+                <button type="button" class="text-button" (click)="client.set(null)">
+                  Cambiar
+                </button>
+              }
+            </div>
+          } @else if (editing) {
+            <p>Clienta de la cita #{{ data.appointment!.id }}</p>
+          } @else if (session.hasPermission('negocio.view_clientas')) {
+            <label
+              >Clienta<input
+                [formControl]="clientSearch"
+                placeholder="Buscar por nombre o teléfono"
+                (keydown.enter)="$event.preventDefault(); searchClients()"
+            /></label>
+            <button class="text-button" type="button" (click)="searchClients()">
+              Buscar clienta
+            </button>
+            @if (clients.loading()) {
+              <p role="status">Buscando clientas…</p>
+            }
+            @if (clients.error(); as error) {
+              <bm-alert [message]="error" />
+            }
+            <div class="client-results">
+              @for (row of clients.rows(); track row.id) {
+                <button type="button" (click)="selectClient(row)">
+                  <strong>{{ row.nombres }} {{ row.apellidos }}</strong
+                  ><span>{{ row.telefono }}</span>
+                </button>
+              }
+            </div>
+            @if (clients.count()) {
+              <bm-pager
+                [count]="clients.count()"
+                [page]="Number(clients.query()['page'])"
+                [busy]="clients.loading()"
+                (changed)="clients.page($event)"
+              />
+            }
+          } @else {
+            <bm-alert message="Necesitas permiso para consultar clientas y crear citas." />
+          }
+        </div>
+      </section>
+      <section class="event-section">
+        <span class="service-symbol" aria-hidden="true">✧</span>
+        <div class="section-body">
+          <span class="field-caption">SERVICIOS</span>
+          <div class="service-chips">
+            @for (row of services(); track row.id) {
+              <span
+                >{{ row.nombre
+                }}<button
+                  type="button"
+                  [attr.aria-label]="'Quitar ' + row.nombre"
+                  (click)="removeService(row.id)"
+                >
+                  <bm-icon name="close" /></button
+              ></span>
+            }
+          </div>
+          @if (editing) {
+            <p>Se conservan los servicios y precios de la cita original.</p>
+          } @else if (session.hasPermission('negocio.view_servicios')) {
+            <label
+              >Añadir servicio<select
+                #service
+                aria-label="Añadir servicio"
+                (change)="
+                  addService(
+                    service.value === '' ? undefined : catalogRows.rows()[Number(service.value)]
+                  );
+                  service.value = ''
+                "
+              >
+                <option value="">Seleccionar un tratamiento</option>
+                @for (row of catalogRows.rows(); track row.id; let index = $index) {
+                  <option [value]="index" [disabled]="ids().includes(row.id)">
+                    {{ row.nombre }}
+                  </option>
+                }
+              </select></label
+            >
+            <details class="search-services">
+              <summary>Buscar más servicios</summary>
+              <label
+                >Nombre del servicio<input
+                  [formControl]="serviceSearch"
+                  (keydown.enter)="
+                    $event.preventDefault(); catalogRows.filter({ search: serviceSearch.value })
+                  "
+              /></label>
+              <button
+                class="text-button"
+                type="button"
+                (click)="catalogRows.filter({ search: serviceSearch.value })"
+              >
+                Buscar servicios
+              </button>
+              <bm-pager
+                [count]="catalogRows.count()"
+                [page]="Number(catalogRows.query()['page'])"
+                [busy]="catalogRows.loading()"
+                (changed)="catalogRows.page($event)"
+              />
+            </details>
+            @if (catalogRows.error(); as error) {
+              <bm-alert [message]="error" /><button
+                type="button"
+                class="text-button"
+                (click)="catalogRows.reload()"
+              >
+                Reintentar servicios
+              </button>
+            }
+          } @else {
+            <bm-alert message="Necesitas permiso de lectura de servicios para crear citas." />
+          }
+        </div>
+      </section>
+      <section class="event-section">
+        <bm-icon name="users" />
+        <div class="section-body">
+          <label
+            >Profesional<select formControlName="professional" aria-label="Profesional de la cita">
+              <option value="">Selecciona una profesional</option>
+              @for (row of eligible(); track row.id) {
+                <option [value]="row.id">{{ row.nombres }} {{ row.apellidos }}</option>
+              }
+            </select></label
+          >
+          @if (ids().length && !eligible().length) {
+            <p class="unavailable">
+              Ninguna profesional activa tiene todos los servicios seleccionados.
+            </p>
+          }
+        </div>
+      </section>
+      @if (checking()) {
+        <p class="availability-status" role="status">Comprobando el horario…</p>
+      }
+      @if (availability(); as available) {
+        @if (choice()) {
+          <p class="availability-status available" role="status">
+            ✓ Horario disponible · {{ available.duracion_minutos }} minutos
+          </p>
+        } @else {
+          <div class="time-alternatives">
+            <p class="unavailable" role="status">
+              Este horario no está disponible. Elige otra hora:
+            </p>
+            <div>
+              @for (slot of available.slots; track slot.inicio_en) {
+                <button type="button" (click)="chooseTime(slot.inicio_en)">
+                  {{ time(slot.inicio_en) }}
+                </button>
+              } @empty {
+                <p>No hay espacios para estos servicios en esta fecha.</p>
+              }
+            </div>
+          </div>
+        }
+        <div class="quote">
+          <span
+            >Total <strong>{{ money(available.precio_total) }}</strong></span
+          >
+          @if (available.anticipo_requerido !== '0.00') {
+            <span
+              >Anticipo requerido <strong>{{ money(available.anticipo_requerido) }}</strong></span
+            >
+          }
+        </div>
+      }
+      <section class="event-section notes-section">
+        <bm-icon name="receipt" />
+        <div class="section-body">
+          @if (editing) {
+            <label
+              >Motivo del cambio<textarea
+                formControlName="reason"
+                rows="2"
+                maxlength="250"
+                placeholder="Indica el motivo (mínimo 8 caracteres)"
+              ></textarea>
+            </label>
+          } @else {
+            <label
+              >Notas<textarea
+                formControlName="notes"
+                rows="2"
+                maxlength="5000"
+                placeholder="Añadir una nota a la cita"
+              ></textarea>
+            </label>
+          }
+        </div>
+      </section>
+    </fieldset>
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <span class="save-hint">La cita se revisa otra vez al guardar.</span>
+  <button
+    mat-flat-button
+    type="submit"
+    form="calendar-event-form"
+    [disabled]="
+      intent.busy() ||
+      intent.pending() ||
+      checking() ||
+      form.invalid ||
+      !choice() ||
+      (!editing && !client())
+    "
+  >
+    {{ intent.busy() ? 'Guardando…' : editing ? 'Guardar cambio' : 'Guardar cita' }}
+  </button>
+</mat-dialog-actions>

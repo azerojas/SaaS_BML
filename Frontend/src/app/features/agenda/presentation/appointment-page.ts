@@ -1,3 +1,4 @@
+import { UnsavedForm } from '../../../core/forms/unsaved-form';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -5,7 +6,10 @@ import {
   effect,
   inject,
   signal,
+  TemplateRef,
 } from '@angular/core';
+import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatButtonModule } from '@angular/material/button';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { SessionStore } from '../../../core/auth/application/session-store';
@@ -19,157 +23,37 @@ import { AdvancesPanel } from './advances-panel';
 import { localDateTime, money } from '../../dashboard/domain/analytics';
 import { Alert } from '../../../shared/ui/alert';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Icon } from '../../../shared/ui/icon';
+import { ReportResource } from '../../dashboard/application/report-resource';
+import { Professional } from '../domain/agenda';
 @Component({
   selector: 'bm-appointment-page',
-  imports: [ReactiveFormsModule, RouterLink, Alert, AgendaFeedback, SlotPicker, AdvancesPanel],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    Alert,
+    AgendaFeedback,
+    SlotPicker,
+    AdvancesPanel,
+    UnsavedForm,
+    MatDialogModule,
+    MatButtonModule,
+    Icon,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<a routerLink="/admin/agenda">Volver a agenda</a>
-    <h1>Detalle de cita</h1>
-    <bm-agenda-feedback (done)="load()" />
-    @if (state.loading()) {
-      <p role="status">Cargando cita…</p>
-    }
-    @if (state.error(); as error) {
-      <bm-alert [message]="error" /><button type="button" (click)="load()">Reintentar cita</button>
-    }
-    @if (state.record(); as cita) {
-      <section class="surface">
-        <h2>Cita #{{ cita.id }} · {{ cita.estado }}</h2>
-        <p>Clienta #{{ cita.clienta_id }} · Profesional #{{ cita.profesional_id }}</p>
-        <p>
-          {{ localDateTime(cita.inicio_en) }} – {{ localDateTime(cita.fin_en) }} ·
-          {{ cita.duracion_total_minutos }} minutos
-        </p>
-        <p>Total oficial: {{ money(cita.precio_total) }} · {{ cita.origen }}</p>
-        <p>{{ cita.notas || 'Sin notas' }}</p>
-        <h3>Servicios reservados (snapshot)</h3>
-        <ul>
-          @for (service of cita.servicios; track service.id) {
-            <li>
-              Servicio #{{ service.servicio_id }} · {{ service.duracion_minutos }} minutos ·
-              {{ money(service.precio_snapshot) }}
-            </li>
-          }
-        </ul>
-        @if (cita.visita_id && session.hasPermission('finanzas.view_finance')) {
-          <a [routerLink]="['/admin/visitas', cita.visita_id]"
-            >Abrir visita #{{ cita.visita_id }}</a
-          >
-        }
-      </section>
-      @if (session.hasPermission('finanzas.view_finance')) {
-        <bm-advances-panel [cita]="cita" [refresh]="refresh()" (changed)="load()" />
-      }
-      @if (session.hasPermission('agenda.manage_appointments')) {
-        <section class="surface">
-          <h2>Gestionar cita</h2>
-          <form [formGroup]="actionForm" (ngSubmit)="action()">
-            <label
-              >Acción<select formControlName="action" aria-label="Acción">
-                <option value="confirmar">Confirmar</option>
-                <option value="cancelar">Cancelar</option>
-                <option value="no-asistio">Registrar inasistencia</option>
-                <option value="completar">
-                  Completar con visita finalizada y venta confirmada
-                </option>
-              </select></label
-            ><label
-              >Motivo de cancelación o inasistencia<textarea
-                formControlName="reason"
-                maxlength="250"
-              ></textarea>
-            </label>
-            @if (session.hasPermission('agenda.override_policy')) {
-              <label
-                ><input type="checkbox" formControlName="override" />Autorizar cancelación fuera de
-                plazo</label
-              >
-            }
-            <label
-              ><input type="checkbox" formControlName="reviewed" />He revisado la acción y sus
-              consecuencias.</label
-            ><button
-              type="submit"
-              [disabled]="
-                intent.busy() || !actionForm.controls.reviewed.value || !actionAllowed(cita.estado)
-              "
-            >
-              Ejecutar acción de cita
-            </button>
-          </form>
-        </section>
-        @if (active(cita.estado) && !cita.visita_id) {
-          <section class="surface">
-            <h2>Reprogramar cita</h2>
-            <p>
-              Se conservan los servicios y precios reservados. Django valida nuevamente la duración
-              y las políticas.
-            </p>
-            <bm-slot-picker
-              [services]="ids()"
-              [refresh]="refresh()"
-              [disabled]="intent.busy()"
-              (picked)="choice.set($event)"
-            />
-            <form [formGroup]="rescheduleForm" (ngSubmit)="reschedule()">
-              <label
-                >Motivo de reprogramación<input
-                  formControlName="reason"
-                  minlength="8"
-                  maxlength="250" /></label
-              ><label
-                ><input type="checkbox" formControlName="reviewed" />Confirmo el nuevo profesional y
-                horario.</label
-              ><button
-                type="submit"
-                [disabled]="intent.busy() || !choice() || rescheduleForm.invalid"
-              >
-                Guardar reprogramación
-              </button>
-            </form>
-          </section>
-        }
-      }
-      @if (
-        session.hasPermission('agenda.link_arrivals') && active(cita.estado) && !cita.visita_id
-      ) {
-        <form class="surface" [formGroup]="arrivalForm" (ngSubmit)="link()">
-          <h2>Vincular llegada confirmada</h2>
-          @if (session.hasPermission('negocio.view_llegadas')) {
-            <a routerLink="/admin/llegadas">Consultar bandeja de llegadas e identidad confirmada</a>
-          }
-          <label
-            >ID de llegada confirmada<input
-              type="number"
-              min="1"
-              formControlName="arrival" /></label
-          ><label
-            ><input type="checkbox" formControlName="reviewed" />Confirmé presencialmente la
-            identidad de esta clienta.</label
-          ><button type="submit" [disabled]="intent.busy() || arrivalForm.invalid">
-            Vincular llegada a cita
-          </button>
-          <p>Django exige la misma clienta, ventana horaria compatible y una única visita.</p>
-        </form>
-      }
-      <section class="surface">
-        <h2>Historial</h2>
-        <ol>
-          @for (event of cita.historial; track event.id) {
-            <li>
-              {{ localDateTime(event.cambiado_en) }} · {{ event.estado_anterior }} →
-              {{ event.estado_nuevo }} · {{ event.detalle }}
-            </li>
-          }
-        </ol>
-      </section>
-    }`,
+  templateUrl: './appointment-page.html',
+  styleUrl: './appointment-page.scss',
 })
 export class AppointmentPage {
   readonly session = inject(SessionStore);
   readonly intent = inject(AgendaIntent);
   private readonly api = inject(AgendaApi);
   private readonly route = inject(ActivatedRoute);
+  private readonly dialog = inject(MatDialog);
+  private rescheduleDialog: MatDialogRef<unknown> | null = null;
+  readonly professionals = new ReportResource<Professional[]>(() =>
+    this.api.all<Professional>('profesionales/'),
+  );
   readonly state = new RecordState<AppointmentDetail>();
   readonly refresh = signal(0);
   readonly ids = computed(() => this.state.record()?.servicios.map((row) => row.servicio_id) ?? []);
@@ -193,6 +77,7 @@ export class AppointmentPage {
   });
   private expiryChecked = '';
   constructor() {
+    this.professionals.load({});
     effect((onCleanup) => {
       const cita = this.state.record();
       if (!cita || cita.estado !== 'PENDIENTE_PAGO' || !cita.expira_en || this.intent.busy())
@@ -221,6 +106,52 @@ export class AppointmentPage {
   }
   active(state: string) {
     return ['PENDIENTE_PAGO', 'PROGRAMADA', 'CONFIRMADA'].includes(state);
+  }
+  professionalName(id: number) {
+    const professional = this.professionals.data()?.find((row) => row.id === id);
+    return professional
+      ? professional.nombres + ' ' + professional.apellidos
+      : 'Profesional #' + id;
+  }
+  statusLabel(state: string) {
+    return (
+      (
+        {
+          CONFIRMADA: 'Confirmada',
+          PROGRAMADA: 'Programada',
+          PENDIENTE_PAGO: 'Pendiente de anticipo',
+          CANCELADA: 'Cancelada',
+          EXPIRADA: 'Expirada',
+          NO_ASISTIO: 'No asistió',
+          COMPLETADA: 'Completada',
+        } as Record<string, string>
+      )[state] ?? state
+    );
+  }
+  openReschedule(template: TemplateRef<unknown>) {
+    const cita = this.state.record();
+    if (
+      !cita ||
+      !this.active(cita.estado) ||
+      cita.visita_id ||
+      this.intent.busy() ||
+      this.intent.pending()
+    )
+      return;
+    this.choice.set(null);
+    this.rescheduleForm.reset({ reason: '', reviewed: false });
+    this.rescheduleDialog = this.dialog.open(template, {
+      width: '760px',
+      maxWidth: 'calc(100vw - 24px)',
+      autoFocus: 'first-heading',
+      closePredicate: () => !this.intent.busy() && !this.intent.pending(),
+    });
+  }
+  finishReschedule() {
+    this.rescheduleDialog?.close();
+    this.rescheduleDialog = null;
+    this.rescheduleForm.reset({ reason: '', reviewed: false });
+    this.load();
   }
   actionAllowed(state: string) {
     const action = this.actionForm.controls.action.value;
@@ -263,8 +194,7 @@ export class AppointmentPage {
         motivo: this.rescheduleForm.controls.reason.value,
       })
     ) {
-      this.rescheduleForm.controls.reviewed.setValue(false);
-      this.load();
+      this.finishReschedule();
     } else if (this.intent.failure()?.status === 409) {
       this.choice.set(null);
       this.refresh.update((n) => n + 1);

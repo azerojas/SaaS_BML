@@ -23,6 +23,9 @@ def seed(actor):
     m.ProfesionalServicios.objects.create(profesional=professional, servicio=service)
     for weekday in range(1,8):
         m.HorariosProfesional.objects.create(profesional=professional,dia_semana=weekday,hora_inicio=time(9),hora_fin=time(17))
+    from apps.agenda.models import DailySchedule
+    for date in (day, day + timedelta(days=1)):
+        DailySchedule.objects.create(fecha=date, profesional_id=None, franjas=[{'inicio':'09:00','fin':'17:00'}], actualizado_por_id=actor.pk)
     clients = [m.Clientas.objects.create(nombres='Agenda F6 '+str(index),apellidos='E2E',
         telefono='+5194412300'+str(index),activa=True,canal_preferido='EMAIL',acepta_recordatorios=False) for index in range(5)]
     with transaction.atomic():

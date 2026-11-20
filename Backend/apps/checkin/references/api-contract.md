@@ -1,5 +1,7 @@
 # Contrato de check-in — OpenAPI 1.3.0
 
+El recorrido público vigente registra visitas automáticamente. La confirmación manual descrita más abajo corresponde a datos históricos. Consulta `docs/visitas-qr-automaticas.md`.
+
 Base administrativa /api/admin/checkin/. Usuario activo con is_staff y sesiones/CSRF de fase 1. Todos los DTO y errores mantienen las convenciones anteriores: code, detail, errors. Los tokens QR no autentican personal.
 
 ## Rutas
@@ -25,7 +27,7 @@ GET permite HEAD/OPTIONS cuando corresponde. No hay DELETE ni PATCH de llegadas,
 
 ## Formulario público
 
-GET solo devuelve establecimiento, requiere_confirmacion_presencial=true, consentimiento_preseleccionado=false, URL/versión del aviso y nombres de campos. No devuelve ID de punto/clienta/llegada, existencia de teléfono, contactos ni historial.
+GET solo devuelve establecimiento, requiere_confirmacion_presencial=false, consentimiento_preseleccionado=false, URL/versión del aviso y nombres de campos. No devuelve ID de punto/clienta/llegada, existencia de teléfono, contactos ni historial.
 
 POST existente mínimo:
 

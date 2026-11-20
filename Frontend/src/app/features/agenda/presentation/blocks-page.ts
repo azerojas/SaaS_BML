@@ -1,3 +1,5 @@
+import { DateField } from '../../../shared/ui/date-field';
+import { UnsavedForm } from '../../../core/forms/unsaved-form';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -13,15 +15,20 @@ import { Alert } from '../../../shared/ui/alert';
 import { throwError } from 'rxjs';
 @Component({
   selector: 'bm-blocks-page',
-  imports: [ReactiveFormsModule, RouterLink, AgendaFeedback, Alert],
+  imports: [DateField, ReactiveFormsModule, RouterLink, AgendaFeedback, Alert, UnsavedForm],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<a routerLink="/admin/agenda">Volver a agenda</a>
     <h1>Bloqueos de agenda</h1>
     <bm-agenda-feedback (done)="load()" />
     <form class="surface agenda-filters" [formGroup]="filter" (ngSubmit)="load()">
-      <label>Desde<input type="date" formControlName="from" /></label
-      ><label>Hasta (exclusiva)<input type="date" formControlName="to" /></label
-      ><button type="submit">Consultar bloqueos</button>
+      <div class="calendar-field-label">
+        <span>Desde</span><bm-date-field ariaLabel="Desde" formControlName="from" />
+      </div>
+      <div class="calendar-field-label">
+        <span>Hasta (exclusiva)</span
+        ><bm-date-field ariaLabel="Hasta (exclusiva)" formControlName="to" />
+      </div>
+      <button type="submit">Consultar bloqueos</button>
     </form>
     @if (rows.loading()) {
       <p role="status">Cargando bloqueos…</p>
@@ -58,7 +65,7 @@ import { throwError } from 'rxjs';
       <p>No hay bloqueos en este rango.</p>
     }
     @if (session.hasPermission('agenda.manage_blocks')) {
-      <form class="surface" [formGroup]="form" (ngSubmit)="save()">
+      <form bmUnsavedForm class="surface" [formGroup]="form" (ngSubmit)="save()">
         <h2>{{ id() ? 'Editar bloqueo #' + id() : 'Nuevo bloqueo' }}</h2>
         <label
           >Profesional del bloqueo<select formControlName="professional">
@@ -67,10 +74,24 @@ import { throwError } from 'rxjs';
               <option [value]="prof.id">{{ prof.nombres }} {{ prof.apellidos }}</option>
             }
           </select></label
-        ><label
-          >Inicio del bloqueo (Lima)<input type="datetime-local" formControlName="begin" /></label
-        ><label>Fin del bloqueo (Lima)<input type="datetime-local" formControlName="end" /></label
-        ><label
+        >
+        <div class="calendar-field-label">
+          <span>Inicio del bloqueo (Lima)</span
+          ><bm-date-field
+            ariaLabel="Inicio del bloqueo (Lima)"
+            formControlName="begin"
+            [includeTime]="true"
+          />
+        </div>
+        <div class="calendar-field-label">
+          <span>Fin del bloqueo (Lima)</span
+          ><bm-date-field
+            ariaLabel="Fin del bloqueo (Lima)"
+            formControlName="end"
+            [includeTime]="true"
+          />
+        </div>
+        <label
           >Motivo del bloqueo<textarea
             formControlName="reason"
             minlength="8"
@@ -88,7 +109,7 @@ import { throwError } from 'rxjs';
           Preparar nuevo bloqueo
         </button>
       </form>
-      <form class="surface" [formGroup]="retireForm">
+      <form bmUnsavedForm class="surface" [formGroup]="retireForm">
         <label
           >Motivo de retiro del bloqueo<input
             formControlName="reason"
@@ -122,7 +143,7 @@ export class BlocksPage {
   });
   readonly rows = new ReportResource<Block[]>((q) => this.api.all<Block>('bloqueos/', q));
   readonly professionals = new ReportResource<Professional[]>(() =>
-    this.session.hasPermission('agenda.manage_professionals')
+    this.session.hasPermission('agenda.view_agenda')
       ? this.api.all<Professional>('profesionales/', { activa: 'true' })
       : throwError(
           () =>

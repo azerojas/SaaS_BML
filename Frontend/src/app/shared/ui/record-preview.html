@@ -1,0 +1,156 @@
+<header class="preview-toolbar">
+  <span class="brand-mark"><bm-icon name="sparkles" /></span>
+  <p>
+    LASHEO <span>· {{ data.subtitle || 'Detalle' }}</span>
+  </p>
+  <button mat-icon-button type="button" mat-dialog-close aria-label="Cerrar detalle">
+    <bm-icon name="close" />
+  </button>
+</header>
+<mat-dialog-content tabindex="0" role="region" [attr.aria-label]="'Información de ' + data.title">
+  <section class="record-hero">
+    <div class="record-avatar" aria-hidden="true">
+      @if (state.record()?.kind === 'stock') {
+        <bm-icon name="box" />
+      } @else if (state.record()?.kind === 'movement') {
+        <bm-icon name="restore" />
+      } @else {
+        {{ initials() }}
+      }
+    </div>
+    <div class="hero-copy">
+      <p class="eyebrow">
+        {{
+          state.record()?.kind === 'movement'
+            ? 'MOVIMIENTOS DE INVENTARIO'
+            : state.record()?.kind === 'stock'
+              ? 'INVENTARIO DEL SALÓN'
+              : 'CONTACTO DE CONFIANZA'
+        }}
+      </p>
+      <h2 mat-dialog-title>{{ data.title }}</h2>
+      @if (state.record()?.status; as status) {
+        <span class="record-status" [class.positive]="status.positive"
+          ><i></i>{{ status.label }}</span
+        >
+      }
+    </div>
+  </section>
+  @if (state.loading()) {
+    <bm-loading />
+  }
+  @if (state.error(); as error) {
+    <bm-alert [message]="error" /><button mat-stroked-button type="button" (click)="load()">
+      Reintentar
+    </button>
+  }
+  @if (state.record(); as record) {
+    @if (record.metrics?.length) {
+      <section
+        class="metric-grid"
+        [class.two-metrics]="record.metrics.length === 2"
+        [attr.aria-label]="
+          record.kind === 'movement' ? 'Resumen del movimiento' : 'Resumen de existencias'
+        "
+      >
+        @for (metric of record.metrics; track metric.label) {
+          <article>
+            <span class="metric-icon"><bm-icon [name]="metric.icon" /></span
+            ><span>{{ metric.label }}</span
+            ><strong>{{ metric.value }}</strong>
+          </article>
+        }
+      </section>
+    }
+    @if (record.stock; as stock) {
+      @if (stock.minimum > 0) {
+        <section class="stock-level" [class.sufficient]="stock.current >= stock.minimum">
+          <div>
+            <strong>{{
+              stock.current >= stock.minimum
+                ? 'Mínimo de existencias cubierto'
+                : 'Este artículo necesita reposición'
+            }}</strong
+            ><span>Objetivo mínimo: {{ stock.minimum }} {{ stock.unit }}</span>
+          </div>
+          <div class="level-track" aria-hidden="true">
+            <span [style.width.%]="stockLevel(stock.current, stock.minimum)"></span>
+          </div>
+        </section>
+      }
+    }
+    @if (record.links?.length) {
+      <div class="contact-actions">
+        @for (link of record.links; track link.label) {
+          <a [href]="link.href"><bm-icon [name]="link.icon" />{{ link.label }}</a>
+        }
+      </div>
+    }
+    <section class="information-panel">
+      <div class="section-heading">
+        <span
+          ><bm-icon
+            [name]="
+              record.kind === 'movement' ? 'restore' : record.kind === 'stock' ? 'receipt' : 'users'
+            "
+        /></span>
+        <div>
+          <h3>
+            {{
+              record.kind === 'movement'
+                ? 'Detalle de la operación'
+                : record.kind === 'stock'
+                  ? 'Ficha del artículo'
+                  : 'Información del proveedor'
+            }}
+          </h3>
+          <p>
+            {{
+              record.kind === 'movement'
+                ? 'Fecha, motivo y referencias del registro.'
+                : record.kind === 'stock'
+                  ? 'Datos para planificar tu próxima compra.'
+                  : 'Identificación y canales de contacto.'
+            }}
+          </p>
+        </div>
+      </div>
+      <dl>
+        @for (field of record.fields; track field.label) {
+          <div>
+            <dt>
+              @if (field.icon) {
+                <bm-icon [name]="field.icon" />
+              }
+              {{ field.label }}
+            </dt>
+            <dd>{{ field.value || 'Sin registrar' }}</dd>
+          </div>
+        }
+      </dl>
+    </section>
+    @if (record.note) {
+      <section class="description-panel">
+        <div class="section-heading">
+          <span><bm-icon name="edit" /></span>
+          <h3>{{ record.kind === 'movement' ? 'Notas del movimiento' : 'Sobre este artículo' }}</h3>
+        </div>
+        <p>{{ record.note }}</p>
+      </section>
+    }
+    <p class="record-footer"><bm-icon name="shield" />Información de uso interno del salón</p>
+  }
+</mat-dialog-content>
+@if (data.action; as action) {
+  <mat-dialog-actions class="record-actions" align="end"
+    ><span>Prepara tu próxima compra</span
+    ><button
+      mat-flat-button
+      type="button"
+      [disabled]="actionBusy || state.loading() || !state.record()"
+      (click)="runAction()"
+    >
+      {{ action.label }}
+    </button></mat-dialog-actions
+  >
+}

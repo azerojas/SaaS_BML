@@ -26,7 +26,7 @@ export function safeReturnUrl(value: string | null | undefined): string {
   const phase4 =
     /^\/admin\/(?:llegadas(?:\/[1-9]\d*)?|puntos-qr|visitas(?:\/(?:nueva|[1-9]\d*))?|ventas(?:\/(?:nueva|[1-9]\d*(?:\/editar)?))?)$/;
   const phase6 =
-    /^\/admin\/agenda(?:\/(?:profesionales|bloqueos|configuracion|citas\/(?:nueva|[1-9]\d*)|lista-espera(?:\/[1-9]\d*)?))?$/;
+    /^\/admin\/agenda(?:\/(?:mis-fechas|profesionales|bloqueos|configuracion|citas\/(?:nueva|[1-9]\d*)|lista-espera(?:\/[1-9]\d*)?))?$/;
   return value && (allowed.test(value) || phase4.test(value) || phase6.test(value))
     ? value
     : '/admin';

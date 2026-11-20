@@ -1,0 +1,141 @@
+<div class="report-chart">
+  @if (report() === 'overview' && overview(); as data) {
+    <section class="overview-metrics" aria-label="Indicadores principales del negocio">
+      <bm-dashboard-metrics [data]="data" />
+    </section>
+  }
+  <p class="chart-note">
+    {{
+      report() === 'inventory-alerts'
+        ? 'Cantidad de artículos · Inventario actual'
+        : 'Importes en soles (PEN)'
+    }}
+  </p>
+  @if (report() === 'overview' || report() === 'revenue-series' || report() === 'payment-methods') {
+    <p class="chart-note">
+      Ventas, cobros y anticipos se muestran por separado; no se suman entre sí.
+    </p>
+  }
+  <div class="report-chart-grid">
+    <figure class="chart-card" [attr.aria-label]="'Comparación de ' + labels[report()]">
+      <figcaption>
+        <h3>
+          {{ report() === 'overview' ? 'Gráfico general del negocio' : 'Comparación por barras' }}
+        </h3>
+      </figcaption>
+      <div
+        class="report-chart-scroll"
+        [class.vertical-bars]="report() === 'overview'"
+        role="region"
+        tabindex="0"
+        [attr.aria-label]="'Datos del gráfico ' + labels[report()]"
+      >
+        @for (row of rows(); track $index) {
+          <div class="chart-row">
+            <span class="chart-row-label">{{ row.label }}</span>
+            <div class="chart-row-bars">
+              @for (item of row.values; track $index; let index = $index) {
+                <div class="chart-value">
+                  @if (row.values.length > 1) {
+                    <span class="chart-series-name">{{ item.label }}</span>
+                  }
+                  <div class="chart-bar-track" aria-hidden="true">
+                    <span
+                      class="chart-zero"
+                      [style.left.%]="report() === 'overview' ? null : signed() ? 50 : 0"
+                      [style.bottom.%]="report() === 'overview' ? (signed() ? 50 : 0) : null"
+                    ></span
+                    ><span
+                      class="chart-bar"
+                      [class.second]="index === 1"
+                      [class.third]="index === 2"
+                      [style.left.%]="report() === 'overview' ? null : left(item.value)"
+                      [style.width.%]="report() === 'overview' ? null : width(item.value)"
+                      [style.bottom.%]="report() === 'overview' ? left(item.value) : null"
+                      [style.height.%]="report() === 'overview' ? width(item.value) : null"
+                    ></span>
+                  </div>
+                  <strong>{{ format(item.value) }}</strong>
+                </div>
+              }
+            </div>
+          </div>
+        } @empty {
+          <p class="empty-panel">No hay datos para este reporte.</p>
+        }
+      </div>
+    </figure>
+    @switch (report()) {
+      @case ('revenue-series') {
+        <figure class="chart-card" aria-label="Evolución con líneas y puntos">
+          <figcaption><h3>Evolución con líneas y puntos</h3></figcaption>
+          @if (series(); as data) {
+            <bm-dashboard-trend [data]="data" chartMode="lines" [showDetail]="false" />
+          } @else {
+            <p class="empty-panel">No hay datos para este reporte.</p>
+          }
+        </figure>
+      }
+      @case ('payment-methods') {
+        @for (mode of paymentModes; track mode.key) {
+          <figure class="chart-card" [attr.aria-label]="mode.label">
+            <figcaption>
+              <h3>{{ mode.label }}</h3>
+            </figcaption>
+            @if (methods(); as data) {
+              <bm-dashboard-methods [data]="data" [mode]="mode.key" [showDetail]="false" />
+            } @else {
+              <p class="empty-panel">No hay datos para este reporte.</p>
+            }
+          </figure>
+        }
+      }
+      @case ('inventory-alerts') {
+        <figure class="chart-card" aria-label="Alertas respecto a los artículos activos">
+          <figcaption><h3>Alertas respecto a los artículos activos</h3></figcaption>
+          <div
+            class="inventory-columns"
+            role="img"
+            aria-label="Porcentaje de artículos por tipo de alerta"
+          >
+            @for (item of inventoryRates(); track item.label) {
+              <div class="inventory-column">
+                <strong>{{ item.rate === null ? 'No disponible' : item.rate + ' %' }}</strong>
+                <div class="inventory-track">
+                  <span
+                    [style.height.%]="item.rate === null ? 0 : item.rate"
+                    [style.background]="item.color"
+                  ></span>
+                </div>
+                <span>{{ item.label }}</span>
+              </div>
+            }
+          </div>
+          <p class="chart-note">
+            Cada alerta se compara con el total de artículos activos. Un artículo puede tener más de
+            una alerta; los porcentajes no se suman.
+          </p>
+        </figure>
+      }
+      @default {
+        <figure class="chart-card" [attr.aria-label]="distributionTitle()">
+          <figcaption>
+            <h3>{{ distributionTitle() }}</h3>
+          </figcaption>
+          <bm-report-distribution [entries]="distribution()" [title]="distributionTitle()" />
+          @if (isRanking()) {
+            <p class="chart-note">Participación dentro de los grupos mostrados en este reporte.</p>
+          }
+        </figure>
+      }
+    }
+  </div>
+  @if (isRanking() && table(); as data) {
+    @if (data.count > data.results.length) {
+      <p class="chart-note">
+        Se muestran {{ data.results.length }} de {{ data.count }} grupos. La distribución
+        corresponde a esta selección. Exporta Excel para consultar el detalle.
+      </p>
+    }
+  }
+</div>

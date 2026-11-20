@@ -1,7 +1,7 @@
 import { Visit } from '../../visitas/domain/visit';
 export interface CheckinConfig {
   establecimiento: string;
-  requiere_confirmacion_presencial: true;
+  requiere_confirmacion_presencial: false;
   consentimiento_preseleccionado: false;
   aviso_privacidad: { url: string; version: string; solo_pruebas: boolean };
 }

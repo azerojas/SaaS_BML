@@ -3,6 +3,19 @@ bm-report-panel {
   display: block;
   min-width: 0;
 }
+bm-dashboard-analytics > bm-report-panel > .analytics-panel {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
+}
+bm-dashboard-analytics > bm-report-panel > .analytics-panel > h2 {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--muted);
+  margin: 0 0 16px;
+}
 .report-filters,
 .report-selection {
   margin-block: 1rem;
@@ -23,11 +36,25 @@ bm-report-panel {
   gap: 1rem;
   align-items: end;
 }
-.report-filter-grid label {
+.report-filter-grid > div {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
   margin: 0;
 }
-.report-filter-grid input,
+.report-filter-grid label,
+.report-filter-grid > div > span {
+  margin: 0;
+  line-height: 1.4;
+}
 .report-filter-grid select,
+.report-filter-grid bm-date-field .date-field input,
+.report-filter-grid > button {
+  height: 46px;
+  min-height: 46px;
+  box-sizing: border-box;
+  margin: 0;
+}
 .report-selection select {
   margin-top: 0.5rem;
 }
@@ -85,9 +112,9 @@ bm-report-panel {
   line-height: 1.7;
 }
 .quality-notice {
-  border-left: 3px solid #a46425;
+  border-left: 3px solid var(--forest);
   padding: 0.75rem 1rem;
-  background: #fff8ec;
+  background: var(--canvas);
   margin-block: 1rem;
 }
 .quality-notice ul {
@@ -144,13 +171,13 @@ bm-report-panel {
   padding: 0.5rem 0;
 }
 .legend-sales {
-  border-color: #2e4d42 !important;
+  border-color: var(--forest) !important;
 }
 .legend-payments {
-  border-color: #416b9a !important;
+  border-color: var(--secondary) !important;
 }
 .legend-advances {
-  border-color: #a46425 !important;
+  border-color: var(--tertiary) !important;
 }
 .trend-scroll {
   max-height: 520px;
@@ -191,4 +218,11 @@ bm-report-panel {
   .financial-chart text {
     font-size: 19px;
   }
+}
+
+bm-dashboard-analytics .home-charts .analytics-panel {
+  width: 100%;
+  height: 100%;
+  padding: 24px;
+  margin: 0;
 }

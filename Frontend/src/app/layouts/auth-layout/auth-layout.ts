@@ -2,10 +2,11 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { Brand } from '../../shared/ui/brand';
 import { Icon } from '../../shared/ui/icon';
+import { ThemeToggle } from '../../shared/ui/theme-toggle';
 
 @Component({
   selector: 'bm-auth-layout',
-  imports: [RouterOutlet, Brand, Icon],
+  imports: [RouterOutlet, Brand, Icon, ThemeToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<div class="auth-shell">
     <aside class="story" aria-label="Beauty Manager">
@@ -39,6 +40,7 @@ import { Icon } from '../../shared/ui/icon';
       <footer><span class="tiny-mark">✳</span> Un espacio pensado para lo que haces mejor.</footer>
     </aside>
     <main id="main-content" class="auth-main" tabindex="-1">
+      <bm-theme-toggle class="auth-theme-toggle" />
       <div class="mobile-brand"><bm-brand /></div>
       <div class="form-stage"><router-outlet /></div>
       <div class="auth-footer">

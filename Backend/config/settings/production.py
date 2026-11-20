@@ -5,6 +5,7 @@ os.environ['DJANGO_ENV'] = 'production'
 from .base import *  # noqa: F403,E402
 
 APP_ENV = 'production'
+FRONTEND_CONTRACT_VERSION = '1'
 DEBUG = False
 if env.bool('DJANGO_DEBUG', default=False):  # noqa: F405
     raise ImproperlyConfigured('DEBUG no esta permitido en produccion.')

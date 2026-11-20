@@ -38,6 +38,7 @@ export class VisitsFacade extends RecordState<Visit> {
       action === 'cancelar' ? { motivo } : {},
     );
     await this.get(id);
-    if (result) this.success.set('Estado de visita confirmado por Django.');
+    if (result)
+      this.success.set(action === 'cancelar' ? 'Visita cancelada.' : 'Atención finalizada.');
   }
 }

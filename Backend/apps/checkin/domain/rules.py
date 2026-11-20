@@ -3,7 +3,7 @@ from django.conf import settings
 from django.utils import timezone
 from apps.catalogo.services import CatalogConflict
 
-PUBLIC_MESSAGE = 'Si los datos son válidos, tu solicitud de llegada se ha recibido. Acércate a recepción para confirmarla.'
+PUBLIC_MESSAGE = 'Si los datos son válidos y tu ficha está habilitada, tu visita queda registrada automáticamente. Si es tu primera visita, completa tus datos y acepta el aviso.'
 
 
 def pending_is_current(state, requested_at, expires_before):

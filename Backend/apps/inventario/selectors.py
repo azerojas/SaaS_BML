@@ -99,6 +99,9 @@ def stock(params):
         articles = articles.filter(tipo=params['tipo'])
     qs = search(m.VwStockActual.objects.filter(pk__in=articles.values('pk')), params, ['nombre', 'unidad'])
     qs = qs.annotate(tiene_movimientos=Exists(m.MovimientosInventario.objects.filter(articulo_id=OuterRef('pk'))))
+    depleted = boolean_param(params, 'agotados')
+    if depleted is not None:
+        qs = qs.filter(existencia__lte=0) if depleted else qs.filter(existencia__gt=0)
     for param, field in [('bajo_minimo', 'bajo_minimo'), ('sin_movimientos', 'tiene_movimientos')]:
         value = boolean_param(params, param)
         if value is not None:

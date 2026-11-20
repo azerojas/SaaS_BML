@@ -77,7 +77,7 @@ base={'DJANGO_ENV':'staging','DJANGO_SETTINGS_MODULE':'config.settings.staging',
     'MFA_ENCRYPTION_KEY':key,'ALLOWED_HOSTS':'localhost,127.0.0.1','CSRF_TRUSTED_ORIGINS':'https://localhost:8443',
     'CORS_ALLOWED_ORIGINS':'','DB_SSLMODE':'verify-full','DB_SSLROOTCERT':'/run/ca.crt','TRUST_PROXY_HTTPS':'True',
     'PRIVACY_NOTICE_URL':'https://localhost:8443/privacy/','PRIVACY_NOTICE_VERSION':'local-ficticio-v1',
-    'PUBLIC_CHECKIN_URL':'https://localhost:8443/api/public/checkin/','CHECKIN_PRIVACY_NOTICE_URL':'https://localhost:8443/privacy/',
+    'PUBLIC_CHECKIN_URL':'https://localhost:8443/registro/','CHECKIN_PRIVACY_NOTICE_URL':'https://localhost:8443/privacy/',
     'CHECKIN_PRIVACY_NOTICE_VERSION':'local-ficticio-v1','CHECKIN_DEMO_MODE':'False','ALLOW_MAINTENANCE_JOBS':'True','PORT':'8000',
     'PGSSLMODE':'verify-full','PGSSLROOTCERT':'/run/ca.crt'}
 for purpose in roles:

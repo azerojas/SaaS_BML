@@ -1,3 +1,4 @@
+import { UnsavedForm } from '../../../core/forms/unsaved-form';
 import { ChangeDetectionStrategy, Component, inject, input, OnInit, signal } from '@angular/core';
 import { FormArray, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,7 +11,15 @@ import { Loading } from '../../../shared/ui/loading';
 import { Button } from '../../../shared/ui/button';
 @Component({
   selector: 'bm-recipe-editor',
-  imports: [ReactiveFormsModule, MatButtonModule, ReferencePicker, Alert, Loading, Button],
+  imports: [
+    ReactiveFormsModule,
+    MatButtonModule,
+    ReferencePicker,
+    Alert,
+    Loading,
+    Button,
+    UnsavedForm,
+  ],
   providers: [MaterialsFacade],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<section class="surface section-gap">
@@ -32,7 +41,7 @@ import { Button } from '../../../shared/ui/button';
       <bm-loading />
     } @else if (facade.record()) {
       @if (canEdit()) {
-        <form [formGroup]="form" (ngSubmit)="save()">
+        <form bmUnsavedForm [formGroup]="form" (ngSubmit)="save()">
           <div class="recipe-list">
             @for (row of rows.controls; track row; let index = $index) {
               <div class="recipe-row">

@@ -65,6 +65,38 @@ class ScheduleInput(StrictInput):
     hora_fin=LocalTime()
 
 
+class DailyIdentifier(StrictInput):
+    profesional_id=serializers.IntegerField(min_value=1,allow_null=True,required=False,default=None)
+    fecha=ISODate()
+
+
+class DayInterval(StrictInput):
+    inicio=LocalTime()
+    fin=LocalTime()
+    cupo_unico=Boolean(required=False)
+
+
+class DailyScheduleInput(DailyIdentifier):
+    franjas=DayInterval(many=True,allow_empty=True,max_length=12)
+
+    def validate(self, attrs):
+        from apps.agenda.infrastructure import repositories as repo
+        single=self.context.get('single_slots') or (attrs.get('profesional_id') and repo.requires_personal_slots(attrs['profesional_id']))
+        result=[]
+        for item in sorted(attrs['franjas'],key=lambda row:row['inicio']):
+            if single:
+                item['cupo_unico']=True
+            if item['inicio']>=item['fin']:
+                raise serializers.ValidationError('Cada franja debe terminar después de su inicio; no cruza medianoche.')
+            if result and item['inicio']<result[-1]['fin']:
+                raise serializers.ValidationError('Las franjas de un mismo día no se pueden superponer.')
+            if result and item['inicio']==result[-1]['fin'] and not item.get('cupo_unico') and not result[-1].get('cupo_unico'):
+                result[-1]['fin']=item['fin']
+            else:result.append(dict(item))
+        attrs['franjas']=result
+        return attrs
+
+
 class BlockInput(StrictInput):
     profesional_id=serializers.IntegerField(min_value=1,allow_null=True,required=False)
     inicio_en=ZonedDateTime()
@@ -137,15 +169,36 @@ class ConfigInput(StrictInput):
 
 
 class AvailabilityInput(StrictInput):
+    cita_id=serializers.IntegerField(min_value=1,required=False)
     fecha=ISODate()
     profesional_id=serializers.IntegerField(min_value=1)
     servicios=serializers.ListField(child=serializers.IntegerField(min_value=1),min_length=1,max_length=10)
 
 
 class ProfessionalOutput(serializers.ModelSerializer):
+    publicacion_propia=serializers.SerializerMethodField()
+    def get_publicacion_propia(self,obj):
+        if hasattr(obj,'publicacion_propia'):
+            return obj.publicacion_propia
+        from apps.agenda.infrastructure.repositories import requires_personal_slots
+        return requires_personal_slots(obj.pk)
+    servicios = serializers.SerializerMethodField()
+    def get_servicios(self, obj):
+        return [row.servicio_id for row in obj.profesionalservicios_set.all()]
+    def to_representation(self, instance):
+        result = super().to_representation(instance)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if not user or not user.has_perm('agenda.manage_professionals'):
+            for field in ('comision_porcentaje', 'telefono', 'visible_reservas'):
+                result.pop(field, None)
+        if not user or not user.has_perm('agenda.assign_users'):
+            result.pop('usuario_id', None)
+        return result
+
     class Meta:
         model=m.Profesionales
-        fields=['id','nombres','apellidos','telefono','usuario_id','comision_porcentaje','visible_reservas','activa']
+        fields=['id','nombres','apellidos','telefono','usuario_id','comision_porcentaje','visible_reservas','activa','servicios','publicacion_propia']
 
 
 class ScheduleOutput(serializers.ModelSerializer):
@@ -161,10 +214,16 @@ class BlockOutput(serializers.ModelSerializer):
 
 
 class AppointmentOutput(serializers.ModelSerializer):
+    clienta_nombre=serializers.SerializerMethodField()
+    servicios_nombres=serializers.SerializerMethodField()
+    def get_clienta_nombre(self,obj):
+        return f'{obj.clienta.nombres} {obj.clienta.apellidos}'.strip()
+    def get_servicios_nombres(self,obj):
+        return [row.servicio.nombre for row in obj.citaservicios_set.all()]
     class Meta:
         model=m.Citas
         # Even private serializers omit token/code; not needed by the authenticated calendar.
-        fields=['id','clienta_id','profesional_id','visita_id','origen','estado','inicio_en','fin_en','duracion_total_minutos','precio_total','anticipo_requerido','expira_en','confirmada_en','cancelada_en','cancelada_por','motivo_cancelacion','notas']
+        fields=['id','clienta_id','clienta_nombre','servicios_nombres','profesional_id','visita_id','origen','estado','inicio_en','fin_en','duracion_total_minutos','precio_total','anticipo_requerido','expira_en','confirmada_en','cancelada_en','cancelada_por','motivo_cancelacion','notas']
 
 
 class AppointmentServiceOutput(serializers.ModelSerializer):

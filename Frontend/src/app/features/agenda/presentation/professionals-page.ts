@@ -1,3 +1,4 @@
+import { UnsavedForm } from '../../../core/forms/unsaved-form';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -13,7 +14,7 @@ import { Alert } from '../../../shared/ui/alert';
 import { throwError } from 'rxjs';
 @Component({
   selector: 'bm-professionals-page',
-  imports: [ReactiveFormsModule, RouterLink, AgendaFeedback, ServicePicker, Alert],
+  imports: [ReactiveFormsModule, RouterLink, AgendaFeedback, ServicePicker, Alert, UnsavedForm],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<a routerLink="/admin/agenda">Volver a agenda</a>
     <h1>Profesionales, especialidades y horarios</h1>
@@ -35,7 +36,7 @@ import { throwError } from 'rxjs';
       <button type="button" (click)="newProfessional()" [disabled]="intent.busy()">
         Nuevo profesional
       </button>
-      <form class="surface" [formGroup]="form" (ngSubmit)="save()">
+      <form bmUnsavedForm class="surface" [formGroup]="form" (ngSubmit)="save()">
         <h2>{{ selected() ? 'Editar profesional #' + selected()!.id : 'Alta de profesional' }}</h2>
         <label>Nombres<input formControlName="names" maxlength="120" /></label
         ><label>Apellidos<input formControlName="surnames" maxlength="120" /></label
@@ -108,7 +109,7 @@ import { throwError } from 'rxjs';
         }
       </ul>
       @if (session.hasPermission('agenda.manage_schedules')) {
-        <form class="surface" [formGroup]="scheduleForm" (ngSubmit)="saveSchedule()">
+        <form bmUnsavedForm class="surface" [formGroup]="scheduleForm" (ngSubmit)="saveSchedule()">
           <h3>{{ scheduleId() ? 'Editar horario #' + scheduleId() : 'Nuevo horario' }}</h3>
           <label
             >Día de semana<select formControlName="day">
@@ -124,7 +125,7 @@ import { throwError } from 'rxjs';
             Preparar nuevo horario
           </button>
         </form>
-        <form class="surface" [formGroup]="retireForm">
+        <form bmUnsavedForm class="surface" [formGroup]="retireForm">
           <label
             >Motivo de retiro de horario<input
               formControlName="reason"
@@ -149,7 +150,7 @@ export class ProfessionalsPage {
   readonly scheduleId = signal<number | null>(null);
   readonly weekdays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   readonly rows = new ReportResource<Professional[]>(() =>
-    this.session.hasPermission('agenda.manage_professionals')
+    this.session.hasPermission('agenda.view_agenda')
       ? this.api.all<Professional>('profesionales/')
       : throwError(
           () =>

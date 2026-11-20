@@ -65,7 +65,13 @@ export class LoginPage {
     if (!this.session.isAuthenticated()) await this.session.restore(true);
     if (this.session.isAuthenticated())
       await this.router.navigateByUrl(
-        safeReturnUrl(this.route.snapshot.queryParamMap.get('returnUrl')),
+        safeReturnUrl(
+          this.route.snapshot.queryParamMap.get('returnUrl') ||
+            (this.session.hasPermission('agenda.view_own_agenda') &&
+            !this.session.hasPermission('agenda.view_agenda')
+              ? '/admin/agenda'
+              : '/admin'),
+        ),
         { replaceUrl: true },
       );
   }

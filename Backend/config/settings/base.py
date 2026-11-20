@@ -64,6 +64,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'apps.operaciones.presentation.middleware.RequestSecurityMiddleware',
     'config.middleware.PrivateApiCacheMiddleware',
+    'config.middleware.FrontendContractMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -194,6 +195,9 @@ CHECKIN_IP_DAY_LIMIT = env.int('CHECKIN_IP_DAY_LIMIT', default=200)
 CHECKIN_PHONE_LIMIT = env.int('CHECKIN_PHONE_LIMIT', default=6)
 AGENDA_PUBLIC_READ_ENABLED = env.bool('AGENDA_PUBLIC_READ_ENABLED', default=True)
 AGENDA_PUBLIC_REQUEST_LIMIT = env.int('AGENDA_PUBLIC_REQUEST_LIMIT', default=60)
+AGENDA_PUBLIC_WRITE_ENABLED = env.bool('AGENDA_PUBLIC_WRITE_ENABLED', default=False)
+AGENDA_REQUIRE_DEPOSITS = env.bool('AGENDA_REQUIRE_DEPOSITS', default=False)
+AGENDA_REQUEST_HOLD_MINUTES = env.int('AGENDA_REQUEST_HOLD_MINUTES', default=30)
 MFA_REQUIRED = False
 MFA_OPTIONAL_ENABLED = False
 MFA_ENCRYPTION_KEY = env('MFA_ENCRYPTION_KEY', default='')
@@ -205,6 +209,7 @@ ALLOW_LOCAL_ALERT_TESTS = False
 DATA_UPLOAD_MAX_MEMORY_SIZE = 65536
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 200
 FILE_UPLOAD_MAX_MEMORY_SIZE = 65536
+CATALOG_PHOTO_MAX_BYTES = 5 * 1024 * 1024
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 SECURE_REFERRER_POLICY = 'no-referrer'

@@ -25,10 +25,8 @@ export const INVENTORY_ROUTES: Routes = [
   },
   {
     path: 'alertas',
-    title: 'Reposición · Lasheo',
-    canActivate: [permissionGuard],
-    data: { permission: 'negocio.view_articulos' },
-    loadComponent: () => import('./presentation/stock-alerts').then((m) => m.StockAlerts),
+    pathMatch: 'full',
+    redirectTo: '/admin/compras',
   },
   {
     path: 'ajustes/nuevo',

@@ -1,6 +1,7 @@
 import logging
 import time
 import uuid
+import re
 from django.conf import settings
 from django.http import JsonResponse
 
@@ -15,7 +16,11 @@ class RequestSecurityMiddleware:
         try:
             size=int(request.META.get('CONTENT_LENGTH') or 0)
         except (TypeError,ValueError):size=-1
-        if size<0 or size>settings.DATA_UPLOAD_MAX_MEMORY_SIZE:
+        photo = (request.method in ('POST', 'PATCH') and request.content_type == 'multipart/form-data'
+                 and re.fullmatch(r'/api/admin/catalogo/servicios/(?:[1-9]\d*/)?', request.path))
+        limit = (settings.CATALOG_PHOTO_MAX_BYTES + settings.DATA_UPLOAD_MAX_MEMORY_SIZE + 2048
+                 if photo else settings.DATA_UPLOAD_MAX_MEMORY_SIZE)
+        if size<0 or size>limit:
             response=JsonResponse({'code':'request_too_large','detail':'Solicitud demasiado grande.'},status=413)
         else:response=self.get_response(request)
         response['X-Request-ID']=request.request_id

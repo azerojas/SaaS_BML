@@ -12,11 +12,18 @@ export class CatalogApi {
   get(kind: Kind, id: number) {
     return this.api.get<CatalogRecord>(BASE + kind + '/' + id + '/');
   }
-  save(kind: Kind, data: unknown, id?: number) {
+  save(kind: Kind, data: unknown, id?: number, photo?: File | null) {
+    let body = data;
+    if (photo) {
+      const upload = new FormData();
+      upload.append('datos', JSON.stringify(data));
+      upload.append('foto', photo);
+      body = upload;
+    }
     return this.api.write<CatalogRecord>(
       id ? 'PATCH' : 'POST',
       BASE + kind + '/' + (id ? id + '/' : ''),
-      data,
+      body,
     );
   }
   active(kind: Kind, id: number, active: boolean) {

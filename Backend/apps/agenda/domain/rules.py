@@ -3,6 +3,7 @@ from decimal import Decimal,localcontext
 from zoneinfo import ZoneInfo
 from apps.finanzas.domain.money import money,quantize
 from .errors import AgendaError
+from django.conf import settings
 
 ZONE=ZoneInfo('America/Lima')
 ACTIVE=('PENDIENTE_PAGO','PROGRAMADA','CONFIRMADA')
@@ -38,6 +39,22 @@ def horizon(start,cfg,now):
         raise AgendaError('BOOKING_OUTSIDE_WINDOW','Inicio fuera de la anticipacion minima/maxima configurada.','invalid')
 
 
+def published_window(start,end,hours,step,aligned=True):
+    """A fixed cupo starts exactly once and reserves the whole published window."""
+    for row in hours:
+        day,begin,finish=row[:3]
+        single=len(row)>3 and row[3]
+        if fits(start,end,[(day,begin,finish)],step,aligned=aligned):
+            if single:
+                lower=datetime.combine(start.astimezone(ZONE).date(),begin,ZONE)
+                upper=datetime.combine(start.astimezone(ZONE).date(),finish,ZONE)
+                if start!=lower:
+                    continue
+                return lower,upper
+            return start,end
+    return None
+
+
 def amounts(services,cfg):
     with localcontext() as context:
         context.prec=48
@@ -45,7 +62,8 @@ def amounts(services,cfg):
         duration=sum(row.duracion_minutos or 0 for row in services)
         if any(not row.duracion_minutos or row.duracion_minutos<=0 for row in services) or not 0<duration<=720:
             raise AgendaError('INVALID_DURATION','Servicios requieren duracion positiva; maximo total720 minutos.','invalid')
-        required=quantize(total*cfg.anticipo_porcentaje/Decimal('100')) if any(row.requiere_anticipo for row in services) else Decimal('0.00')
-        if any(row.requiere_anticipo for row in services) and total>0 and required==0:
+        requires_deposit=settings.AGENDA_REQUIRE_DEPOSITS and any(row.requiere_anticipo for row in services)
+        required=quantize(total*cfg.anticipo_porcentaje/Decimal('100')) if requires_deposit else Decimal('0.00')
+        if requires_deposit and total>0 and required==0:
             raise AgendaError('DEPOSIT_POLICY_UNSET','Un servicio exige anticipo pero el porcentaje/monto configurado resulta cero.')
         return total,duration,required

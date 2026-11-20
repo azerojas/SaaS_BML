@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { SessionStore } from '../../../core/auth/application/session-store';
 import { InventoryFacade } from '../application/inventory-facade';
@@ -7,18 +6,25 @@ import { OperationsNav } from '../../../shared/ui/operations-nav';
 import { Alert } from '../../../shared/ui/alert';
 import { Loading } from '../../../shared/ui/loading';
 import { Pager } from '../../../shared/ui/pager';
-import { StockCards, MovementCards } from './stock-ui';
+import { StockRows, MovementCards } from './stock-ui';
 import { ReferencePicker } from '../../catalogo/presentation/reference-picker';
+import { MatDialog } from '@angular/material/dialog';
+import { firstValueFrom } from 'rxjs';
+import { CatalogForm } from '../../catalogo/presentation/catalog-form';
+import { CatalogApi } from '../../catalogo/infrastructure/catalog-api';
+import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
+import { RecordState } from '../../../shared/application/operation-state';
+import { CatalogRecord } from '../../catalogo/domain/catalog';
+import { StockItem } from '../domain/inventory';
 @Component({
   selector: 'bm-stock-list',
   imports: [
-    RouterLink,
     MatButtonModule,
     OperationsNav,
     Alert,
     Loading,
     Pager,
-    StockCards,
+    StockRows,
     MovementCards,
     ReferencePicker,
   ],
@@ -30,12 +36,6 @@ import { ReferencePicker } from '../../catalogo/presentation/reference-picker';
         <p class="eyebrow">CUIDA LO QUE HACE POSIBLE TU TRABAJO</p>
         <h1>Inventario</h1>
         <p>Existencias oficiales de PostgreSQL, sin sumar unidades diferentes.</p>
-      </div>
-      <div class="form-actions">
-        <button mat-stroked-button (click)="refresh()">Actualizar inventario</button>
-        @if (canAdjust()) {
-          <a mat-flat-button routerLink="ajustes/nuevo">Registrar ajuste</a>
-        }
       </div>
     </header>
     @if (facade.summaryError(); as error) {
@@ -60,34 +60,10 @@ import { ReferencePicker } from '../../catalogo/presentation/reference-picker';
       <bm-loading label="Consultando resumen…" />
     }
     <section class="surface">
+      @if (actions.error(); as error) {
+        <bm-alert [message]="error" />
+      }
       <div class="filters">
-        <div>
-          <label for="stock-search">Buscar existencias</label
-          ><input
-            id="stock-search"
-            type="search"
-            maxlength="200"
-            placeholder="Nombre o unidad"
-            (input)="filter('search', $event)"
-          />
-        </div>
-        <div>
-          <label for="stock-type">Tipo de artículo</label
-          ><select id="stock-type" (change)="filter('tipo', $event)">
-            <option value="">Todos</option>
-            <option value="INSUMO">Insumo</option>
-            <option value="VENTA">Venta</option>
-            <option value="AMBOS">Ambos</option>
-          </select>
-        </div>
-        <div>
-          <label for="stock-active">Estado del artículo</label
-          ><select id="stock-active" (change)="filter('activo', $event)">
-            <option value="true">Activos</option>
-            <option value="false">Inactivos</option>
-            <option value="all">Todos</option>
-          </select>
-        </div>
         <div>
           <label for="stock-low">Situación de stock</label
           ><select id="stock-low" (change)="filter('bajo_minimo', $event)">
@@ -96,10 +72,7 @@ import { ReferencePicker } from '../../catalogo/presentation/reference-picker';
             <option value="false">Sobre el mínimo</option>
           </select>
         </div>
-      </div>
-      @if (session.hasPermission('negocio.view_categoriasarticulo')) {
-        <details class="filter-extra">
-          <summary>Filtrar por categoría</summary>
+        @if (session.hasPermission('negocio.view_categoriasarticulo')) {
           <bm-reference-picker
             id="stock-category"
             label="Categoría de artículo"
@@ -107,8 +80,8 @@ import { ReferencePicker } from '../../catalogo/presentation/reference-picker';
             [value]="String(state.query()['categoria'] ?? '')"
             (changed)="category($event)"
           />
-        </details>
-      }
+        }
+      </div>
       @if (state.error(); as error) {
         <bm-alert [message]="error" /><button mat-button (click)="state.reload()">
           Reintentar stock
@@ -117,7 +90,13 @@ import { ReferencePicker } from '../../catalogo/presentation/reference-picker';
       @if (state.loading()) {
         <bm-loading label="Consultando existencias…" />
       } @else {
-        <bm-stock-cards [rows]="state.rows()" />
+        <bm-stock-rows
+          [rows]="state.rows()"
+          [canEdit]="session.hasPermission('negocio.change_articulos')"
+          [busy]="actions.busy()"
+          (edited)="edit($event)"
+          (removed)="remove($event)"
+        />
       }
       <bm-pager
         [count]="state.count()"
@@ -138,6 +117,9 @@ import { ReferencePicker } from '../../catalogo/presentation/reference-picker';
     </p>`,
 })
 export class StockList {
+  private readonly dialog = inject(MatDialog);
+  private readonly catalog = inject(CatalogApi);
+  readonly actions = new RecordState<CatalogRecord>();
   readonly facade = inject(InventoryFacade);
   readonly state = this.facade.stock;
   readonly session = inject(SessionStore);
@@ -146,12 +128,6 @@ export class StockList {
   constructor() {
     this.state.filter({ activo: 'true' });
     void this.facade.overview();
-  }
-  canAdjust() {
-    return (
-      this.session.hasPermission('negocio.add_movimientosinventario') &&
-      this.session.hasPermission('negocio.view_movimientosinventario')
-    );
   }
   filter(key: string, event: Event) {
     this.setFilter(key, (event.target as HTMLInputElement).value);
@@ -169,5 +145,41 @@ export class StockList {
   refresh() {
     this.state.reload();
     void this.facade.overview();
+  }
+  async edit(row: StockItem) {
+    if (!this.session.hasPermission('negocio.change_articulos')) return;
+    const saved = await firstValueFrom(
+      this.dialog
+        .open(CatalogForm, {
+          data: { kind: 'articulos', id: row.articulo_id },
+          width: '800px',
+          maxWidth: '96vw',
+          disableClose: true,
+          autoFocus: 'first-heading',
+        })
+        .afterClosed(),
+    );
+    if (saved) this.refresh();
+  }
+  async remove(row: StockItem) {
+    if (!this.session.hasPermission('negocio.change_articulos') || this.actions.busy()) return;
+    const confirmed = await firstValueFrom(
+      this.dialog
+        .open(ConfirmDialog, {
+          data: {
+            title: '¿Eliminar artículo?',
+            description:
+              row.nombre +
+              ' se retirará de los artículos activos. Se conservan sus compras y movimientos.',
+            confirm: 'Eliminar',
+          },
+        })
+        .afterClosed(),
+    );
+    if (
+      confirmed &&
+      (await this.actions.run(this.catalog.active('articulos', row.articulo_id, false)))
+    )
+      this.refresh();
   }
 }

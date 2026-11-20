@@ -46,6 +46,9 @@ export class ReportsFacade {
     this.filters.set(filters);
     this.page.set(1);
     this.reload();
+    if (this.selected() !== 'overview' && this.available.includes('overview')) {
+      this.overview.load(analyticsQuery(this.filters()));
+    }
   }
   select(report: Report) {
     if (!this.available.includes(report)) return;

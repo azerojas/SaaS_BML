@@ -23,7 +23,7 @@ describe('Selector de disponibilidad: respuestas obsoletas', () => {
     fixture.componentInstance.search();
     expect(all).not.toHaveBeenCalled();
     expect(availability).not.toHaveBeenCalled();
-    expect(fixture.componentInstance.professionals.error()).toContain('bloqueada');
+    expect(fixture.componentInstance.professionals.error()).toContain('permiso');
     fixture.destroy();
   });
   it('cambiar fecha invalida selección y cancela respuesta anterior', async () => {
@@ -35,7 +35,7 @@ describe('Selector de disponibilidad: respuestas obsoletas', () => {
         {
           provide: AgendaApi,
           useValue: {
-            all: () => of([{ id: 7, nombres: 'Equipo', apellidos: 'Prueba' }]),
+            all: () => of([{ id: 7, nombres: 'Equipo', apellidos: 'Prueba', servicios: [2] }]),
             get: () => of({ servicios: [2] }),
             availability,
           },
@@ -49,7 +49,7 @@ describe('Selector de disponibilidad: respuestas obsoletas', () => {
     const component = fixture.componentInstance;
     component.form.patchValue({ professional: '7', date: '2026-12-01' });
     component.search();
-    expect(availability).toHaveBeenCalledWith('2026-12-01', 7, [2]);
+    expect(availability).toHaveBeenCalledWith('2026-12-01', 7, [2], undefined);
     component.form.controls.date.setValue('2026-12-02');
     response.next({ slots: [{ inicio_en: '2026-12-01T09:00:00-05:00' }] } as Availability);
     expect(component.availability.data()).toBeNull();

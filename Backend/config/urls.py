@@ -15,13 +15,15 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 from django.conf import settings
 from apps.operaciones.presentation import views as operations
 from apps.operaciones.presentation.auth_views import verify_mfa
 from apps.catalogo.urls import admin_router, public_router
+from apps.catalogo.views import UploadedPhotoView
 
 urlpatterns = [
+    re_path(r'^api/catalogo/fotos/(?P<photo_id>[0-9a-f]{32})\.jpg$', UploadedPhotoView.as_view(), name='catalog-photo'),
     *([path('admin/', admin.site.urls)] if settings.ADMIN_ENABLED else []),
     path('health/live', operations.live, name='health-live'),
     path('health/ready', operations.ready, name='health-ready'),

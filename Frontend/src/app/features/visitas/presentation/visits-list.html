@@ -1,0 +1,253 @@
+<div class="reception-page">
+  <header class="reception-heading">
+    <div class="heading-copy">
+      <div class="live-line">
+        <span class="live-pill"><span class="status-dot"></span> Recepción de visitas</span>
+        @if (updatedAt() && !facade.list.error()) {
+          <span class="updated"><bm-icon name="clock" /> Actualizado a las {{ updatedAt() }}</span>
+        }
+      </div>
+      <h1>Gestión de Visitas &amp; Recepción</h1>
+      <p>
+        Una bienvenida cuidada, cada atención en su lugar. Acompaña a tus clientas de principio a
+        fin.
+      </p>
+    </div>
+    <div class="heading-actions">
+      <span class="today"><bm-icon name="calendar" /> {{ todayLabel }}</span>
+      <div class="quick-actions">
+        <button
+          class="action icon-action"
+          type="button"
+          aria-label="Actualizar visitas"
+          title="Actualizar visitas"
+          (click)="refresh()"
+          [disabled]="facade.list.loading()"
+        >
+          <bm-icon name="clock" />
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <section class="kpi-grid" aria-label="Resumen de visitas del período seleccionado">
+    <article class="kpi">
+      <div class="kpi-label">
+        <h2>Visitas del período</h2>
+        <span class="kpi-icon"><bm-icon name="calendar" /></span>
+      </div>
+      <div class="kpi-value">{{ totals()?.total ?? '—' }} <span>visitas registradas</span></div>
+      <div class="kpi-note"><span class="status-dot"></span> Resumen del rango seleccionado</div>
+    </article>
+    <article class="kpi green">
+      <div class="kpi-label">
+        <h2>En atención</h2>
+        <span class="kpi-icon"><bm-icon name="clock" /></span>
+      </div>
+      <div class="kpi-value">{{ totals()?.open ?? '—' }} <span>visitas abiertas</span></div>
+      <div class="kpi-note"><span class="small-pill">Acompañamiento en curso</span></div>
+    </article>
+    <article class="kpi">
+      <div class="kpi-label">
+        <h2>Visitas finalizadas</h2>
+        <span class="kpi-icon"><bm-icon name="check" /></span>
+      </div>
+      <div class="kpi-value">
+        {{ totals()?.finished ?? '—' }} <span>atenciones completadas</span>
+      </div>
+      <div class="kpi-note">{{ totals()?.cancelled ?? '—' }} canceladas en el período</div>
+    </article>
+    <article class="kpi green">
+      <div class="kpi-label">
+        <h2>Estancia media</h2>
+        <span class="kpi-icon"><bm-icon name="chart" /></span>
+      </div>
+      <div class="kpi-value">
+        {{ facade.list.loading() || facade.list.error() ? '—' : (averageDuration() ?? '—') }}
+        <span>minutos por visita</span>
+      </div>
+      <div class="kpi-note">Visitas finalizadas de esta página</div>
+    </article>
+  </section>
+
+  <form class="date-filters" [formGroup]="form" (ngSubmit)="filter()">
+    <div class="date-range-title"><bm-icon name="calendar" /><span>Consultar período</span></div>
+    <div class="date-filter-field">
+      <span>Desde</span><bm-date-field ariaLabel="Desde" formControlName="desde" />
+    </div>
+    <div class="date-filter-field">
+      <span>Hasta</span><bm-date-field ariaLabel="Hasta" formControlName="hasta" />
+    </div>
+  </form>
+  @if (dateError(); as error) {
+    <bm-alert [message]="error" />
+  }
+
+  <div class="board-toolbar">
+    <label class="search-box"
+      ><bm-icon name="search" /><input
+        type="search"
+        aria-label="Buscar visitas en esta página"
+        placeholder="Buscar por nombre, ficha o código de visita…"
+        [value]="search()"
+        (input)="search.set($any($event.target).value)"
+    /></label>
+    <div class="status-tabs" role="group" aria-label="Filtrar visitas por estado">
+      @for (tab of tabs; track tab.value) {
+        <button
+          type="button"
+          [class.active]="(facade.list.query()['estado'] || '') === tab.value"
+          [attr.aria-pressed]="(facade.list.query()['estado'] || '') === tab.value"
+          (click)="selectStatus(tab.value)"
+        >
+          {{ tab.label }} <span>{{ tabCount(tab.value) }}</span>
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="reception-grid">
+    <section
+      class="visits-board"
+      aria-label="Tablero de visitas"
+      [attr.aria-busy]="facade.list.loading()"
+    >
+      <div class="board-title">
+        <h2>El recorrido de tus clientas</h2>
+        <span>{{ facade.list.count() }} resultados · búsqueda en esta página</span>
+      </div>
+      @if (facade.list.error(); as error) {
+        <bm-alert [message]="error" />
+      }
+      @if (facade.list.loading()) {
+        <bm-loading />
+      } @else if (!facade.list.error()) {
+        @for (row of visibleRows(); track row.id) {
+          <article
+            class="visit-card"
+            [attr.data-visit-id]="row.id"
+            [class.finished]="row.estado === 'FINALIZADA'"
+            [class.cancelled]="row.estado === 'CANCELADA'"
+          >
+            <div class="visit-top">
+              <div class="client-info">
+                <div class="avatar" aria-hidden="true">{{ initials(row) }}</div>
+                <div>
+                  <h3>
+                    <button type="button" class="visit-name" (click)="openVisit(row)">
+                      {{ clientName(row) }}
+                    </button>
+                  </h3>
+                  <p class="visit-reference">
+                    <strong>#VIS-{{ row.id }}</strong
+                    ><span>·</span> Ficha #{{ row.clienta_id }}
+                  </p>
+                </div>
+              </div>
+              <div class="visit-status">
+                <span class="state-pill"
+                  ><span class="status-dot"></span>{{ statusLabel(row) }}</span
+                >
+                <p>Inicio: {{ date(row.inicio_en) }}</p>
+              </div>
+            </div>
+            <div class="visit-context">
+              <span><bm-icon name="users" /> Visita registrada</span>
+              @if (row.fin_en) {
+                <span><bm-icon name="check" /> Fin: {{ date(row.fin_en) }}</span>
+              } @else {
+                <span class="ongoing"><bm-icon name="clock" /> Atención en curso</span>
+              }
+            </div>
+            <div class="visit-actions">
+              <div class="card-links">
+                <button
+                  type="button"
+                  class="action"
+                  [class.primary]="row.estado === 'ABIERTA'"
+                  [class.secondary]="row.estado !== 'ABIERTA'"
+                  (click)="openVisit(row)"
+                >
+                  <bm-icon name="receipt" />
+                  {{
+                    row.estado === 'ABIERTA'
+                      ? 'Gestionar atención y cobro'
+                      : 'Ver detalle de visita'
+                  }}
+                </button>
+              </div>
+              @if (session.hasPermission('negocio.view_clientas')) {
+                <a class="text-link client-link" [routerLink]="['/admin/clientas', row.clienta_id]"
+                  >Ficha de la clienta <bm-icon name="arrow"
+                /></a>
+              }
+            </div>
+          </article>
+        } @empty {
+          <div class="empty-state">
+            <span class="empty-icon"><bm-icon name="sparkles" /></span>
+            <h3>{{ search() ? 'No encontramos esa visita' : 'Un espacio listo para recibir' }}</h3>
+            <p>
+              {{
+                search()
+                  ? 'Prueba con otro nombre o código en esta página.'
+                  : 'No hay visitas para este período y estado. Las nuevas visitas se registran al escanear el QR del local.'
+              }}
+            </p>
+          </div>
+        }
+      }
+      <bm-pager
+        [count]="facade.list.count()"
+        [page]="Number(facade.list.query()['page'])"
+        [busy]="facade.list.loading()"
+        (changed)="facade.list.page($event)"
+      />
+    </section>
+
+    <aside class="reception-sidebar" aria-label="Información de recepción">
+      <section class="side-panel">
+        <div class="panel-heading">
+          <h2><bm-icon name="box" /> Monitor de Cabinas</h2>
+          <span class="neutral-pill">Sin configurar</span>
+        </div>
+        <p class="panel-description">
+          Organización de espacios y disponibilidad para cada atención.
+        </p>
+        <div class="cabins-placeholder">
+          <span class="room-icon"><bm-icon name="box" /></span>
+          <h3>Tus espacios, en un solo lugar</h3>
+          <p>Aún no hay cabinas configuradas para mostrar su ocupación.</p>
+        </div>
+        @if (session.hasPermission('agenda.view_agenda')) {
+          <a class="panel-link" routerLink="/admin/agenda"
+            >Consultar agenda de profesionales <bm-icon name="arrow"
+          /></a>
+        }
+      </section>
+      <section class="side-panel hospitality">
+        <div class="panel-heading">
+          <h2><bm-icon name="sparkles" /> Protocolo Sensorial</h2>
+          <span class="lounge-label">Lounge</span>
+        </div>
+        <p class="panel-description">Pequeños detalles para una bienvenida especial.</p>
+        <div class="hospitality-row">
+          <span>Infusiones de bienvenida</span><span>Pendiente de configurar</span>
+        </div>
+        <div class="hospitality-row">
+          <span>Toallas de cortesía</span><span>Pendiente de configurar</span>
+        </div>
+        <div class="hospitality-row">
+          <span>Ambiente del lounge</span><span>Pendiente de configurar</span>
+        </div>
+        <div class="staff-note">
+          <bm-icon name="shield" />
+          <p>
+            <strong>Recordatorio de recepción</strong>Las visitas se registran con el QR del local.
+            Revisa la ficha de la clienta para acompañar cada atención.
+          </p>
+        </div>
+      </section>
+    </aside>
+  </div>
+</div>

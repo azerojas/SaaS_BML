@@ -1,15 +1,17 @@
-import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import { untracked } from '@angular/core';
+import { DateField } from '../../../shared/ui/date-field';
+import { ChangeDetectionStrategy, Component, effect, inject, input, output } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { AnalyticsFilters, Preset } from '../domain/analytics';
 import { presetFilters, validateFilters } from '../domain/periods';
 @Component({
   selector: 'bm-report-filters',
-  imports: [ReactiveFormsModule, MatButtonModule],
+  imports: [DateField, ReactiveFormsModule, MatButtonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<form class="surface report-filters" [formGroup]="form" (ngSubmit)="apply()">
     <fieldset [disabled]="disabled()">
-      <legend>Período y agrupación</legend>
+      <legend>{{ showGrouping() ? 'Período y agrupación' : 'Período' }}</legend>
       <div class="report-filter-grid">
         <div>
           <label for="analytics-preset">Período</label
@@ -22,30 +24,38 @@ import { presetFilters, validateFilters } from '../domain/periods';
             <option value="custom">Rango personalizado</option>
           </select>
         </div>
-        <label
-          >Desde (Lima)<input
-            type="date"
+        <div class="calendar-field-label">
+          <span>Desde (Lima)</span
+          ><bm-date-field
+            ariaLabel="Desde (Lima)"
             formControlName="desde"
-            [readOnly]="form.controls.preset.value !== 'custom'" /></label
-        ><label
-          >Hasta inclusive (Lima)<input
-            type="date"
+            [readOnly]="form.controls.preset.value !== 'custom'"
+          />
+        </div>
+        <div class="calendar-field-label">
+          <span>Hasta inclusive (Lima)</span
+          ><bm-date-field
+            ariaLabel="Hasta inclusive (Lima)"
             formControlName="hasta"
             [readOnly]="form.controls.preset.value !== 'custom'"
-        /></label>
-        <div>
-          <label for="analytics-granularity">Agrupar evolución</label
-          ><select id="analytics-granularity" formControlName="granularidad">
-            <option value="day">Por día</option>
-            <option value="week">Por semana</option>
-            <option value="month">Por mes</option>
-          </select>
+          />
         </div>
+        @if (showGrouping()) {
+          <div>
+            <label for="analytics-granularity">Agrupar evolución</label
+            ><select id="analytics-granularity" formControlName="granularidad">
+              <option value="day">Por día</option>
+              <option value="week">Por semana</option>
+              <option value="month">Por mes</option>
+            </select>
+          </div>
+        }
         <button mat-flat-button type="submit">Aplicar período</button>
       </div>
+      <ng-content select="[dashboard-controls]" />
+      <ng-content select="[filter-summary]" />
       <p class="muted">
-        America/Lima · PEN · Inicio y fin incluidos en pantalla. El servidor recibe el día siguiente
-        como límite final exclusivo.
+        Fechas de Lima · Moneda: soles (PEN).
       </p>
       @if (error) {
         <p role="alert">{{ error }}</p>
@@ -54,6 +64,14 @@ import { presetFilters, validateFilters } from '../domain/periods';
   </form>`,
 })
 export class ReportFilters {
+  readonly initialPreset = input<Preset>('day');
+  readonly showGrouping = input(true);
+  constructor() {
+    effect(() => {
+      const preset = this.initialPreset();
+      untracked(() => this.form.patchValue(presetFilters(preset), { emitEvent: false }));
+    });
+  }
   readonly disabled = input(false);
   readonly applied = output<AnalyticsFilters>();
   readonly form = inject(FormBuilder).nonNullable.group(presetFilters('day'));

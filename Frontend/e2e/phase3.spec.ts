@@ -61,35 +61,58 @@ async function stock(page: Page, id: number) {
 }
 test('proveedores reales: alta, edición, estado, búsqueda y paginación', async ({ page }) => {
   await enter(page);
-  await page.goto('/admin/proveedores');
+  await page.goto('/admin/inventario');
+  const tabs = page.getByRole('navigation', { name: 'Operación de inventario', exact: true });
+  await tabs.getByRole('link', { name: 'Proveedores', exact: true }).click();
+  await expect(tabs.getByRole('link')).toHaveCount(4);
+  await expect(tabs.getByRole('link', { name: 'Proveedores', exact: true })).toHaveClass(
+    /selected/,
+  );
   await expect(page.locator('.record-row')).toHaveCount(20);
   await page.getByRole('button', { name: 'Siguiente', exact: true }).click();
   await expect(page.locator('.record-row')).toHaveCount(2);
-  await page.getByRole('link', { name: 'Nuevo proveedor', exact: true }).click();
+  await page.getByRole('button', { name: 'Nuevo proveedor', exact: true }).click();
+  await expect(
+    page.getByRole('dialog').getByRole('heading', { name: 'Identificación', exact: true }),
+  ).toBeVisible();
   await page.locator('#field-nombre').fill('Distribuidora creada E2E');
   await page.locator('#field-ruc').fill('SYNTHETIC-CREATED');
   await page.locator('#field-telefono').fill('966123456');
   await page.locator('#field-email').fill('provider@example.test');
   await page.getByRole('button', { name: 'Guardar proveedor', exact: true }).click();
-  await expect(page).toHaveURL(/\/admin\/proveedores\/\d+$/);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page).toHaveURL(/\/admin\/proveedores$/);
+  await page.getByLabel('Buscar proveedores', { exact: true }).fill('SYNTHETIC-CREATED');
+  await page
+    .getByRole('button', { name: 'Editar proveedor Distribuidora creada E2E', exact: true })
+    .click();
   await expect(page.locator('#field-telefono')).toHaveValue('+51966123456');
   await page.locator('#field-nombre').fill('Distribuidora editada E2E');
   await page.getByRole('button', { name: 'Guardar proveedor', exact: true }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'Proveedor guardado' })).toBeVisible();
-  await page.getByRole('button', { name: 'Desactivar proveedor', exact: true }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Desactivar', exact: true }).click();
-  await expect(
-    page.getByRole('button', { name: 'Reactivar proveedor', exact: true }),
-  ).toBeVisible();
-  await page.getByRole('button', { name: 'Reactivar proveedor', exact: true }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Reactivar', exact: true }).click();
-  await expect(
-    page.getByRole('button', { name: 'Desactivar proveedor', exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page
+    .getByRole('button', { name: 'Visualizar proveedor Distribuidora editada E2E', exact: true })
+    .click();
+  await expect(page.getByRole('dialog')).toContainText('provider@example.test');
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: '.artifacts/supplier-preview-mobile.png', animations: 'disabled' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole('button', { name: 'Cerrar detalle', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Eliminar proveedor Distribuidora editada E2E', exact: true })
+    .click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Eliminar', exact: true }).click();
+  await expect(page.locator('.record-row')).toContainText('Inactivo');
   await page.goto('/admin/proveedores');
   await page.getByLabel('Buscar proveedores', { exact: true }).fill('SYNTHETIC-CREATED');
   await expect(page.locator('.record-row')).toHaveCount(1);
   await expect(page.locator('.record-row')).toContainText('Distribuidora editada E2E');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(tabs.getByRole('link', { name: 'Existencias', exact: true })).toBeVisible();
+  await tabs.getByRole('link', { name: 'Compras', exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/compras$/);
+  await expect(tabs.getByRole('link')).toHaveCount(4);
 });
 test('compra real: borrador, PATCH, recepción y stock consultado sin doble entrada', async ({
   page,
@@ -342,31 +365,68 @@ test('stock paginado, filtros, detalle, movimientos y alertas reflejan PostgreSQ
 }) => {
   await enter(page);
   await page.goto('/admin/inventario');
-  await expect(page.locator('.stock-card')).toHaveCount(20);
+  await expect(page.locator('.stock-list-row')).toHaveCount(20);
   await page.getByRole('button', { name: 'Siguiente', exact: true }).click();
-  await expect(page.locator('.stock-card')).not.toHaveCount(20);
-  await page.getByLabel('Buscar existencias', { exact: true }).fill('ZZ insumo E2E 24');
-  await expect(page.locator('.stock-card')).toHaveCount(1);
-  await page.locator('.stock-card').click();
+  await expect(page.locator('.stock-list-row')).not.toHaveCount(20);
+  const stockId = await page
+    .locator('.stock-list-row')
+    .filter({ hasText: 'ZZ insumo E2E 24' })
+    .getAttribute('data-article-id');
+  await page.goto('/admin/inventario/articulos/' + stockId);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('ZZ insumo E2E 24');
   await expect(
     page.getByText('No aparece en recetas de tratamientos.', { exact: true }),
   ).toBeVisible();
   await page.goto('/admin/inventario/alertas');
-  await page.getByLabel('Buscar artículos por reponer', { exact: true }).fill('ZZ insumo E2E 24');
-  await expect(page.locator('.stock-card')).toHaveCount(1);
-  await expect(page.locator('.stock-card')).toContainText('Sin movimientos');
+  await expect(page).toHaveURL(/\/admin\/compras$/);
+  const replenishment = page.getByRole('region', { name: 'Reposición', exact: true });
+  await expect(replenishment.locator('.stock-list-row')).toHaveCount(20);
+  await replenishment.getByRole('button', { name: 'Siguiente', exact: true }).click();
+  const depleted = replenishment.locator('.stock-list-row').filter({ hasText: 'ZZ insumo E2E 24' });
+  await expect(depleted).toContainText('Sin movimientos');
+  await expect(page.locator('bm-stock-cards')).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(depleted).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.goto('/admin/inventario/movimientos');
   await page.getByLabel('Motivo', { exact: true }).selectOption('COMPRA');
   await expect(page.locator('.movement-row').first()).toBeVisible();
+  const movement = page.locator('.movement-row').first();
+  const quantity = (await movement.locator('strong').first().textContent())!
+    .replace(/\s+/g, ' ')
+    .trim();
+  const movementUrl = page.url();
+  await movement.getByRole('button', { name: /^Visualizar movimiento / }).click();
+  const preview = page.getByRole('dialog');
+  await expect(preview.getByRole('heading', { name: /^Movimiento #\d+$/ })).toBeVisible();
+  await expect(preview).toContainText(quantity);
+  await expect(preview).toContainText('Motivo');
+  await expect(preview).toContainText('Fecha y hora · Lima');
+  await expect(page).toHaveURL(movementUrl);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include('.cdk-overlay-container')
+        .withTags(['wcag2a', 'wcag2aa'])
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await page.screenshot({ path: '.artifacts/movement-preview-mobile.png', animations: 'disabled' });
+  await preview.getByRole('button', { name: 'Cerrar detalle', exact: true }).click();
+  await expect(preview).toHaveCount(0);
   await page
     .getByLabel('Buscar movimientos por artículo', { exact: true })
     .fill('no-coincide-phase3');
   await expect(
     page.getByRole('heading', { name: 'No hay movimientos registrados para estos filtros' }),
   ).toBeVisible();
+  const purchase = await post(page, '/api/compras/', payload('COMPRA-LISTADO-E2E'), randomUUID());
+  expect(purchase.status()).toBe(201);
+  const created = await purchase.json();
+  expect((await post(page, '/api/compras/' + created.id + '/recibir/', {})).status()).toBe(200);
   await page.goto('/admin/compras');
-  await page.getByLabel('Buscar por documento', { exact: true }).fill('COMPRA-UI-E2E');
+  await page.getByLabel('Buscar por documento', { exact: true }).fill('COMPRA-LISTADO-E2E');
   await expect(page.locator('.purchase-row')).toHaveCount(1);
   await page.getByLabel('Estado de compra', { exact: true }).selectOption('RECIBIDA');
   await expect(page.locator('.purchase-row')).toHaveCount(1);
@@ -390,7 +450,8 @@ test('permisos, CSRF y cuerpos numéricos inválidos se rechazan en Django', asy
   });
   expect(csrf.status()).toBe(403);
   expect((await csrf.json()).code).toBe('csrf');
-  await page.getByRole('button', { name: 'Cerrar sesión', exact: true }).click();
+  await page.getByRole('button', { name: /Mi cuenta/ }).click();
+  await page.getByRole('menuitem', { name: 'Cerrar sesión', exact: true }).click();
   await page
     .getByRole('dialog')
     .getByRole('button', { name: 'Cerrar sesión', exact: true })
@@ -416,7 +477,7 @@ for (const width of [360, 390, 768, 1280])
       await page.goto(path);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       if (path === '/admin/inventario')
-        await expect(page.locator('.stock-card').first()).toBeVisible();
+        await expect(page.locator('.stock-list-row').first()).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,
       );
@@ -426,7 +487,7 @@ for (const width of [360, 390, 768, 1280])
       ).toEqual([]);
     }
     await page.goto('/admin/inventario');
-    await expect(page.locator('.stock-card').first()).toBeVisible();
+    await expect(page.locator('.stock-list-row').first()).toBeVisible();
     if (width === 1280 || width === 390)
       await page.screenshot({ path: '.artifacts/inventario-' + width + '.png', fullPage: true });
   });

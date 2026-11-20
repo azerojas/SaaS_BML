@@ -1,12 +1,13 @@
 from datetime import datetime,timedelta
 import re
-from django.db.models import Q
+from django.db.models import Q, Exists, OuterRef
 from django.utils.dateparse import parse_date
 from django.shortcuts import get_object_or_404
 from apps.agenda.domain.errors import AgendaError
 from apps.agenda.domain.rules import ZONE
 from apps.agenda.infrastructure import repositories as repo
 from negocio import models as m
+from apps.agenda.models import CalendarArchive
 
 
 def integer(params,name):
@@ -32,21 +33,29 @@ def filter_dates(qs,params,field):
 
 def list_rows(kind,params):
     source={
-        'profesionales':lambda:m.Profesionales.objects.all().order_by('apellidos','nombres','id'),
+        'profesionales':lambda:m.Profesionales.objects.annotate(publicacion_propia=Exists(repo.personal_slot_professionals().filter(pk=OuterRef('pk')))).prefetch_related('profesionalservicios_set').order_by('apellidos','nombres','id'),
         'horarios':lambda:m.HorariosProfesional.objects.all().order_by('profesional_id','dia_semana','hora_inicio','id'),
         'bloqueos':lambda:m.BloqueosAgenda.objects.all().order_by('inicio_en','id'),
-        'citas':lambda:repo.appointments().order_by('inicio_en','id'),
+        'citas':lambda:repo.appointments().exclude(pk__in=CalendarArchive.objects.values('appointment_id')).order_by('inicio_en','id'),
         'lista-espera':lambda:m.ListaEspera.objects.select_related('servicio').order_by('fecha_deseada','id'),
     }
     qs=source[kind]()
-    permitted={'page','page_size'}
+    permitted={'page','page_size','excluir_profesional_id'}
     if kind=='profesionales':permitted|={'activa','servicio_id'}
     else:permitted|={'profesional_id'}
-    if kind in ('citas','lista-espera'):permitted|={'clienta_id','estado','desde','hasta'}
+    if kind in ('citas','lista-espera'):permitted|={'clienta_id','estado','desde','hasta','servicio_id'}
     if kind=='bloqueos':permitted|={'desde','hasta'}
     if set(params)-permitted:raise AgendaError('INVALID_FILTER','Filtro desconocido o no admitido.','invalid')
+    if 'excluir_profesional_id' in params:
+        identifier=integer(params,'excluir_profesional_id')
+        qs=qs.exclude(**{('pk' if kind=='profesionales' else 'profesional_id'):identifier})
+    if kind in ('citas','lista-espera') and 'servicio_id' in params:
+        field='citaservicios__servicio_id' if kind=='citas' else 'servicio_id'
+        qs=qs.filter(**{field:integer(params,'servicio_id')}).distinct()
     for key in ('profesional_id','clienta_id'):
-        if key in permitted and key in params:qs=qs.filter(**{key:integer(params,key)})
+        if key in permitted and key in params:
+            value=integer(params,key)
+            qs=qs.filter(Q(profesional_id=value)|Q(profesional_id__isnull=True)) if kind=='bloqueos' and key=='profesional_id' else qs.filter(**{key:value})
     if kind=='profesionales':
         if 'activa' in params:
             if params['activa'] not in ('true','false'):raise AgendaError('INVALID_FILTER','activa requiere true/false.','invalid')

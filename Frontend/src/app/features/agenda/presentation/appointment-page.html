@@ -1,0 +1,317 @@
+<div class="detail-page">
+  <a class="back-link" routerLink="/admin/agenda"><bm-icon name="arrow" />Volver a agenda</a>
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">AGENDA · LASHEO</p>
+      <h1>Detalle de cita</h1>
+      <p>La información y el seguimiento de tu reserva, en un solo lugar.</p>
+    </div>
+    @if (state.record(); as cita) {
+      @if (
+        session.hasPermission('agenda.manage_appointments') &&
+        active(cita.estado) &&
+        !cita.visita_id
+      ) {
+        <button
+          class="primary-action"
+          type="button"
+          [disabled]="intent.busy() || !!intent.pending()"
+          (click)="openReschedule(rescheduleTemplate)"
+        >
+          <bm-icon name="calendar" />Reprogramar cita
+        </button>
+      }
+    }
+  </header>
+  <bm-agenda-feedback (done)="load()" />
+  @if (state.loading()) {
+    <p class="loading" role="status">Cargando cita…</p>
+  }
+  @if (state.error(); as error) {
+    <bm-alert [message]="error" /><button type="button" (click)="load()">Reintentar cita</button>
+  }
+  @if (state.record(); as cita) {
+    <section class="appointment-summary panel">
+      <div class="summary-title">
+        <div>
+          <p class="eyebrow">RESUMEN DE LA RESERVA</p>
+          <h2>
+            Cita #{{ cita.id }} · <span class="sr-only">{{ cita.estado }}</span
+            ><span aria-hidden="true">{{ statusLabel(cita.estado) }}</span>
+          </h2>
+        </div>
+        <span class="status-badge" [attr.data-state]="cita.estado"
+          ><i></i>{{ statusLabel(cita.estado) }}</span
+        >
+      </div>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <bm-icon name="users" />
+          <div>
+            <span>Clienta</span
+            ><strong>{{ cita.clienta_nombre || 'Clienta #' + cita.clienta_id }}</strong>
+          </div>
+        </div>
+        <div class="summary-item">
+          <bm-icon name="sparkles" />
+          <div>
+            <span>Especialista</span><strong>{{ professionalName(cita.profesional_id) }}</strong>
+          </div>
+        </div>
+        <div class="summary-item">
+          <bm-icon name="calendar" />
+          <div>
+            <span>Fecha y hora · Lima</span><strong>{{ localDateTime(cita.inicio_en) }}</strong
+            ><small
+              >Hasta {{ localDateTime(cita.fin_en) }} ·
+              {{ cita.duracion_total_minutos }} minutos</small
+            >
+          </div>
+        </div>
+        <div class="summary-item">
+          <bm-icon name="receipt" />
+          <div>
+            <span>Total de la reserva</span
+            ><strong class="total">{{ money(cita.precio_total) }}</strong
+            ><small>{{ cita.origen === 'MANUAL' ? 'Registrada por el salón' : cita.origen }}</small>
+          </div>
+        </div>
+      </div>
+      @if (cita.notas) {
+        <div class="reservation-note">
+          <strong>Notas de la cita</strong>
+          <p>{{ cita.notas }}</p>
+        </div>
+      }
+      @if (cita.visita_id && session.hasPermission('finanzas.view_finance')) {
+        <a class="visit-link" [routerLink]="['/admin/visitas', cita.visita_id]"
+          >Abrir visita #{{ cita.visita_id }}<bm-icon name="arrow"
+        /></a>
+      }
+    </section>
+
+    <div class="detail-columns">
+      <div class="main-column">
+        <section class="panel">
+          <div class="section-heading">
+            <span class="section-icon"><bm-icon name="sparkles" /></span>
+            <div>
+              <h2>Servicios reservados</h2>
+              <p>Precios y duración guardados al reservar.</p>
+            </div>
+          </div>
+          <ul class="service-list">
+            @for (service of cita.servicios; track service.id; let index = $index) {
+              <li>
+                <div>
+                  <strong>{{
+                    cita.servicios_nombres?.[index] || 'Servicio #' + service.servicio_id
+                  }}</strong
+                  ><span>{{ service.duracion_minutos }} minutos</span>
+                </div>
+                <strong>{{ money(service.precio_snapshot) }}</strong>
+              </li>
+            }
+          </ul>
+          <div class="service-total">
+            <span>Total de servicios</span><strong>{{ money(cita.precio_total) }}</strong>
+          </div>
+        </section>
+        @if (session.hasPermission('finanzas.view_finance')) {
+          <bm-advances-panel [cita]="cita" [refresh]="refresh()" (changed)="load()" />
+        }
+        <section class="panel history-panel">
+          <div class="section-heading">
+            <span class="section-icon"><bm-icon name="clock" /></span>
+            <div>
+              <h2>Historial</h2>
+              <p>Los movimientos de esta cita.</p>
+            </div>
+          </div>
+          <ol class="timeline">
+            @for (event of cita.historial; track event.id) {
+              <li>
+                <time>{{ localDateTime(event.cambiado_en) }}</time
+                ><strong>
+                  @if (event.estado_anterior) {
+                    {{ statusLabel(event.estado_anterior) }} <span aria-hidden="true">→</span>
+                  }
+                  {{ statusLabel(event.estado_nuevo) }}</strong
+                >
+                <p>{{ event.detalle }}</p>
+              </li>
+            } @empty {
+              <li>Sin movimientos registrados.</li>
+            }
+          </ol>
+        </section>
+      </div>
+      <aside class="side-column" aria-label="Acciones de la cita">
+        @if (session.hasPermission('agenda.manage_appointments')) {
+          <section class="panel">
+            <div class="section-heading">
+              <span class="section-icon"><bm-icon name="edit" /></span>
+              <div>
+                <h2>Gestionar cita</h2>
+                <p>Actualiza el estado de la atención.</p>
+              </div>
+            </div>
+            <form bmUnsavedForm [formGroup]="actionForm" (ngSubmit)="action()">
+              <label
+                >Acción<select formControlName="action" aria-label="Acción">
+                  <option value="confirmar">Confirmar</option>
+                  <option value="cancelar">Cancelar</option>
+                  <option value="no-asistio">Registrar inasistencia</option>
+                  <option value="completar">
+                    Completar con visita finalizada y venta confirmada
+                  </option>
+                </select></label
+              >
+              <label
+                >Motivo de cancelación o inasistencia<textarea
+                  formControlName="reason"
+                  maxlength="250"
+                  rows="3"
+                  placeholder="Describe el motivo de este cambio"
+                ></textarea>
+              </label>
+              @if (session.hasPermission('agenda.override_policy')) {
+                <label class="check-field"
+                  ><input type="checkbox" formControlName="override" />Autorizar cancelación fuera
+                  de plazo</label
+                >
+              }
+              <label class="check-field"
+                ><input type="checkbox" formControlName="reviewed" />He revisado la acción y sus
+                consecuencias.</label
+              >
+              <button
+                type="submit"
+                [disabled]="
+                  intent.busy() ||
+                  !actionForm.controls.reviewed.value ||
+                  !actionAllowed(cita.estado)
+                "
+              >
+                Ejecutar acción de cita
+              </button>
+            </form>
+          </section>
+        }
+        @if (
+          session.hasPermission('agenda.link_arrivals') && active(cita.estado) && !cita.visita_id
+        ) {
+          <section class="panel">
+            <div class="section-heading">
+              <span class="section-icon"><bm-icon name="check" /></span>
+              <div>
+                <h2>Vincular llegada confirmada</h2>
+                <p>Conecta la cita con la visita de la clienta.</p>
+              </div>
+            </div>
+            <form bmUnsavedForm [formGroup]="arrivalForm" (ngSubmit)="link()">
+              <label
+                >ID de llegada confirmada<input type="number" min="1" formControlName="arrival"
+              /></label>
+              <label class="check-field"
+                ><input type="checkbox" formControlName="reviewed" />Confirmé presencialmente la
+                identidad de esta clienta.</label
+              >
+              <button type="submit" [disabled]="intent.busy() || arrivalForm.invalid">
+                Vincular llegada a cita
+              </button>
+              <p class="helper-text">
+                La llegada debe corresponder a esta clienta y al horario de su cita. Solo se vincula
+                una visita.
+              </p>
+            </form>
+          </section>
+        }
+      </aside>
+    </div>
+  }
+</div>
+
+<ng-template #rescheduleTemplate>
+  <div class="reschedule-modal">
+    <header class="modal-heading">
+      <span class="section-icon"><bm-icon name="calendar" /></span>
+      <div>
+        <p class="eyebrow">CAMBIO DE HORARIO</p>
+        <h2 mat-dialog-title>Reprogramar cita</h2>
+      </div>
+      <button
+        mat-icon-button
+        type="button"
+        mat-dialog-close
+        aria-label="Cerrar reprogramación"
+        [disabled]="intent.busy() || !!intent.pending()"
+      >
+        <bm-icon name="close" />
+      </button>
+    </header>
+    <mat-dialog-content>
+      @if (state.record(); as cita) {
+        <div class="current-booking">
+          <span>HORARIO ACTUAL · CITA #{{ cita.id }}</span
+          ><strong>{{ localDateTime(cita.inicio_en) }}</strong>
+          <p>
+            {{ professionalName(cita.profesional_id) }} · {{ cita.duracion_total_minutos }} minutos
+            · {{ money(cita.precio_total) }}
+          </p>
+        </div>
+        <p class="helper-text">
+          Elige una especialista y un nuevo horario. Se conservan los servicios y precios de la
+          reserva.
+        </p>
+        <bm-agenda-feedback (done)="finishReschedule()" />
+        <bm-slot-picker
+          [appointmentId]="cita.id"
+          [services]="ids()"
+          [refresh]="refresh()"
+          [preferredProfessional]="cita.profesional_id"
+          [disabled]="intent.busy() || !!intent.pending()"
+          (picked)="choice.set($event)"
+        />
+        @if (choice(); as chosen) {
+          <div class="selected-booking" role="status">
+            <bm-icon name="check" />
+            <div>
+              <span>Nuevo horario seleccionado</span
+              ><strong>{{ localDateTime(chosen.slot.inicio_en) }}</strong>
+              <p>{{ professionalName(chosen.availability.profesional_id) }}</p>
+            </div>
+          </div>
+        }
+        <form
+          bmUnsavedForm
+          id="reschedule-form"
+          [formGroup]="rescheduleForm"
+          (ngSubmit)="reschedule()"
+        >
+          <label
+            >Motivo de reprogramación<input
+              formControlName="reason"
+              minlength="8"
+              maxlength="250"
+              placeholder="Escribe el motivo del cambio"
+          /></label>
+          <label class="check-field"
+            ><input type="checkbox" formControlName="reviewed" />Confirmo el nuevo profesional y
+            horario.</label
+          >
+        </form>
+      }
+    </mat-dialog-content>
+    <mat-dialog-actions align="end"
+      ><button
+        mat-flat-button
+        type="submit"
+        form="reschedule-form"
+        [disabled]="intent.busy() || !!intent.pending() || !choice() || rescheduleForm.invalid"
+      >
+        {{ intent.busy() ? 'Guardando…' : 'Guardar reprogramación' }}
+      </button></mat-dialog-actions
+    >
+  </div>
+</ng-template>

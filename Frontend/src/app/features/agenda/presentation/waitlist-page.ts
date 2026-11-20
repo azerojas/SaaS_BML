@@ -1,3 +1,5 @@
+import { DateField } from '../../../shared/ui/date-field';
+import { UnsavedForm } from '../../../core/forms/unsaved-form';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -20,6 +22,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 @Component({
   selector: 'bm-waitlist-page',
   imports: [
+    DateField,
     ReactiveFormsModule,
     RouterLink,
     ClientPicker,
@@ -27,6 +30,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     SlotPicker,
     AgendaFeedback,
     Alert,
+    UnsavedForm,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<a routerLink="/admin/agenda">Volver a agenda</a>
@@ -59,7 +63,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
           }
         </section>
         @if (session.hasPermission('agenda.manage_waitlist') && active(entry.estado)) {
-          <form class="surface" [formGroup]="actionForm">
+          <form bmUnsavedForm class="surface" [formGroup]="actionForm">
             <label
               >Motivo de cancelación de espera<input
                 formControlName="reason"
@@ -121,9 +125,14 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
       }
     } @else {
       <form class="surface agenda-filters" [formGroup]="filter" (ngSubmit)="load()">
-        <label>Desde<input type="date" formControlName="from" /></label
-        ><label>Hasta (exclusiva)<input type="date" formControlName="to" /></label
-        ><label
+        <div class="calendar-field-label">
+          <span>Desde</span><bm-date-field ariaLabel="Desde" formControlName="from" />
+        </div>
+        <div class="calendar-field-label">
+          <span>Hasta (exclusiva)</span
+          ><bm-date-field ariaLabel="Hasta (exclusiva)" formControlName="to" />
+        </div>
+        <label
           >Estado de espera<select formControlName="state">
             <option value="">Todos</option>
             @for (state of states; track state) {
@@ -171,9 +180,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
           Clienta: {{ client()?.nombres || 'Sin seleccionar' }} · Servicio:
           {{ service()?.nombre || 'Sin seleccionar' }}
         </p>
-        <form class="surface" [formGroup]="form" (ngSubmit)="create()">
-          <label>Fecha deseada<input type="date" formControlName="date" /></label
-          ><label
+        <form bmUnsavedForm class="surface" [formGroup]="form" (ngSubmit)="create()">
+          <div class="calendar-field-label">
+            <span>Fecha deseada</span
+            ><bm-date-field ariaLabel="Fecha deseada" formControlName="date" />
+          </div>
+          <label
             >ID de profesional preferido (opcional)<input
               type="number"
               min="1"
@@ -333,6 +345,10 @@ export class WaitlistPage {
     }
   }
   done(result: MutationResult) {
+    if (result.cita_id || result.espera_id) {
+      this.form.markAsPristine();
+      this.actionForm.markAsPristine();
+    }
     if (result.cita_id) void this.router.navigate(['/admin/agenda/citas', result.cita_id]);
     else if (result.espera_id)
       void this.router.navigate(['/admin/agenda/lista-espera', result.espera_id]);

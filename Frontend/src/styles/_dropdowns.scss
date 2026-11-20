@@ -1,0 +1,133 @@
+// Keep native form bindings and keyboard behavior while sharing the catalog design.
+html select:not([multiple]) {
+  min-height: 46px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--ink) 5%, transparent);
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+html select:not([multiple]):hover:not(:disabled) {
+  border-color: var(--forest);
+}
+html select:not([multiple]):focus-visible {
+  border-color: var(--forest);
+  outline: 2px solid var(--forest);
+  outline-offset: -2px;
+}
+html select:not([multiple]):disabled {
+  cursor: default;
+  opacity: 0.6;
+  box-shadow: none;
+}
+
+@supports (appearance: base-select) {
+  html select:not([multiple]),
+  html select:not([multiple])::picker(select) {
+    appearance: base-select;
+  }
+  html select:not([multiple]) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-inline: 12px 16px;
+  }
+  html select:not([multiple])::picker-icon {
+    content: '';
+    width: 7px;
+    height: 7px;
+    flex-shrink: 0;
+    margin-inline-start: auto;
+    border: solid var(--forest);
+    border-width: 0 1.5px 1.5px 0;
+    transform: translateY(-2px) rotate(45deg);
+  }
+  html select:not([multiple]):open::picker-icon {
+    transform: translateY(2px) rotate(225deg);
+  }
+  html select:not([multiple])::picker(select) {
+    box-sizing: border-box;
+    max-width: calc(100vw - 24px);
+    max-height: min(360px, 60dvh);
+    margin-block: 6px;
+    padding: 0.45rem;
+    overflow: auto;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 0 16px 40px color-mix(in srgb, var(--ink) 16%, transparent);
+    font-family: 'Manrope Variable', sans-serif;
+  }
+  html select:not([multiple]) option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 46px;
+    margin: 0.15rem 0;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 10px;
+    color: var(--ink);
+    font-size: 0.86rem;
+    font-weight: 550;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+  }
+  html select:not([multiple]) option:hover,
+  html select:not([multiple]) option:checked {
+    background: var(--sage);
+    color: var(--forest);
+  }
+  html select:not([multiple]) option:focus-visible {
+    background: var(--surface-low);
+    outline: 2px solid var(--forest);
+    outline-offset: -2px;
+  }
+  html select:not([multiple]) option:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+  html select:not([multiple]) option::checkmark {
+    order: 1;
+    margin-inline-start: auto;
+    color: var(--forest);
+  }
+}
+
+// Material overlays also render outside their fields.
+.mat-mdc-select-panel,
+.mat-mdc-autocomplete-panel {
+  padding: 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper);
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--ink) 16%, transparent);
+}
+:is(.mat-mdc-select-panel, .mat-mdc-autocomplete-panel) .mat-mdc-option {
+  min-height: 46px;
+  margin: 0.15rem 0;
+  border-radius: 10px;
+  color: var(--ink);
+  font-family: 'Manrope Variable', sans-serif;
+  font-size: 0.86rem;
+}
+:is(.mat-mdc-select-panel, .mat-mdc-autocomplete-panel) .mdc-list-item__primary-text {
+  color: inherit;
+  font-weight: 550;
+}
+:is(.mat-mdc-select-panel, .mat-mdc-autocomplete-panel) .mat-mdc-option:hover,
+:is(.mat-mdc-select-panel, .mat-mdc-autocomplete-panel) .mdc-list-item--selected {
+  background: var(--sage);
+  color: var(--forest);
+}
+:is(.mat-mdc-select-panel, .mat-mdc-autocomplete-panel)
+  .mat-mdc-option-active:not(.mdc-list-item--selected) {
+  background: var(--surface-low);
+}

@@ -16,8 +16,8 @@ export class CatalogFacade extends RecordState<CatalogRecord> {
   get(id: number) {
     return this.load(this.api.get(this.kind(), id));
   }
-  async save(data: unknown, id?: number) {
-    const saved = await this.run(this.api.save(this.kind(), data, id));
+  async save(data: unknown, id?: number, photo?: File | null) {
+    const saved = await this.run(this.api.save(this.kind(), data, id, photo));
     if (saved) this.record.set(saved);
     return saved;
   }

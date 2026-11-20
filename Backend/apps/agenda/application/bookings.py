@@ -6,7 +6,7 @@ from apps.checkin.application import commands as checkin
 from apps.checkin.application.selectors import provisional
 from apps.finanzas.application.audit import record
 from apps.agenda.domain.errors import AgendaError
-from apps.agenda.domain.rules import ACTIVE,ZONE,amounts,horizon,fits
+from apps.agenda.domain.rules import ACTIVE,ZONE,amounts,horizon,published_window
 from apps.agenda.infrastructure import repositories as repo
 from .common import deposited,set_state,annotate_history
 from .expiry import expire_locked
@@ -14,20 +14,28 @@ from .expiry import expire_locked
 
 def validate_slot(professional_id,client_id,start,end,cfg,exclude=None):
     horizon(start,cfg,timezone.now())
-    if not fits(start,end,repo.hours(professional_id),cfg.intervalo_slots_minutos):
+    window=published_window(start,end,repo.booking_windows(professional_id,start.astimezone(ZONE).date()),cfg.intervalo_slots_minutos)
+    if window is None:
         raise AgendaError('SLOT_NOT_AVAILABLE','El intervalo no pertenece al horario/alineacion de slots.')
-    if repo.collision(professional_id,start,end,client_id,exclude):
+    if repo.collision(professional_id,*window,client_id,exclude,client_interval=(start,end)):
         raise AgendaError('SLOT_NOT_AVAILABLE','El intervalo ya no esta disponible.')
 
 
-def create(command,actor):
-    if command.origen not in ('MANUAL','TELEFONO'):
+def create(command,actor,*,public=False,quote=None):
+    if command.origen not in (('ONLINE',) if public else ('MANUAL','TELEFONO')):
         raise AgendaError('CHANNEL_NOT_ENABLED','Solo reservas privadas MANUAL/TELEFONO; sin WhatsApp ni alta publica.','invalid')
     expire_locked(actor)
     cfg=repo.config(lock=True)
     client=get_object_or_404(m.Clientas.objects.select_for_update(),pk=command.clienta_id,activa=True)
     if provisional(client):raise AgendaError('CLIENT_NOT_VERIFIED','La ficha QR debe validarse antes de reservar.')
-    _,services=repo.eligible(command.profesional_id,command.servicios)
+    _,services=repo.eligible(command.profesional_id,command.servicios,public=public)
+    if quote is not None:
+        snapshots={item['servicio_id']:item for item in quote}
+        for service in services:
+            from decimal import Decimal
+            service.precio_base=Decimal(snapshots[service.pk]['precio_snapshot'])
+            service.duracion_minutos=snapshots[service.pk]['duracion_minutos']
+            service.requiere_anticipo=False
     total,duration,required=amounts(services,cfg)
     end=command.inicio_en+timedelta(minutes=duration)
     validate_slot(command.profesional_id,client.pk,command.inicio_en,end,cfg)
@@ -37,11 +45,13 @@ def create(command,actor):
     obj=m.Citas.objects.create(clienta_id=client.pk,profesional_id=command.profesional_id,origen=command.origen,
         estado='PENDIENTE_PAGO' if required else 'PROGRAMADA',inicio_en=command.inicio_en,fin_en=end,duracion_total_minutos=duration,
         precio_total=total,anticipo_requerido=required,expira_en=now+timedelta(minutes=cfg.minutos_expiracion_pago) if required else None,
-        notas=command.notas,creada_por_id=actor.pk)
+        notas=command.notas,creada_por_id=actor.pk if actor else None)
     m.CitaServicios.objects.bulk_create([m.CitaServicios(cita_id=obj.pk,servicio_id=row.pk,orden=index+1,
         duracion_minutos=row.duracion_minutos,precio_snapshot=row.precio_base) for index,row in enumerate(services)])
     annotate_history(obj,actor,'Reserva privada con precios/duracion del servidor.')
-    record(actor,obj,'CREAR_CITA_AGENDA',{'servicios':list(command.servicios),'anticipo_requerido':str(required)})
+    from .common import system_audit
+    (lambda action,data:record(actor,obj,action,data) if actor else system_audit(obj,action,data))(
+        'CREAR_CITA_AGENDA',{'servicios':list(command.servicios),'anticipo_requerido':str(required),'canal':command.origen})
     return result(obj)
 
 

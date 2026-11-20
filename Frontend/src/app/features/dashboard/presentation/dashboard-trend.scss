@@ -1,0 +1,150 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+.chart-description {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 18px;
+  line-height: 1.6;
+}
+.line-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.line-legend .legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: var(--surface-low);
+  font: inherit;
+  font-size: 10px;
+  color: var(--muted);
+}
+.line-legend .legend-item:not(.inactive) {
+  border-color: var(--line);
+  color: var(--ink);
+}
+.line-legend i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.plot {
+  width: 100%;
+  overflow: hidden;
+}
+.plot svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 190px;
+}
+.plot text {
+  font:
+    11px 'Dashboard Jakarta',
+    sans-serif;
+  fill: var(--muted);
+}
+.chart-empty {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--surface-low);
+  line-height: 1.7;
+}
+.chart-detail {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  margin-top: 16px;
+}
+.chart-detail h3 {
+  font-size: 11px;
+  color: var(--forest);
+  padding: 8px 0;
+}
+@media (max-width: 500px) {
+  .plot svg {
+    min-height: 145px;
+  }
+}
+
+.line-legend {
+  gap: 10px;
+  border-bottom: 1px solid var(--surface-high);
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+}
+.line-legend .legend-item {
+  background: transparent;
+  padding: 8px 10px;
+  min-width: 100px;
+  border-radius: 8px;
+  align-items: flex-start;
+}
+.line-legend i {
+  border-radius: 3px;
+  width: 10px;
+  height: 10px;
+  margin-top: 3px;
+}
+.line-legend .legend-item span {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.line-legend strong {
+  display: block;
+  font-size: 14px;
+  letter-spacing: 0;
+  color: var(--ink);
+  margin-top: 5px;
+  font-weight: 700;
+}
+.line-legend .legend-item.inactive {
+  background: var(--surface-low);
+}
+.line-legend .legend-item.inactive i {
+  opacity: 0.4;
+}
+.chart-insight {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--surface-low);
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.chart-insight strong {
+  color: var(--forest);
+  font-weight: 600;
+}
+.revenue-bar:hover {
+  opacity: 0.8;
+}
+@media (max-width: 520px) {
+  .line-legend {
+    gap: 4px;
+  }
+  .line-legend .legend-item {
+    min-width: 0;
+    flex: 1;
+    padding: 6px;
+  }
+  .line-legend strong {
+    font-size: 12px;
+  }
+}

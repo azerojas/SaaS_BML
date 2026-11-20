@@ -1,6 +1,14 @@
 import { expect, Page, APIRequestContext } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { createHmac } from 'node:crypto';
+import { resolve } from 'node:path';
+export const backendPython =
+  process.env['BM_E2E_PYTHON'] ||
+  resolve(
+    process.platform === 'win32'
+      ? '../Backend/.venv/Scripts/python.exe'
+      : '../Backend/.venv/bin/python',
+  );
 interface TestUser {
   username: string;
   password: string;
@@ -63,7 +71,9 @@ interface Fixture {
     | 'clients'
     | 'inventory'
     | 'exporter'
-    | 'agenda_reader',
+    | 'agenda_reader'
+    | 'agenda_manager'
+    | 'specialist',
     TestUser
   >;
 }
@@ -95,7 +105,9 @@ export type ReportingRole =
   | 'clients'
   | 'inventory'
   | 'exporter'
-  | 'agenda_reader';
+  | 'agenda_reader'
+  | 'agenda_manager'
+  | 'specialist';
 export async function firstFactor(page: Page, role: ReportingRole = 'admin') {
   const user = fixture.users[role];
   await page.getByLabel('Usuario', { exact: true }).fill(user.username);

@@ -1,5 +1,7 @@
 # Lasheo — Backend
 
+Reservas online: [implementación y activación](docs/reservas-online.md). Solicitudes sin correo/SMS, confirmación por el salón, citas nuevas sin anticipo, acceso por teléfono y clave de gestión de ocho cifras e idempotencia. El canal requiere aplicar las migraciones de agenda; no se activa automáticamente al arrancar.
+
 Fase 7: [agenda privada, profesionales, horarios, reservas y espera](docs/agenda-api.md), [OpenAPI 1.6.0](docs/openapi.json). **314 pruebas aprobadas** y diez permisos activados con autorización el 10 de noviembre de 2026, sin DDL de negocio. Esquema y filas originales preservados; consultas privadas verificadas con HTTP 200. Consultas públicas solo de lectura; sin reservas anónimas por teléfono ni WhatsApp. [Informe de entrega](apps/agenda/references/test-checklist.md) y [activación de permisos](apps/agenda/references/schema-map.md).
 
 Fase 6: [dashboard financiero y reportes Excel](docs/reporting-api.md), [OpenAPI 1.5.0](docs/openapi.json). Reportes implementados y cuatro permisos activados con autorización, sin DDL de negocio: 267 pruebas aprobadas. La recaudación neta conciliada está bloqueada por falta de ledger de reembolsos: **no se declara la fase totalmente finalizada**. Ver [decisiones de esquema](apps/reporting/references/schema-map.md) e [informe de verificación](apps/reporting/references/test-checklist.md).
@@ -24,6 +26,23 @@ Backend Django 5.2 / DRF con PostgreSQL existente. Incluye autenticación, clien
 - Pruebas HTTP, permisos, CSRF, reglas, concurrencia y persistencia usan exclusivamente una base temporal.
 
 ## Inicio en Windows PowerShell
+
+### Supabase para handlers JavaScript
+
+La API existente usa Django/Python. `@supabase/server` queda instalado como
+dependencia independiente en `Backend/package.json` para futuros handlers
+JavaScript; no modifica la autenticación ni la conexión PostgreSQL de Django.
+Requiere Node.js 22 o superior. Para reproducir la instalación, ejecutar `npm ci`
+desde `Backend`.
+
+Configurar `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` y
+`SUPABASE_JWKS_URL` en el entorno del servidor, siguiendo `.env.example`.
+En desarrollo, este proyecto carga primero `LOCAL_ENV_FILE` si está definido,
+después `~/.codex/lasheo-private/development.env` si existe y, como alternativa,
+`Backend/.env`. Un proceso Node independiente debe cargar ese archivo
+explícitamente, por ejemplo con `node --env-file=<ruta-privada> handler.mjs`.
+La clave secreta debe permanecer en el servidor y fuera de Git y Angular.
+Referencia: [Supabase Server](https://supabase.com/docs/reference/server).
 
 Desde `Backend`:
 

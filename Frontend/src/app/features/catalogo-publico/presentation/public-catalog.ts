@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { PublicFacade } from '../application/public-facade';
 import { PublicItem } from '../domain/public-catalog';
-import { pen, safeHttps } from '../../../shared/domain/records';
+import { pen, safeCatalogImage } from '../../../shared/domain/records';
 import { Alert } from '../../../shared/ui/alert';
 import { Loading } from '../../../shared/ui/loading';
 import { Pager } from '../../../shared/ui/pager';
@@ -22,14 +22,14 @@ import { Pager } from '../../../shared/ui/pager';
       <div class="public-photo-placeholder" aria-hidden="true"><span>✳</span></div>
     }`,
   styles:
-    ':host{display:block;aspect-ratio:4/3;overflow:hidden;border-radius:14px;background:var(--cream)}img{width:100%;height:100%;object-fit:cover}.public-photo-placeholder{height:100%;display:grid;place-items:center;color:#72836c;font:5rem Georgia,serif}',
+    ':host{display:block;aspect-ratio:4/3;overflow:hidden;border-radius:14px;background:var(--cream)}img{width:100%;height:100%;object-fit:cover}.public-photo-placeholder{height:100%;display:grid;place-items:center;color:var(--muted);font:5rem Georgia,serif}',
 })
 export class PublicPhoto {
   readonly source = input<string | null>(null);
   readonly name = input.required<string>();
   readonly failed = signal(false);
   url() {
-    return this.failed() ? null : safeHttps(this.source());
+    return this.failed() ? null : safeCatalogImage(this.source());
   }
 }
 @Component({
@@ -59,48 +59,24 @@ export class PublicPhoto {
           Productos
         </button>
       </div>
-      <div>
-        <label for="public-search">Buscar en el catálogo</label
-        ><input
-          id="public-search"
-          type="search"
-          maxlength="200"
-          placeholder="¿Qué estás buscando?"
-          (input)="search($event)"
-        />
+      <div class="catalog-filters">
+        <label for="public-category"
+          >Categoría
+          <select
+            id="public-category"
+            [value]="String(facade.list.query()['categoria'] ?? '')"
+            (change)="categoryChange($event)"
+          >
+            <option value="">Todas</option>
+            @for (category of facade.categories.rows(); track category.tipo + category.id) {
+              @if (category.tipo === (facade.kind() === 'servicios' ? 'servicio' : 'producto')) {
+                <option [value]="String(category.id)">{{ category.nombre }}</option>
+              }
+            }
+          </select>
+        </label>
       </div>
     </div>
-    <details class="surface filter-extra">
-      <summary>Explorar categorías</summary>
-      <label for="public-category-search">Buscar categorías</label
-      ><input
-        id="public-category-search"
-        type="search"
-        maxlength="200"
-        (input)="categorySearch($event)"
-      /><label for="public-category">Categoría</label
-      ><select
-        id="public-category"
-        [value]="String(facade.list.query()['categoria'] ?? '')"
-        (change)="category($event)"
-      >
-        <option value="">Todas</option>
-        @for (category of facade.categories.rows(); track category.tipo + category.id) {
-          @if (category.tipo === (facade.kind() === 'servicios' ? 'servicio' : 'producto')) {
-            <option [value]="category.id">{{ category.nombre }}</option>
-          }
-        }
-      </select>
-      @if (facade.categories.error(); as error) {
-        <bm-alert [message]="error" />
-      }
-      <bm-pager
-        [count]="facade.categories.count()"
-        [page]="Number(facade.categories.query()['page'])"
-        [busy]="facade.categories.loading()"
-        (changed)="facade.categories.page($event)"
-      />
-    </details>
     @if (facade.list.error(); as error) {
       <bm-alert [message]="error" /><button mat-button (click)="facade.list.reload()">
         Reintentar catálogo
@@ -111,17 +87,31 @@ export class PublicPhoto {
     } @else {
       <section class="public-grid" aria-label="Resultados del catálogo">
         @for (item of facade.list.rows(); track item.id) {
-          <a class="public-card" [routerLink]="['/catalogo', facade.kind(), item.slug]"
-            ><bm-public-photo [source]="item.imagen_principal" [name]="item.nombre" />
-            <p class="eyebrow">{{ item.categoria || 'LASHEO' }}</p>
-            <h2>{{ item.nombre }}</h2>
-            <div class="card-bottom">
-              <span>{{ price(item) }}</span
-              ><span>{{
-                item.duracion_minutos ? item.duracion_minutos + ' min' : 'Ver detalles →'
-              }}</span>
-            </div></a
-          >
+          <article class="public-card">
+            <a class="public-card-link" [routerLink]="['/catalogo', facade.kind(), item.slug]">
+              <bm-public-photo [source]="item.imagen_principal" [name]="item.nombre" />
+              <div class="public-card-copy">
+                <p class="eyebrow">{{ item.categoria || 'LASHEO' }}</p>
+                <h2>{{ item.nombre }}</h2>
+                <p class="public-card-description">
+                  {{ item.descripcion || 'Conoce más sobre este elemento del catálogo.' }}
+                </p>
+                <div class="card-bottom">
+                  <span>{{ price(item) }}</span>
+                  <span>{{
+                    item.duracion_minutos ? item.duracion_minutos + ' min' : 'Ver detalles'
+                  }}</span>
+                </div>
+              </div>
+            </a>
+            @if (facade.kind() === 'servicios') {
+              <div class="public-card-actions">
+                <a mat-flat-button routerLink="/reservar" [queryParams]="{ servicio: item.id }"
+                  >Reservar cita</a
+                >
+              </div>
+            }
+          </article>
         } @empty {
           <div class="empty-panel wide">
             <h2>No hay elementos publicados para esta búsqueda</h2>
@@ -136,9 +126,7 @@ export class PublicPhoto {
       [busy]="facade.list.loading()"
       (changed)="facade.list.page($event)"
     />
-    <p class="muted public-note">
-      Catálogo informativo. Las reservas y compras online no están disponibles desde esta página.
-    </p>
+    <p class="muted public-note">El botón “Reservar cita” abre la página de reservas del salón.</p>
   </div>`,
 })
 export class PublicCatalog {
@@ -151,18 +139,14 @@ export class PublicCatalog {
   price(item: PublicItem) {
     return pen(item.precio_base ?? item.precio_venta ?? '');
   }
-  search(event: Event) {
-    this.facade.list.filter({ search: (event.target as HTMLInputElement).value });
-  }
-  categorySearch(event: Event) {
-    this.facade.categories.filter({ search: (event.target as HTMLInputElement).value });
-  }
-  category(event: Event) {
-    const value = (event.target as HTMLSelectElement).value;
+  category(value: string) {
     const query = { ...this.facade.list.query() };
     delete query['categoria'];
     if (value) query['categoria'] = value;
     this.facade.list.query.set(query);
     this.facade.list.filter({});
+  }
+  categoryChange(event: Event) {
+    this.category((event.target as HTMLSelectElement).value);
   }
 }

@@ -1,40 +1,36 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { DashboardFacade } from '../application/dashboard-facade';
-import { ReportDownload } from '../infrastructure/report-download';
-import { SessionStore } from '../../../core/auth/application/session-store';
+import { HomeSummary } from '../application/home-summary';
+import { DashboardMetrics } from './dashboard-metrics';
 import { ReportFilters } from './report-filters';
 import { ReportPanel } from './report-panel';
-import { ReportQuality } from './report-quality';
-import { KpiGrid } from './kpi-grid';
-import { FinancialTrend } from './financial-trend';
-import { PaymentMethods } from './payment-methods';
-import { ReportTable } from './report-table';
-import { MonthComparison } from './month-comparison';
-import { Alert } from '../../../shared/ui/alert';
+import { DashboardTrend } from './dashboard-trend';
+import { DashboardMethods } from './dashboard-methods';
+
 @Component({
   selector: 'bm-dashboard-analytics',
   imports: [
     RouterLink,
     MatButtonModule,
+    DashboardMetrics,
     ReportFilters,
     ReportPanel,
-    ReportQuality,
-    KpiGrid,
-    FinancialTrend,
-    PaymentMethods,
-    ReportTable,
-    MonthComparison,
-    Alert,
+    DashboardTrend,
+    DashboardMethods,
   ],
-  providers: [DashboardFacade, ReportDownload],
+  providers: [HomeSummary],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard-analytics.html',
+  styleUrl: './dashboard-analytics.scss',
 })
 export class DashboardAnalytics {
-  readonly facade = inject(DashboardFacade);
-  readonly session = inject(SessionStore);
+  readonly chartMode = signal<'bars' | 'lines'>('bars');
+  readonly activeSeries = signal<
+    'all' | 'ventas_confirmadas' | 'cobros_registrados' | 'anticipos_recibidos'
+  >('all');
+  readonly paymentMode = signal<'cobros_registrados' | 'anticipos_recibidos'>('cobros_registrados');
+  readonly facade = inject(HomeSummary);
   constructor() {
     this.facade.apply(this.facade.filters());
   }

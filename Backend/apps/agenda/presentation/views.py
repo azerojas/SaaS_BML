@@ -16,6 +16,7 @@ from apps.agenda.application import administration,bookings,expiry,availability,
 from apps.agenda.infrastructure import repositories as repo
 from negocio import models as m
 from .permissions import AgendaPermission
+from apps.agenda.application.access import scope_rows
 from . import serializers as s
 
 
@@ -37,9 +38,9 @@ class BaseView(ErrorMixin,viewsets.GenericViewSet):
         super().initial(request,*args,**kwargs)
         ensure_ready()
         if any(len(request.query_params.getlist(key))!=1 for key in request.query_params):raise ValidationError('No repitas filtros.')
-    def get_queryset(self):return selectors.list_rows(self.kind,self.request.query_params if self.action=='list' else {})
-    def parse(self,cls,partial=False):
-        serializer=cls(data=self.request.data,partial=partial)
+    def get_queryset(self):return scope_rows(selectors.list_rows(self.kind,self.request.query_params if self.action=='list' else {}),self.kind,self.request.user)
+    def parse(self,cls,partial=False,context=None):
+        serializer=cls(data=self.request.data,partial=partial,context=context or {})
         serializer.is_valid(raise_exception=True)
         return serializer.validated_data
     def mutate(self,name,target,data,callback,status=200):
@@ -48,9 +49,15 @@ class BaseView(ErrorMixin,viewsets.GenericViewSet):
 
 
 class ProfessionalView(mixins.ListModelMixin,mixins.RetrieveModelMixin,BaseView):
+    own_agenda_read=True
     kind='profesionales'
     serializer_class=s.ProfessionalOutput
-    action_permissions={'create':'manage_professionals','partial_update':'manage_professionals','especialidades':'manage_professionals'}
+    action_permissions={'create':'manage_professionals','partial_update':'manage_professionals','especialidades':'manage_professionals','mi_agenda':'manage_professionals'}
+    @action(detail=False,methods=['post'],url_path='mi-agenda')
+    def mi_agenda(self,request):
+        self.parse(s.StrictInput)
+        obj=administration.personal_calendar(request.user)
+        return Response(self.get_serializer(obj).data)
     def create(self,request):
         data=self.parse(s.ProfessionalInput)
         return self.mutate('profesional.crear',None,data,lambda key:administration.professional(data,request.user),201)
@@ -67,6 +74,7 @@ class ProfessionalView(mixins.ListModelMixin,mixins.RetrieveModelMixin,BaseView)
 
 
 class ScheduleView(mixins.ListModelMixin,mixins.RetrieveModelMixin,BaseView):
+    own_agenda_read=True
     kind='horarios'
     serializer_class=s.ScheduleOutput
     action_permissions={'create':'manage_schedules','partial_update':'manage_schedules','destroy':'manage_schedules'}
@@ -83,6 +91,7 @@ class ScheduleView(mixins.ListModelMixin,mixins.RetrieveModelMixin,BaseView):
 
 
 class BlockView(mixins.ListModelMixin,mixins.RetrieveModelMixin,BaseView):
+    own_agenda_read=True
     kind='bloqueos'
     serializer_class=s.BlockOutput
     action_permissions={'create':'manage_blocks','partial_update':'manage_blocks','destroy':'manage_blocks'}
@@ -98,11 +107,13 @@ class BlockView(mixins.ListModelMixin,mixins.RetrieveModelMixin,BaseView):
 
 
 class AppointmentView(mixins.ListModelMixin,BaseView):
+    own_agenda_read=True
     kind='citas'
     serializer_class=s.AppointmentOutput
     action_permissions={key:'manage_appointments' for key in ['create','reprogramar','cancelar','confirmar','completar','no_asistio','expirar']}
     action_permissions['vincular_llegada']='link_arrivals'
     def retrieve(self,request,pk=None):
+        get_object_or_404(scope_rows(repo.appointments(),'citas',request.user),pk=pk)
         obj,extra=selectors.detail(pk)
         return Response(canonical({**s.AppointmentOutput(obj).data,**extra,'servicios':s.AppointmentServiceOutput(obj.citaservicios_set.all(),many=True).data}))
     def create(self,request):
@@ -158,13 +169,15 @@ class WaitView(mixins.ListModelMixin,mixins.RetrieveModelMixin,BaseView):
 
 
 def availability_input(params,public=False):
-    if set(params)!={'fecha','profesional_id','servicios'} or any(len(params.getlist(key))!=1 for key in params):raise ValidationError('Usa fecha, profesional_id y servicios=1,2 sin filtros adicionales.')
-    serializer=s.AvailabilityInput(data={'fecha':params['fecha'],'profesional_id':params['profesional_id'],'servicios':params['servicios'].split(',')})
+    required={'fecha','profesional_id','servicios'}
+    if not required<=set(params) or set(params)-required-({'cita_id'} if not public else set()) or any(len(params.getlist(key))!=1 for key in params):raise ValidationError('Usa fecha, profesional_id y servicios=1,2; cita_id solo en consulta privada.')
+    serializer=s.AvailabilityInput(data={'fecha':params['fecha'],'profesional_id':params['profesional_id'],'servicios':params['servicios'].split(','),**({'cita_id':params['cita_id']} if 'cita_id' in params else {})})
     serializer.is_valid(raise_exception=True)
     return AvailabilityQuery(**{**serializer.validated_data,'servicios':tuple(serializer.validated_data['servicios']),'public':public})
 
 
 class CalendarView(BaseView):
+    own_agenda_read=True
     action_permissions={'configuracion':'configure_agenda'}
     def list(self,request):
         if not {'desde','hasta'}<=set(request.query_params):raise ValidationError('Calendario requiere desde y hasta exclusiva, maximo93 dias.')
@@ -172,12 +185,17 @@ class CalendarView(BaseView):
         rows=self.paginate_queryset(self.get_queryset())
         return self.get_paginated_response(s.AppointmentOutput(rows,many=True).data)
     @action(detail=False,methods=['get'])
-    def disponibilidad(self,request):return Response(canonical(availability.available(availability_input(request.query_params))))
+    def disponibilidad(self,request):
+        query=availability_input(request.query_params)
+        if query.cita_id and not request.user.has_perm('agenda.manage_appointments'):raise AgendaError('BOOKING_PERMISSION_REQUIRED','Consultar reprogramacion exige gestionar citas.','forbidden')
+        return Response(canonical(availability.available(query)))
     @action(detail=False,methods=['get','patch'])
     def configuracion(self,request):
         if request.method=='GET':
             obj=repo.config()
-            return Response(canonical({key:getattr(obj,key) for key in s.ConfigInput().fields}))
+            return Response(canonical({**{key:getattr(obj,key) for key in s.ConfigInput().fields},
+                'anticipos_habilitados':settings.AGENDA_REQUIRE_DEPOSITS,
+                'canal_online_habilitado':settings.AGENDA_PUBLIC_WRITE_ENABLED}))
         if not request.user.has_perm('agenda.configure_agenda'):raise AgendaError('CONFIG_FORBIDDEN','Falta permiso de configuracion.','forbidden')
         data=self.parse(s.ConfigInput)
         return self.mutate('configurar',1,data,lambda key:administration.configure(data,request.user))
@@ -198,7 +216,11 @@ class PublicView(ErrorMixin,APIView):
         if request.query_params:raise ValidationError('Esta lista publica no admite filtros personales.')
         if self.resource=='profesionales':
             rows=list(m.Profesionales.objects.filter(activa=True,visible_reservas=True).order_by('apellidos','nombres','id').values('id','nombres','apellidos')[:101])
+            specialties={}
+            for professional_id,service_id in m.ProfesionalServicios.objects.filter(profesional_id__in=[row['id'] for row in rows],servicio__activo=True,servicio__visible_catalogo=True,servicio__reservable_online=True).values_list('profesional_id','servicio_id'):
+                specialties.setdefault(professional_id,[]).append(service_id)
+            for row in rows:row['servicios']=specialties.get(row['id'],[])
         else:
             rows=list(m.Servicios.objects.filter(activo=True,visible_catalogo=True,reservable_online=True).order_by('orden','id').values('id','nombre','duracion_minutos','precio_base')[:101])
         if len(rows)>100:raise AgendaError('PUBLIC_LIST_LIMIT','Listado publico excede100 registros; requiere paginacion revisada.','unavailable')
-        return Response(canonical({'timezone':'America/Lima','results':rows,'reserva_publica_habilitada':False}))
+        return Response(canonical({'timezone':'America/Lima','results':rows,'reserva_publica_habilitada':settings.AGENDA_PUBLIC_WRITE_ENABLED}))

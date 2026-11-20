@@ -1,0 +1,198 @@
+@if (inDialog) {
+  <header class="visit-dialog-heading">
+    <span class="heading-symbol"><bm-icon name="receipt" /></span>
+    <div>
+      <p class="eyebrow">VISITA #{{ id }}</p>
+      <h2 mat-dialog-title>Atención y cobro</h2>
+    </div>
+    <button
+      mat-icon-button
+      type="button"
+      aria-label="Cerrar atención y cobro"
+      [disabled]="facade.intent.busy() || confirming()"
+      (click)="close()"
+    >
+      <bm-icon name="close" />
+    </button>
+  </header>
+  <mat-dialog-content tabindex="0" role="region" aria-label="Información de atención y cobro"
+    ><ng-container [ngTemplateOutlet]="content"
+  /></mat-dialog-content>
+} @else {
+  <bm-finance-nav />
+  <header class="feature-heading">
+    <div>
+      <p class="eyebrow">ATENCIÓN PRIVADA</p>
+      <h1>Visita #{{ id }}</h1>
+      @if (facade.record(); as visit) {
+        <span class="badge">{{ visit.estado }}</span>
+      }
+    </div>
+  </header>
+  <ng-container [ngTemplateOutlet]="content" />
+}
+<ng-template #content>
+  <bm-finance-feedback (recovered)="refresh()" />
+  @if (facade.error(); as error) {
+    <bm-alert [message]="error" />
+  }
+  @if (facade.success(); as success) {
+    <bm-alert kind="info" [message]="success" />
+  }
+  @if (facade.loading()) {
+    <bm-loading />
+  }
+  @if (facade.record(); as visit) {
+    <section class="visit-hero">
+      <span class="client-symbol"><bm-icon name="users" /></span>
+      <div>
+        <p class="eyebrow">ATENCIÓN DE LA CLIENTA</p>
+        <h3>{{ clientLabel() }}</h3>
+        <p>Visita #{{ visit.id }} · Ficha #{{ visit.clienta_id }}</p>
+      </div>
+      <span
+        class="visit-state"
+        [class.is-open]="visit.estado === 'ABIERTA'"
+        [class.is-cancelled]="visit.estado === 'CANCELADA'"
+        ><i aria-hidden="true"></i>{{ statusLabel() }}</span
+      >
+    </section>
+    <div class="visit-metrics">
+      <div>
+        <bm-icon name="clock" /><span>Inicio de la atención</span
+        ><strong>{{ date(visit.inicio_en) }}</strong>
+      </div>
+      <div>
+        <bm-icon name="check" /><span>{{
+          visit.fin_en ? 'Cierre de la atención' : 'Estado actual'
+        }}</span
+        ><strong>{{ visit.fin_en ? date(visit.fin_en) : 'Atención en curso' }}</strong>
+      </div>
+    </div>
+    <section class="visit-panel billing-panel">
+      <div class="panel-heading">
+        <span class="panel-symbol"><bm-icon name="receipt" /></span>
+        <div>
+          <h3>Tratamientos y cobro</h3>
+          <p>Registra lo atendido y los pagos de esta visita.</p>
+        </div>
+      </div>
+      @if (visit.venta_id) {
+        <div class="billing-row">
+          <p>Venta #{{ visit.venta_id }} vinculada a esta atención</p>
+          <a
+            mat-flat-button
+            class="small-button"
+            [disabled]="locked()"
+            [routerLink]="['/admin/ventas', visit.venta_id]"
+            (click)="close()"
+            >Ver venta y pagos</a
+          >
+        </div>
+      } @else if (visit.estado === 'ABIERTA' && session.hasPermission('finanzas.manage_sales')) {
+        <p class="panel-description">
+          Todavía no hay una venta asociada. Añade los tratamientos y productos para preparar el
+          cobro.
+        </p>
+        <a
+          mat-flat-button
+          class="small-button"
+          [disabled]="locked()"
+          routerLink="/admin/ventas/nueva"
+          [queryParams]="{ visita: visit.id }"
+          (click)="close()"
+          >Preparar tratamientos y venta</a
+        >
+      } @else {
+        <p class="panel-description">Esta visita no tiene una venta vinculada.</p>
+      }
+    </section>
+    <section class="visit-panel">
+      <div class="panel-heading">
+        <span class="panel-symbol"><bm-icon name="edit" /></span>
+        <div>
+          <h3>Notas de atención</h3>
+          <p>Observaciones que ayudan a dar seguimiento a la clienta.</p>
+        </div>
+      </div>
+      <p class="preserve-lines saved-notes">{{ visit.notas || 'Sin notas registradas.' }}</p>
+      @if (visit.estado === 'ABIERTA' && session.hasPermission('finanzas.manage_visits')) {
+        <form [formGroup]="form" (ngSubmit)="saveNotes()">
+          <label for="visit-notes">Notas de atención</label>
+          <textarea
+            id="visit-notes"
+            formControlName="notas"
+            rows="3"
+            maxlength="10000"
+            [readOnly]="locked()"
+          ></textarea>
+          <div class="notes-footer">
+            <small>{{ form.controls.notas.value.length }} / 10000 caracteres</small
+            ><button
+              mat-stroked-button
+              class="small-button"
+              type="submit"
+              [disabled]="locked() || form.controls.notas.invalid"
+            >
+              Guardar notas
+            </button>
+          </div>
+        </form>
+      }
+    </section>
+    <section class="visit-panel history-panel">
+      <div class="panel-heading">
+        <span class="panel-symbol"><bm-icon name="clock" /></span>
+        <div>
+          <h3>Historial de atención</h3>
+          <p>Registro de los cambios de esta visita.</p>
+        </div>
+      </div>
+      <ol class="visit-timeline">
+        @for (event of visit.historial ?? []; track $index) {
+          <li>
+            <span class="timeline-dot" aria-hidden="true"></span
+            ><strong>{{ eventLabel(event.accion) }}</strong
+            ><time>{{ date(event.creada_en) }}</time>
+          </li>
+        } @empty {
+          <li class="empty-history">Sin eventos disponibles.</li>
+        }
+      </ol>
+    </section>
+    @if (visit.estado === 'ABIERTA' && session.hasPermission('finanzas.manage_visits')) {
+      <section class="visit-panel cancellation-panel">
+        <h3>Cancelar visita</h3>
+        <p class="panel-description">
+          Usa esta opción si la atención no se realizará. El historial se conserva.
+        </p>
+        <form [formGroup]="form" (ngSubmit)="cancel()">
+          <label for="visit-cancel-reason">Motivo de cancelación (8–250 caracteres)</label
+          ><input
+            id="visit-cancel-reason"
+            formControlName="motivo"
+            maxlength="250"
+            [readOnly]="locked()"
+          />
+          <div class="field-feedback">
+            @if (
+              form.controls.motivo.touched &&
+              form.controls.motivo.value.trim().length > 0 &&
+              form.controls.motivo.value.trim().length < 8
+            ) {
+              <p class="field-error" role="alert">Escribe un motivo de al menos 8 caracteres.</p>
+            }
+          </div>
+          <button
+            mat-stroked-button
+            type="submit"
+            class="small-button cancel-visit"
+            [disabled]="locked() || form.controls.motivo.value.trim().length < 8"
+          >
+            Cancelar visita
+          </button>
+        </form>
+      </section>
+    }
+  }
+</ng-template>

@@ -96,6 +96,64 @@ def lock_arrival(pk):
 
 
 @checkin_write
+def register_visit(token, data):
+    """Self-service QR registration; an open visit is reused across QR points."""
+    point = active_point(token, lock=True)
+    ids = selectors.matching_clients(data['telefono'])
+    if len(ids) > 1:
+        return
+    declared = (data.get('consentimiento_datos') is True and current_notice()
+                and data.get('version_aviso') == settings.CHECKIN_PRIVACY_NOTICE_VERSION)
+    now = timezone.now()
+    if ids:
+        client = m.Clientas.objects.select_for_update().get(pk=ids[0])
+        if selectors.provisional(client):
+            if not declared:
+                return
+            client.activa = True
+            client.consentimiento_datos = True
+            client.consentimiento_fecha = now
+            client.save(update_fields=['activa', 'consentimiento_datos', 'consentimiento_fecha'])
+            audit(None, client, 'ACTIVAR_ALTA_QR_AUTONOMA', {
+                'version_aviso': data['version_aviso'], 'consentimiento_declarado': True,
+                'identidad_verificada': False})
+        elif not client.activa:
+            return
+    else:
+        if not declared or not all(data.get(key) for key in ('nombres', 'apellidos')):
+            return
+        client = m.Clientas.objects.create(
+            nombres=data['nombres'], apellidos=data['apellidos'], telefono=data['telefono'],
+            activa=True, consentimiento_datos=True, consentimiento_fecha=now,
+            acepta_recordatorios=False, canal_preferido='EMAIL')
+        audit(None, client, 'ALTA_QR_AUTONOMA', {
+            'version_aviso': data['version_aviso'], 'consentimiento_declarado': True,
+            'identidad_verificada': False})
+
+    existing = m.Visitas.objects.select_for_update().filter(
+        clienta_id=client.pk, estado='ABIERTA').order_by('id').first()
+    if existing:
+        return existing
+
+    arrival = m.Llegadas.objects.select_for_update().filter(
+        clienta_id=client.pk, estado='PENDIENTE').first()
+    if arrival:
+        arrival.estado = 'CONFIRMADA'
+        arrival.confirmada_en = now
+        arrival.confirmada_por_id = None
+        arrival.save(update_fields=['estado', 'confirmada_en', 'confirmada_por_id'])
+    else:
+        arrival = m.Llegadas.objects.create(
+            clienta_id=client.pk, punto_qr_id=point.pk, origen='QR',
+            estado='CONFIRMADA', confirmada_en=now)
+    audit(None, arrival, 'REGISTRAR_QR_AUTOMATICO', {
+        'punto_qr_id': point.pk, 'identidad_verificada': False})
+    visit = m.Visitas.objects.create(clienta_id=client.pk, llegada_id=arrival.pk)
+    audit(None, visit, 'INICIAR_VISITA_QR', {'llegada_id': arrival.pk})
+    return visit
+
+
+@checkin_write
 def manual_arrival(client_id, user):
     client = get_object_or_404(m.Clientas.objects.select_for_update(), pk=client_id)
     if not client.activa or selectors.provisional(client):

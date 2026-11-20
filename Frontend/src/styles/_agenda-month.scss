@@ -1,0 +1,93 @@
+bm-calendar-page {
+  .month-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(130px, 1fr));
+    overflow: auto;
+  }
+  .month-cell {
+    position: relative;
+    min-height: 160px;
+    background: linear-gradient(145deg, var(--paper), var(--canvas));
+    padding: 10px;
+    border-right: 1px solid var(--surface-high);
+    border-bottom: 1px solid var(--surface-high);
+  }
+  .month-date {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .month-date > button:first-child {
+    display: grid;
+    place-items: center;
+    width: 27px;
+    height: 27px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--ink);
+    font-size: 12px;
+  }
+  .current-day .month-date > button:first-child {
+    background: var(--forest);
+    color: var(--on-primary);
+  }
+  .month-availability,
+  .month-create,
+  .month-event {
+    display: block;
+    width: 100%;
+    padding: 7px;
+    border-radius: 6px;
+    margin-top: 6px;
+    font-size: 10px;
+    text-align: left;
+    line-height: 1.5;
+  }
+  .month-availability {
+    background: var(--elixir-secondary-fixed);
+    border: 1px solid var(--secondary-line);
+    color: var(--on-secondary);
+  }
+  .month-create {
+    background: transparent;
+    border: 1px dashed var(--line);
+    color: var(--forest);
+  }
+  .month-event {
+    background: var(--surface-low);
+    color: var(--forest);
+    text-decoration: none;
+    border-left: 2px solid var(--forest);
+  }
+  .month-block {
+    background: var(--surface-high);
+    padding: 5px;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .month-weekday {
+    padding: 14px 8px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--surface-low);
+    color: var(--forest);
+    border-bottom: 1px solid var(--line);
+  }
+  .month-cell.outside-month {
+    background: var(--surface-high);
+  }
+  .month-cell.outside-month .month-date {
+    color: var(--muted);
+  }
+  .month-boundary {
+    margin-left: auto;
+    margin-right: 16px;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: capitalize;
+  }
+}

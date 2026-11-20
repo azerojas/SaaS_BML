@@ -1,0 +1,215 @@
+<header class="qr-heading">
+  <div>
+    <p class="eyebrow">RECEPCIÓN · PUNTOS QR</p>
+    <h1>Una bienvenida más simple.</h1>
+    <p>Crea un punto de registro y prepara un cartel a la altura de tu espacio.</p>
+  </div>
+  <span class="heading-note"><bm-icon name="phone" /> Escanea. Registra. Recibe.</span>
+</header>
+
+@if (facade.error() || facade.list.error(); as error) {
+  <bm-alert [message]="error" />
+}
+@if (facade.success(); as success) {
+  <bm-alert kind="info" [message]="success" />
+}
+
+<div class="qr-workspace">
+  <div class="qr-editor">
+    @if (session.hasPermission('negocio.add_puntosqr')) {
+      <section class="editor-card" aria-labelledby="create-qr-title">
+        <div class="card-heading">
+          <span class="section-icon"><bm-icon name="plus" /></span>
+          <div>
+            <p class="eyebrow">01 · PREPARA TU PUNTO</p>
+            <h2 id="create-qr-title">Un lugar, un código.</h2>
+          </div>
+        </div>
+        <p class="card-description">Dale un nombre para reconocer dónde colocarás el cartel.</p>
+        <form class="qr-create-form" [formGroup]="form" (ngSubmit)="create()">
+          <div class="field-label">
+            <label for="qr-name">Nombre del punto</label><span>Obligatorio</span>
+          </div>
+          <div class="name-field">
+            <bm-icon name="edit" />
+            <input
+              id="qr-name"
+              formControlName="nombre"
+              required
+              maxlength="100"
+              placeholder="Ej. Recepción principal"
+              autocomplete="off"
+              aria-describedby="qr-name-hint"
+              [attr.aria-invalid]="form.controls.nombre.touched && form.controls.nombre.invalid"
+            />
+          </div>
+          <p id="qr-name-hint" class="field-hint">
+            @if (form.controls.nombre.touched && form.controls.nombre.invalid) {
+              Escribe un nombre de entre 1 y 100 caracteres.
+            } @else {
+              Puedes crear un punto para recepción, la entrada o cada zona del salón.
+            }
+          </p>
+          <button mat-flat-button [disabled]="form.invalid || facade.busy()" type="submit">
+            <bm-icon name="plus" /> {{ facade.busy() ? 'Preparando tu QR…' : 'Crear punto QR' }}
+          </button>
+        </form>
+        <div class="creation-note">
+          <bm-icon name="shield" />
+          <p>Un enlace propio para cada punto. Tú decides cuándo activarlo o revocarlo.</p>
+        </div>
+      </section>
+    }
+
+    <section
+      class="points-card"
+      aria-labelledby="qr-points-title"
+      [attr.aria-busy]="facade.list.loading()"
+    >
+      <div class="points-heading">
+        <div>
+          <p class="eyebrow">TUS PUNTOS DE REGISTRO</p>
+          <h2 id="qr-points-title">Listos para recibir.</h2>
+        </div>
+        <span class="count-pill" aria-label="Total de puntos">{{ facade.list.count() }}</span>
+      </div>
+      @if (facade.list.loading()) {
+        <bm-loading label="Cargando puntos QR…" />
+      } @else {
+        <div class="points-list">
+          @for (point of facade.list.rows(); track point.id) {
+            <article
+              class="point-row"
+              [class.point-selected]="facade.selected()?.id === point.id"
+              [class.point-revoked]="!point.activo"
+            >
+              <span class="point-symbol"><bm-icon name="qr" /></span>
+              <div class="point-details">
+                <h3>{{ point.nombre }}</h3>
+                <span class="point-status" [class.revoked]="!point.activo"
+                  ><i aria-hidden="true"></i>{{ point.activo ? 'Activo' : 'Revocado' }}</span
+                >
+              </div>
+              <div class="point-actions">
+                @if (point.activo) {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    [disabled]="facade.busy()"
+                    (click)="facade.show(point)"
+                    [attr.aria-label]="'Ver QR de ' + point.nombre"
+                    [attr.aria-pressed]="facade.selected()?.id === point.id"
+                  >
+                    <bm-icon name="eye" /> Ver QR
+                  </button>
+                }
+                @if (session.hasPermission('negocio.change_puntosqr')) {
+                  <button
+                    class="status-action"
+                    mat-button
+                    type="button"
+                    [disabled]="facade.busy() || confirming()"
+                    (click)="toggle(point)"
+                    [attr.aria-label]="(point.activo ? 'Revocar ' : 'Reactivar ') + point.nombre"
+                  >
+                    {{ point.activo ? 'Revocar' : 'Reactivar' }}
+                  </button>
+                }
+              </div>
+            </article>
+          } @empty {
+            <div class="points-empty">
+              <span class="section-icon"><bm-icon name="qr" /></span>
+              <h3>Aquí empieza la bienvenida.</h3>
+              <p>Aún no hay puntos QR. Cuando crees uno, podrás preparar su cartel desde aquí.</p>
+            </div>
+          }
+        </div>
+      }
+      @if (facade.list.count() > 20) {
+        <bm-pager
+          [count]="facade.list.count()"
+          [page]="Number(facade.list.query()['page'])"
+          [busy]="facade.list.loading()"
+          (changed)="facade.list.page($event)"
+        />
+      }
+    </section>
+  </div>
+
+  <section class="preview-panel" aria-labelledby="qr-preview-title">
+    <div class="preview-heading">
+      <div>
+        <p class="eyebrow">02 · COMPARTE LA BIENVENIDA</p>
+        <h2 id="qr-preview-title">Tu cartel, listo para lucir.</h2>
+      </div>
+      <span class="preview-label">VISTA PREVIA</span>
+    </div>
+    <div class="poster-stage">
+      <article class="qr-poster" [class.qr-print]="facade.selected()?.ready">
+        <div class="poster-topline">
+          <span>BIENVENIDA A TU ESPACIO</span><span aria-hidden="true">✳</span>
+        </div>
+        <bm-brand [compact]="false" />
+        <h2>Tu momento de<br /><em>cuidado empieza aquí.</em></h2>
+        <p class="poster-intro">
+          Escanea el código y registra tu visita.<br />Nos encantará recibirte.
+        </p>
+        @if (facade.selected(); as point) {
+          @if (point.ready) {
+            <div class="qr-frame">
+              <img
+                [src]="'/api/admin/checkin/puntos/' + point.id + '/qr/?formato=svg'"
+                alt="Código QR para registrar la visita"
+                width="256"
+                height="256"
+              />
+            </div>
+            <p class="poster-point">{{ point.nombre }}</p>
+            <div class="poster-instructions">
+              <span>01 <b>Abre tu cámara</b></span
+              ><span>02 <b>Escanea el QR</b></span
+              ><span>03 <b>Registra tus datos</b></span>
+            </div>
+          } @else {
+            <div class="qr-placeholder">
+              <bm-icon name="shield" /><strong>Enlace pendiente</strong
+              ><span>Este punto todavía no está listo para compartir.</span>
+            </div>
+          }
+        } @else {
+          <div class="qr-placeholder">
+            <bm-icon name="qr" /><strong>Tu código irá aquí</strong
+            ><span>Crea un punto o selecciona «Ver QR» para preparar tu cartel.</span>
+          </div>
+          <p class="poster-point">Un pequeño gesto. Una mejor experiencia.</p>
+        }
+        <div class="poster-footer">
+          <span aria-hidden="true">✳</span> Un espacio de cuidado, pensado para ti.
+        </div>
+      </article>
+    </div>
+    @if (facade.selected(); as point) {
+      @if (point.ready) {
+        <div class="preview-actions">
+          <p><bm-icon name="check" /> Listo para colocar en {{ point.nombre }}</p>
+          <button mat-flat-button type="button" (click)="print()">
+            <bm-icon name="printer" /> Imprimir cartel
+          </button>
+        </div>
+        <details class="qr-link">
+          <summary>Ver enlace de registro</summary>
+          <p class="qr-url">{{ point.url }}</p>
+        </details>
+      } @else {
+        <bm-alert
+          message="Configura PUBLIC_CHECKIN_URL con la URL HTTPS pública del frontend terminada en /registro/ para poder imprimir este punto."
+        />
+      }
+    } @else {
+      <p class="preview-hint">
+        <bm-icon name="image" /> Vista orientativa. El código real aparecerá al elegir un punto.
+      </p>
+    }
+  </section>
+</div>

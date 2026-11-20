@@ -1,6 +1,7 @@
+import { DateField } from '../../../shared/ui/date-field';
 import { ChangeDetectionStrategy, Component, effect, inject, input, output } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { EMPTY, forkJoin, map, of, switchMap, throwError } from 'rxjs';
+import { EMPTY, map, throwError } from 'rxjs';
 import { SessionStore } from '../../../core/auth/application/session-store';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AgendaApi } from '../infrastructure/agenda-api';
@@ -11,11 +12,12 @@ import { localDateTime, money } from '../../dashboard/domain/analytics';
 import { Alert } from '../../../shared/ui/alert';
 @Component({
   selector: 'bm-slot-picker',
-  imports: [ReactiveFormsModule, Alert],
+  imports: [DateField, ReactiveFormsModule, Alert],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  styleUrl: './slot-picker.scss',
   template: `<section class="surface">
     <h2>Disponibilidad · hora de Lima</h2>
-    <p>Los huecos son propuestas de Django. La reserva se valida nuevamente al guardar.</p>
+    <p>Elige uno de los horarios disponibles. Se comprueba de nuevo al guardar.</p>
     @if (professionals.error(); as error) {
       <bm-alert [message]="error" /><button type="button" (click)="professionals.retry()">
         Reintentar profesionales
@@ -29,8 +31,12 @@ import { Alert } from '../../../shared/ui/alert';
             <option [value]="prof.id">{{ prof.nombres }} {{ prof.apellidos }}</option>
           }
         </select></label
-      ><label>Fecha disponible<input type="date" formControlName="date" /></label
-      ><button
+      >
+      <div class="calendar-field-label">
+        <span>Fecha disponible</span
+        ><bm-date-field ariaLabel="Fecha disponible" formControlName="date" />
+      </div>
+      <button
         type="submit"
         [disabled]="
           disabled() ||
@@ -90,42 +96,22 @@ export class SlotPicker {
   readonly refresh = input(0);
   readonly date = input('');
   readonly preferredProfessional = input<number | null>(null);
+  readonly appointmentId = input<number | null>(null);
   readonly picked = output<{ slot: Slot; availability: Availability } | null>();
   readonly money = money;
   readonly localDateTime = localDateTime;
   selected = '';
   readonly form = inject(FormBuilder).nonNullable.group({ professional: '', date: limaToday() });
   readonly professionals = new ReportResource<Professional[]>(() =>
-    this.session.hasPermission('agenda.manage_professionals')
+    this.session.hasPermission('agenda.view_agenda')
       ? this.api
           .all<Professional>('profesionales/', { activa: 'true' })
           .pipe(
-            switchMap((rows) =>
-              rows.length
-                ? forkJoin(
-                    rows.map((row) =>
-                      this.api
-                        .get<{ servicios: number[] }>(
-                          'profesionales/' + row.id + '/especialidades/',
-                        )
-                        .pipe(map((s) => ({ row, services: s.servicios }))),
-                    ),
-                  ).pipe(
-                    map((items) =>
-                      items
-                        .filter((item) => this.services().every((id) => item.services.includes(id)))
-                        .map((item) => item.row),
-                    ),
-                  )
-                : of([]),
+            map((rows) =>
+              rows.filter((row) => this.services().every((id) => row.servicios?.includes(id))),
             ),
           )
-      : throwError(
-          () =>
-            new Error(
-              'La selección de profesionales está bloqueada para este rol hasta que Django proteja sus comisiones.',
-            ),
-        ),
+      : throwError(() => new Error('No tienes permiso para consultar la agenda.')),
   );
   readonly availability = new ReportResource<Availability>((q) =>
     q['date']
@@ -133,6 +119,7 @@ export class SlotPicker {
           String(q['date']),
           Number(q['professional']),
           String(q['services']).split(',').map(Number),
+          q['cita_id'] ? Number(q['cita_id']) : undefined,
         )
       : EMPTY,
   );
@@ -142,6 +129,7 @@ export class SlotPicker {
       this.refresh();
       this.date();
       this.preferredProfessional();
+      this.appointmentId();
       this.reset();
       this.form.patchValue(
         {
@@ -165,12 +153,17 @@ export class SlotPicker {
     });
   }
   search() {
-    if (!this.session.hasPermission('agenda.manage_professionals')) return;
+    if (!this.session.hasPermission('agenda.view_agenda')) return;
     this.selected = '';
     this.picked.emit(null);
     const { date, professional } = this.form.getRawValue();
     if (!date || !professional || !this.services().length) return;
-    this.availability.load({ date, professional, services: this.services().join(',') });
+    this.availability.load({
+      date,
+      professional,
+      services: this.services().join(','),
+      ...(this.appointmentId() ? { cita_id: this.appointmentId()! } : {}),
+    });
   }
   select(slot: Slot, availability: Availability) {
     this.selected = slot.inicio_en;

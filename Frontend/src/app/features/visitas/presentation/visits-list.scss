@@ -1,0 +1,803 @@
+@font-face {
+  font-family: 'Reception Jakarta';
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url('/fonts/calendar/plus-jakarta-sans-latin-wght-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Reception Playfair';
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('/fonts/calendar/playfair-display-latin-wght-normal.woff2') format('woff2');
+}
+:host {
+  display: block;
+  color: var(--ink);
+  font-family: 'Reception Jakarta', sans-serif;
+}
+.reception-page {
+  max-width: 1500px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+button,
+input {
+  font: inherit;
+}
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+.reception-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 28px;
+  background: var(--surface-low);
+  border-radius: 14px;
+}
+.heading-copy {
+  max-width: 690px;
+}
+.live-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 13px;
+}
+.live-pill,
+.small-pill {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  border-radius: 30px;
+  padding: 5px 10px;
+  background: var(--secondary-soft);
+  color: var(--on-secondary);
+  font-size: 10px;
+  font-weight: 700;
+}
+.live-pill {
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.updated {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.updated bm-icon {
+  width: 14px;
+  height: 14px;
+}
+h1 {
+  font-family: 'Reception Playfair', Georgia, serif;
+  font-size: clamp(25px, 2.6vw, 36px);
+  font-weight: 500;
+  letter-spacing: -1px;
+  line-height: 1.25;
+}
+.heading-copy > p {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.9;
+}
+.heading-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+.today {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  text-transform: capitalize;
+  color: var(--muted);
+}
+.today bm-icon {
+  color: var(--forest);
+  width: 17px;
+  height: 17px;
+}
+.quick-actions,
+.card-links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 8px;
+  padding: 11px 14px;
+  min-height: 40px;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.5;
+  text-decoration: none;
+  background: var(--paper);
+  color: var(--forest);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
+}
+.action bm-icon {
+  width: 17px;
+  height: 17px;
+}
+.action.primary {
+  background: var(--forest);
+  color: var(--on-primary);
+}
+.action.primary:hover {
+  background: var(--primary-container);
+}
+.action.secondary:hover,
+.icon-action:hover {
+  background: var(--surface-high);
+}
+.action:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.icon-action {
+  padding: 10px;
+}
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+.kpi,
+.side-panel,
+.visit-card {
+  background: var(--paper);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgb(52 48 42 / 4%);
+}
+.kpi {
+  padding: 21px;
+}
+.kpi-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 13px;
+}
+.kpi h2 {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 650;
+}
+.kpi-icon {
+  display: grid;
+  place-items: center;
+  width: 33px;
+  height: 33px;
+  background: var(--sage);
+  color: var(--forest);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.green .kpi-icon {
+  background: var(--secondary-soft);
+  color: var(--secondary);
+}
+.kpi-icon bm-icon {
+  width: 17px;
+  height: 17px;
+}
+.kpi-value {
+  font:
+    600 32px/1.25 'Reception Playfair',
+    Georgia,
+    serif;
+}
+.kpi-value > span {
+  font:
+    400 10px/1.6 'Reception Jakarta',
+    sans-serif;
+  color: var(--muted);
+  margin-left: 5px;
+}
+.kpi-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 27px;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.kpi-note .status-dot {
+  color: var(--forest);
+}
+.date-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 18px;
+  border: 1px solid var(--surface-high);
+  border-radius: 10px;
+}
+.date-range-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-right: auto;
+}
+.date-range-title bm-icon {
+  width: 17px;
+  height: 17px;
+  color: var(--forest);
+}
+.date-filters .date-filter-field {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.date-filters bm-date-field {
+  display: block;
+  width: 170px;
+}
+.board-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.search-box {
+  flex: 1;
+  max-width: 470px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 15px;
+  border-radius: 9px;
+  background: var(--paper);
+  box-shadow: 0 1px 6px rgb(52 48 42 / 4%);
+}
+.search-box bm-icon {
+  color: var(--outline);
+  width: 18px;
+  height: 18px;
+}
+.search-box input {
+  width: 100%;
+  min-width: 0;
+  font-size: 11px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+}
+.search-box:focus-within {
+  outline: 2px solid var(--forest);
+  outline-offset: 2px;
+}
+.status-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.status-tabs button {
+  border: 0;
+  padding: 8px 12px;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 30px;
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--muted);
+  background: var(--paper);
+  cursor: pointer;
+}
+.status-tabs button.active {
+  background: var(--forest);
+  color: var(--on-primary);
+}
+.status-tabs button > span {
+  padding: 2px 6px;
+  border-radius: 20px;
+  background: var(--surface-high);
+  color: var(--muted);
+}
+.status-tabs button.active > span {
+  background: var(--primary-container);
+  color: var(--on-primary);
+}
+.reception-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2.15fr) minmax(280px, 1fr);
+  gap: 25px;
+  align-items: start;
+}
+.visits-board,
+.reception-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.board-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 2px;
+}
+.board-title h2 {
+  font-size: 12px;
+  font-weight: 650;
+}
+.board-title > span {
+  color: var(--muted);
+  font-size: 9px;
+  text-align: right;
+}
+.visit-card {
+  position: relative;
+  overflow: hidden;
+  padding: 21px 21px 18px 25px;
+  border-left: 5px solid var(--forest);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.visit-card.finished {
+  border-left-color: var(--secondary);
+}
+.visit-card.cancelled {
+  border-left-color: var(--outline);
+}
+.visit-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+.client-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 47px;
+  height: 47px;
+  border-radius: 50%;
+  background: var(--surface-low);
+  color: var(--forest);
+  outline: 2px solid var(--sage);
+  outline-offset: 2px;
+  flex-shrink: 0;
+  font:
+    600 17px 'Reception Playfair',
+    serif;
+}
+.client-info h3 {
+  font:
+    600 18px/1.5 'Reception Playfair',
+    Georgia,
+    serif;
+  overflow-wrap: anywhere;
+}
+.client-info h3 a {
+  text-decoration: none;
+}
+.client-info h3 a:hover {
+  color: var(--forest);
+}
+.visit-reference {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 3px;
+}
+.visit-reference strong {
+  color: var(--forest);
+  font-weight: 650;
+}
+.visit-status {
+  text-align: right;
+  flex-shrink: 0;
+}
+.state-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 30px;
+  padding: 6px 10px;
+  background: var(--sage);
+  color: var(--on-primary-soft);
+  font-size: 10px;
+  font-weight: 650;
+}
+.finished .state-pill {
+  background: var(--secondary-soft);
+  color: var(--on-secondary);
+}
+.cancelled .state-pill {
+  background: var(--surface-high);
+  color: var(--muted);
+}
+.visit-status p {
+  margin-top: 7px;
+  font-size: 9px;
+  color: var(--muted);
+}
+.visit-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  background: var(--surface-low);
+  border-radius: 8px;
+}
+.visit-context > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.visit-context bm-icon {
+  width: 15px;
+  height: 15px;
+  color: var(--secondary);
+}
+.visit-context .ongoing {
+  color: var(--forest);
+}
+.visit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 10px;
+  text-decoration: none;
+  min-height: 32px;
+}
+.text-link:hover,
+.panel-link:hover {
+  color: var(--forest);
+  text-decoration: underline;
+}
+.text-link bm-icon {
+  width: 15px;
+  height: 15px;
+}
+.side-panel {
+  padding: 22px;
+}
+.panel-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.panel-heading h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font:
+    600 17px/1.5 'Reception Playfair',
+    Georgia,
+    serif;
+}
+.panel-heading h2 bm-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--forest);
+}
+.neutral-pill {
+  padding: 4px 8px;
+  background: var(--surface-high);
+  border-radius: 20px;
+  color: var(--muted);
+  font-size: 9px;
+  white-space: nowrap;
+}
+.panel-description {
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--muted);
+  margin-top: 12px;
+}
+.cabins-placeholder {
+  padding: 25px 15px;
+  background: var(--surface-low);
+  border-radius: 9px;
+  margin-top: 20px;
+  text-align: center;
+}
+.room-icon,
+.empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: var(--paper);
+  color: var(--forest);
+  border-radius: 50%;
+  margin-bottom: 12px;
+}
+.cabins-placeholder h3 {
+  font-size: 12px;
+  font-weight: 600;
+}
+.cabins-placeholder p {
+  font-size: 11px;
+  line-height: 1.9;
+  color: var(--muted);
+  margin-top: 8px;
+}
+.panel-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--forest);
+  margin-top: 18px;
+  text-decoration: none;
+}
+.panel-link bm-icon {
+  width: 16px;
+  height: 16px;
+}
+.lounge-label {
+  font-size: 10px;
+  color: var(--muted);
+}
+.hospitality .panel-description {
+  margin-bottom: 18px;
+}
+.hospitality-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface-low);
+  padding: 12px;
+  margin-top: 9px;
+  border-radius: 7px;
+  font-size: 10px;
+}
+.hospitality-row > span:last-child {
+  font-size: 9px;
+  color: var(--muted);
+  text-align: right;
+}
+.staff-note {
+  margin-top: 19px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  background: var(--surface-high);
+  border-radius: 8px;
+}
+.staff-note bm-icon {
+  width: 17px;
+  height: 17px;
+  color: var(--forest);
+}
+.staff-note p {
+  font-size: 10px;
+  line-height: 1.9;
+  color: var(--muted);
+}
+.staff-note strong {
+  display: block;
+  color: var(--ink);
+  font-weight: 650;
+}
+.empty-state {
+  padding: 48px 22px;
+  text-align: center;
+  background: var(--paper);
+  border-radius: 12px;
+}
+.empty-icon {
+  background: var(--surface-low);
+}
+.empty-state h3 {
+  font:
+    500 22px 'Reception Playfair',
+    Georgia,
+    serif;
+}
+.empty-state p {
+  max-width: 380px;
+  margin: 12px auto 0;
+  font-size: 12px;
+  line-height: 1.9;
+  color: var(--muted);
+}
+@media (max-width: 1250px) {
+  .reception-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .heading-actions {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .board-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .search-box {
+    max-width: none;
+  }
+  .kpi-value > span {
+    display: block;
+    margin: 4px 0 0;
+  }
+}
+@media (max-width: 1000px) {
+  .reception-grid {
+    grid-template-columns: 1fr;
+  }
+  .reception-sidebar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .date-range-title {
+    width: 100%;
+  }
+}
+@media (max-width: 600px) {
+  .reception-page {
+    gap: 18px;
+  }
+  .reception-heading {
+    padding: 20px;
+  }
+  .heading-actions {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .quick-actions {
+    width: 100%;
+  }
+  .kpi-grid {
+    gap: 10px;
+  }
+  .kpi {
+    padding: 15px;
+  }
+  .kpi h2 {
+    font-size: 9px;
+  }
+  .kpi-value {
+    font-size: 28px;
+  }
+  .kpi-note {
+    margin-top: 10px;
+    font-size: 9px;
+  }
+  .small-pill {
+    font-size: 9px;
+    padding: 4px 7px;
+  }
+  .reception-sidebar {
+    display: flex;
+  }
+  .date-filters {
+    gap: 12px;
+  }
+  .date-filters .date-filter-field {
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .date-filters bm-date-field {
+    width: 100%;
+  }
+  .visit-card {
+    padding: 18px;
+  }
+  .visit-top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .visit-status {
+    text-align: left;
+    padding-left: 60px;
+  }
+  .board-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .client-info h3 {
+    font-size: 18px;
+  }
+  .visit-context {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .visit-actions {
+    align-items: flex-start;
+  }
+  .client-link {
+    margin-left: auto;
+  }
+}
+
+.visit-name {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.visit-name:hover {
+  color: var(--forest);
+}

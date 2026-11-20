@@ -1,8 +1,21 @@
 import { Routes } from '@angular/router';
 import { authGuard, anonymousGuard, permissionGuard } from './core/guards/auth-guards';
 import { NAVIGATION } from './core/config/navigation';
-import { reportingGuard } from './features/dashboard/reporting-guard';
+import { unsavedNavigationGuard } from './core/forms/unsaved-state';
 export const routes: Routes = [
+  ...['reservar', 'mis-reservas'].map((path) => ({
+    path,
+    loadComponent: () =>
+      import('./layouts/public-layout/public-layout').then((m) => m.PublicLayout),
+    children: [
+      {
+        path: '',
+        title: 'Reservas · Lasheo',
+        loadComponent: () =>
+          import('./features/reservas/public-booking-page').then((m) => m.PublicBookingPage),
+      },
+    ],
+  })),
   { path: '', pathMatch: 'full', redirectTo: 'admin' },
   {
     path: 'login',
@@ -19,44 +32,22 @@ export const routes: Routes = [
   {
     path: 'admin',
     canActivate: [authGuard],
-    canActivateChild: [authGuard],
+    canActivateChild: [authGuard, unsavedNavigationGuard],
     loadComponent: () => import('./layouts/admin-layout/admin-layout').then((m) => m.AdminLayout),
     children: [
       {
         path: 'agenda',
         canActivate: [permissionGuard],
-        data: { permission: 'agenda.view_agenda' },
+        data: { anyPermissions: ['agenda.view_agenda', 'agenda.view_own_agenda'] },
         loadChildren: () => import('./features/agenda/agenda.routes').then((m) => m.AGENDA_ROUTES),
       },
       {
         path: 'reportes',
-        canActivate: [reportingGuard],
-        title: 'Reportes · Lasheo',
-        loadComponent: () =>
-          import('./features/dashboard/presentation/reports-page').then((m) => m.ReportsPage),
+        pathMatch: 'full',
+        redirectTo: '/admin',
       },
-      {
-        path: 'llegadas',
-        canActivate: [permissionGuard],
-        data: { permission: 'negocio.view_llegadas' },
-        children: [
-          {
-            path: '',
-            pathMatch: 'full',
-            loadComponent: () =>
-              import('./features/registro-qr/presentation/arrival-inbox').then(
-                (m) => m.ArrivalInbox,
-              ),
-          },
-          {
-            path: ':id',
-            loadComponent: () =>
-              import('./features/registro-qr/presentation/arrival-detail').then(
-                (m) => m.ArrivalDetailPage,
-              ),
-          },
-        ],
-      },
+      { path: 'llegadas', pathMatch: 'full', redirectTo: 'visitas' },
+      { path: 'llegadas/:id', redirectTo: 'visitas' },
       {
         path: 'puntos-qr',
         canActivate: [permissionGuard],

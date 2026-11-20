@@ -12,6 +12,11 @@ export class ApiFailure extends Error {
 
 export function failureMessage(status: number, code: string): string {
   const agenda: Readonly<Record<string, string>> = {
+    DAY_HAS_BOOKINGS:
+      'La jornada dejaría citas o solicitudes fuera del horario. Reprograma o resuelve esas reservas antes de cambiarla.',
+    DAILY_SCHEDULE_NOT_READY:
+      'La configuración por fecha necesita activarse en el servidor. Los horarios habituales siguen disponibles.',
+    INVALID_SCHEDULE_DATE: 'Selecciona una fecha entre hoy y los próximos 366 días.',
     SLOT_NOT_AVAILABLE: 'El horario ya no está disponible. Consulta nuevamente y elige otro hueco.',
     DUPLICATE_WAITLIST:
       'Ya existe una solicitud de espera compatible. Revisa la lista antes de registrar otra.',

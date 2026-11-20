@@ -27,11 +27,6 @@ export class OperationsNav {
       label: 'Movimientos',
       permission: 'negocio.view_movimientosinventario',
     },
-    {
-      path: '/admin/inventario/alertas',
-      label: 'Reposición',
-      permission: 'negocio.view_articulos',
-    },
     { path: '/admin/compras', label: 'Compras', permission: 'negocio.view_compras' },
     { path: '/admin/proveedores', label: 'Proveedores', permission: 'negocio.view_proveedores' },
   ];

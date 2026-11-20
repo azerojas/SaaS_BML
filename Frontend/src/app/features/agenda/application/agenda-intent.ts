@@ -17,6 +17,8 @@ export class AgendaIntent extends OperationState {
   private readonly api = inject(AgendaApi);
   private readonly session = inject(SessionStore);
   readonly pending = signal(false);
+  readonly canRetry = signal(false);
+  readonly notice = signal('');
   private body: unknown;
   private attempt: Pending | null = null;
   private actor: number | undefined;
@@ -27,9 +29,11 @@ export class AgendaIntent extends OperationState {
       if (this.actor === actor) return;
       this.actor = actor;
       this.body = undefined;
+      this.canRetry.set(false);
       this.attempt = null;
       this.pending.set(false);
       this.error.set(null);
+      this.notice.set('');
       if (actor) {
         try {
           const raw = sessionStorage.getItem('lasheo.agenda.' + actor);
@@ -62,6 +66,7 @@ export class AgendaIntent extends OperationState {
     if (this.busy() || !this.actor) return null;
     this.busy.set(true);
     this.error.set(null);
+    this.notice.set('');
     this.failure.set(null);
     this.fields.set({});
     const actor = this.actor;
@@ -82,17 +87,19 @@ export class AgendaIntent extends OperationState {
           this.attempt.digest !== digest)
       )
         throw new Error(
-          'Hay una operación sin respuesta. Reenvía exactamente su formulario original; no crees otra reserva ni anticipo.',
+          'Hay una operación anterior pendiente. Pulsa «Resolver operación pendiente» antes de guardar este formulario.',
         );
       this.attempt ??= { key: crypto.randomUUID(), path, method, digest };
       sessionStorage.setItem('lasheo.agenda.' + actor, JSON.stringify(this.attempt));
       this.body = frozen;
+      this.canRetry.set(true);
       this.pending.set(true);
       const result = await firstValueFrom(this.api.mutate(path, frozen, this.attempt.key, method));
       if (this.actor !== actor) return null;
       sessionStorage.removeItem('lasheo.agenda.' + actor);
       this.attempt = null;
       this.body = undefined;
+      this.canRetry.set(false);
       this.pending.set(false);
       return result;
     } catch (error: unknown) {
@@ -120,6 +127,7 @@ export class AgendaIntent extends OperationState {
           sessionStorage.removeItem('lasheo.agenda.' + actor);
           this.attempt = null;
           this.body = undefined;
+          this.canRetry.set(false);
           this.pending.set(false);
         }
       }
@@ -132,5 +140,53 @@ export class AgendaIntent extends OperationState {
     return this.attempt && this.body !== undefined
       ? this.send(this.attempt.path, this.body, this.attempt.method)
       : Promise.resolve(null);
+  }
+  async recover(): Promise<MutationResult | null> {
+    return this.checkPending(false);
+  }
+  async resolve(): Promise<MutationResult | null> {
+    return this.checkPending(true);
+  }
+  private async checkPending(closeUnused: boolean): Promise<MutationResult | null> {
+    const attempt = this.attempt,
+      actor = this.actor;
+    if (!attempt || !actor || this.busy()) return null;
+    this.busy.set(true);
+    this.error.set(null);
+    try {
+      const result = await firstValueFrom(
+        closeUnused
+          ? this.api.resolve(attempt.key, attempt.path, attempt.method)
+          : this.api.status(attempt.key, attempt.path, attempt.method),
+      );
+      if (this.session.currentUser()?.id !== actor) return null;
+      if (result.cerrado || (result.encontrado && result.resultado)) {
+        sessionStorage.removeItem('lasheo.agenda.' + actor);
+        this.attempt = null;
+        this.body = undefined;
+        this.pending.set(false);
+        this.canRetry.set(false);
+        this.fields.set({});
+        this.failure.set(null);
+        this.notice.set(
+          result.cerrado
+            ? 'El intento anterior no realizó cambios y quedó cerrado. Ya puedes guardar tu formulario.'
+            : 'Se recuperó la operación anterior que ya estaba guardada. Revisa los datos antes de continuar.',
+        );
+        return result.resultado;
+      }
+      this.error.set(
+        'Django aún no registra un resultado. Conserva la clave y reintenta el formulario original.',
+      );
+      return null;
+    } catch (error: unknown) {
+      if (this.actor === actor)
+        this.error.set(
+          error instanceof Error ? error.message : 'No se pudo consultar el resultado.',
+        );
+      return null;
+    } finally {
+      this.busy.set(false);
+    }
   }
 }

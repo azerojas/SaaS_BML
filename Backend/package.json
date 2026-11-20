@@ -1,0 +1,12 @@
+{
+  "name": "lasheo-backend-supabase",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Supabase server dependency for JavaScript handlers alongside the Django backend.",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@supabase/server": "^1.9.2"
+  }
+}

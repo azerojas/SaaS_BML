@@ -15,7 +15,8 @@ from apps.checkin.domain.rules import cutoff
 
 def provisional(client):
     audit = m.Auditoria.objects.filter(entidad='clientas', entidad_id=str(client.pk))
-    return audit.filter(accion='ALTA_QR_PROVISIONAL').exists() and not audit.filter(accion='VALIDAR_ALTA_QR').exists()
+    return audit.filter(accion='ALTA_QR_PROVISIONAL').exists() and not audit.filter(
+        accion__in=['VALIDAR_ALTA_QR', 'ACTIVAR_ALTA_QR_AUTONOMA']).exists()
 
 
 def matching_clients(phone):
@@ -32,7 +33,7 @@ def matching_clients(phone):
 
 def arrivals(params):
     source = m.Auditoria.objects.filter(entidad='clientas', entidad_id=Cast(OuterRef('clienta_id'), CharField()), accion='ALTA_QR_PROVISIONAL')
-    verified = m.Auditoria.objects.filter(entidad='clientas', entidad_id=Cast(OuterRef('clienta_id'), CharField()), accion='VALIDAR_ALTA_QR')
+    verified = m.Auditoria.objects.filter(entidad='clientas', entidad_id=Cast(OuterRef('clienta_id'), CharField()), accion__in=['VALIDAR_ALTA_QR', 'ACTIVAR_ALTA_QR_AUTONOMA'])
     qs = m.Llegadas.objects.select_related('clienta', 'punto_qr').annotate(
         alta_provisional=Exists(source) & ~Exists(verified))
     qs = search(qs, params, ['clienta__nombres', 'clienta__apellidos', 'clienta__telefono'])

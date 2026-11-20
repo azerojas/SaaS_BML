@@ -7,102 +7,21 @@ import { firstValueFrom } from 'rxjs';
 import { SessionStore } from '../../../core/auth/application/session-store';
 import { ClientasFacade } from '../application/clientas-facade';
 import { Field, safeNotice } from '../../../shared/domain/records';
-import { buildFields, EditorFields } from '../../../shared/ui/editor-fields';
+import { buildFields } from '../../../shared/ui/editor-fields';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
 import { Alert } from '../../../shared/ui/alert';
 import { Loading } from '../../../shared/ui/loading';
 import { Button } from '../../../shared/ui/button';
+import { Icon } from '../../../shared/ui/icon';
+import { ClientaForm } from './clienta-form';
+import { Clienta } from '../domain/clienta';
 @Component({
   selector: 'bm-clienta-detail',
-  imports: [RouterLink, ReactiveFormsModule, MatButtonModule, EditorFields, Alert, Loading, Button],
+  imports: [RouterLink, ReactiveFormsModule, MatButtonModule, Alert, Loading, Button, Icon],
   providers: [ClientasFacade],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<a class="back-link" routerLink="/admin/clientas">← Clientas</a>
-    @if (facade.loading()) {
-      <bm-loading />
-    }
-    @if (facade.error(); as error) {
-      <bm-alert [message]="error" />
-    }
-    @if (facade.success(); as success) {
-      <bm-alert kind="info" [message]="success" />
-    }
-    @if (facade.record(); as client) {
-      <header class="feature-heading">
-        <div>
-          <p class="eyebrow">FICHA PERSONAL</p>
-          <h1>{{ client.nombres }} {{ client.apellidos }}</h1>
-          <span class="badge" [class.inactive]="!client.activa">{{
-            client.activa ? 'Activa' : 'Inactiva'
-          }}</span>
-        </div>
-        @if (canEdit()) {
-          <div class="form-actions">
-            <a mat-stroked-button [routerLink]="['editar']">Editar ficha</a
-            ><button mat-button type="button" [disabled]="facade.busy()" (click)="toggle()">
-              {{ client.activa ? 'Desactivar' : 'Reactivar' }}
-            </button>
-          </div>
-        }
-      </header>
-      <section class="surface">
-        <h2>Los detalles que importan</h2>
-        <dl class="details-grid">
-          <div>
-            <dt>Teléfono</dt>
-            <dd>{{ client.telefono }}</dd>
-          </div>
-          <div>
-            <dt>Correo electrónico</dt>
-            <dd>{{ client.email || 'Sin registrar' }}</dd>
-          </div>
-          <div>
-            <dt>Fecha de nacimiento</dt>
-            <dd>{{ client.fecha_nacimiento || 'Sin registrar' }}</dd>
-          </div>
-          <div>
-            <dt>Fecha de alta</dt>
-            <dd>{{ client.creado_en }}</dd>
-          </div>
-          <div class="wide">
-            <dt>Notas privadas</dt>
-            <dd class="preserve-lines">{{ client.notas_privadas || 'Sin notas' }}</dd>
-          </div>
-        </dl>
-      </section>
-      <section class="surface section-gap">
-        <h2>Consentimiento de datos</h2>
-        <p>
-          {{ client.consentimiento_datos ? 'Otorgado' : 'No otorgado'
-          }}{{ client.consentimiento_fecha ? ' · ' + client.consentimiento_fecha : '' }}
-        </p>
-        @if (canEdit()) {
-          @if (noticeUrl(); as url) {
-            <p>
-              <a [href]="url" target="_blank" rel="noopener noreferrer">Leer aviso vigente</a> ·
-              Versión {{ facade.config()?.privacy_notice?.version }}
-            </p>
-            <form [formGroup]="consent" (ngSubmit)="saveConsent()">
-              <bm-editor-fields
-                prefix="consent-"
-                [fields]="consentFields"
-                [form]="consent"
-                [errors]="facade.fields()"
-              /><bm-button type="submit" [busy]="facade.busy()">Registrar consentimiento</bm-button>
-            </form>
-          } @else {
-            <p class="muted">
-              No se puede registrar consentimiento hasta que administración configure el aviso de
-              privacidad vigente en Django.
-            </p>
-          }
-        }
-      </section>
-      <p class="muted section-gap">
-        El historial de atenciones y las métricas se incorporarán en la fase de visitas. No se
-        consultan datos financieros desde esta ficha.
-      </p>
-    }`,
+  templateUrl: './clienta-detail.html',
+  styleUrl: './clienta-detail.scss',
 })
 export class ClientaDetail {
   readonly facade = inject(ClientasFacade);
@@ -124,12 +43,45 @@ export class ClientaDetail {
     },
   ];
   readonly consent = buildFields(this.consentFields);
+  initials(first: string, last: string) {
+    return ((first.trim()[0] || '') + (last.trim()[0] || '')).toUpperCase();
+  }
+  displayDate(value?: string | null, dateOnly = false) {
+    if (!value) return 'Sin registrar';
+    const date = new Date(dateOnly ? value + 'T12:00:00Z' : value);
+    if (!Number.isFinite(date.getTime())) return 'Sin registrar';
+    return new Intl.DateTimeFormat('es-PE', {
+      dateStyle: 'long',
+      ...(dateOnly ? {} : { timeStyle: 'short' as const }),
+      timeZone: 'America/Lima',
+    }).format(date);
+  }
   constructor() {
     void this.facade.loadClient(Number(this.route.snapshot.paramMap.get('id')));
     void this.facade.configure();
   }
   canEdit() {
     return this.session.hasPermission('negocio.change_clientas');
+  }
+  async edit() {
+    const client = this.facade.record();
+    if (!client || !this.canEdit() || this.facade.busy()) return;
+    const saved = await firstValueFrom(
+      this.dialog
+        .open<ClientaForm, Clienta, Clienta>(ClientaForm, {
+          data: client,
+          width: '760px',
+          maxWidth: 'calc(100vw - 24px)',
+          autoFocus: 'first-heading',
+          closePredicate: (_result, _config, instance) =>
+            !(instance instanceof ClientaForm && instance.facade.busy()),
+        })
+        .afterClosed(),
+    );
+    if (saved) {
+      this.facade.record.set(saved);
+      this.facade.success.set('Ficha actualizada.');
+    }
   }
   noticeUrl() {
     return safeNotice(this.facade.config()?.privacy_notice.url, location.origin);

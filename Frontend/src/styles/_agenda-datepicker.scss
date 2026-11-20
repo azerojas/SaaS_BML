@@ -1,0 +1,108 @@
+// Shared overlays render outside their fields; keep the styles scoped to the common panel.
+.agenda-date-panel {
+  font-family: 'Manrope Variable', sans-serif;
+  width: 304px;
+  max-width: calc(100vw - 32px);
+  .mat-calendar-header {
+    height: 76px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    padding: 16px 12px 10px;
+    background: linear-gradient(120deg, var(--surface-low), var(--canvas));
+    border-bottom: 1px solid var(--line);
+  }
+  .mat-calendar-controls {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+  .mat-calendar-period-button {
+    white-space: nowrap;
+    color: var(--forest);
+    font-size: 15px;
+    font-weight: 750;
+    letter-spacing: 0.01em;
+  }
+  .mat-calendar-previous-button,
+  .mat-calendar-next-button {
+    background: var(--paper);
+    color: var(--forest);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  .mat-calendar-table {
+    table-layout: fixed;
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .mat-calendar-table-header th:not(.mat-calendar-table-header-divider) {
+    width: calc(100% / 7);
+    text-align: center;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 14px 0 10px;
+  }
+  .mat-calendar-table-header-divider {
+    padding: 0;
+    height: 1px;
+  }
+  .mat-calendar-body-cell-container {
+    text-align: center;
+  }
+  .mat-calendar-table-header-divider::after {
+    background: var(--line);
+  }
+  .mat-calendar-body-label {
+    color: var(--forest);
+    font-weight: 700;
+  }
+  .mat-calendar-body-cell-content {
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .mat-calendar-body-today:not(.mat-calendar-body-selected) {
+    border: 1px solid var(--forest);
+    background: var(--surface-low);
+    color: var(--forest);
+  }
+  .mat-calendar-body-selected {
+    background: var(--forest);
+    color: var(--on-primary);
+    box-shadow: 0 3px 8px rgb(65 40 30 / 16%);
+  }
+  .mat-calendar-body-cell:not(.mat-calendar-body-disabled):hover
+    .mat-calendar-body-cell-content:not(.mat-calendar-body-selected) {
+    background: var(--secondary-soft);
+    color: var(--on-secondary);
+  }
+  .mat-calendar-body-disabled .mat-calendar-body-cell-content {
+    color: var(--muted);
+    opacity: 0.45;
+  }
+}
+
+.mat-datepicker-content:has(.agenda-date-panel) {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--paper);
+  box-shadow: 0 18px 55px rgb(65 40 30 / 18%);
+}
+
+// Preserve leading empty weekday cells, but remove the redundant month label row.
+.agenda-date-panel .mat-calendar-body-label {
+  visibility: hidden;
+}
+.agenda-date-panel tr:has(> .mat-calendar-body-label:only-child) {
+  display: none;
+}
+
+// One geometry for day, month and year views; only the contents change.
+.mat-datepicker-content .mat-calendar.agenda-date-panel {
+  width: min(304px, calc(100vw - 32px));
+  height: min(384px, calc(100dvh - 24px));
+  overflow: auto;
+}

@@ -17,9 +17,13 @@ class MigrationTests(TestCase):
 
     def test_additive_migration_reverse_and_forward_preserve_original_schema(self):
         before=self.signature()
-        MigrationExecutor(connection).migrate([('finanzas',None)])
-        with self.assertRaises(FinanceError):ensure_ready()
-        MigrationExecutor(connection).migrate([('finanzas','0002_cash_ledger')])
+        leaves=MigrationExecutor(connection).loader.graph.leaf_nodes()
+        try:
+            MigrationExecutor(connection).migrate([('finanzas',None)])
+            with self.assertRaises(FinanceError):ensure_ready()
+        finally:
+            # Reapply dependent support migrations as well as the financial ledger.
+            MigrationExecutor(connection).migrate(leaves)
         ensure_ready()
         self.assertEqual(before,self.signature())
 

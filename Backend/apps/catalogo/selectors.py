@@ -1,4 +1,4 @@
-from django.db.models import Q
+from django.db.models import Q, OuterRef, Subquery
 from rest_framework.exceptions import ValidationError
 from negocio import models as m
 from apps.clientas.selectors import ACCENTS, PLAIN
@@ -46,7 +46,9 @@ def admin_list(kind, params):
     model = ENTITIES[kind][0]
     qs = model.objects.all()
     if kind == 'servicios':
-        qs = qs.select_related('categoria')
+        photos = m.ImagenesCatalogo.objects.filter(servicio_id=OuterRef('pk')).order_by(
+            '-es_principal', 'orden', 'id').values('url')[:1]
+        qs = qs.select_related('categoria').annotate(foto_principal=Subquery(photos)).prefetch_related('profesionalservicios_set')
     elif kind == 'articulos':
         qs = qs.select_related('categoria', 'unidad')
     fields = {field.name for field in model._meta.fields}

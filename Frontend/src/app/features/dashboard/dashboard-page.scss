@@ -17,7 +17,7 @@ h1 {
   overflow-wrap: anywhere;
 }
 .greeting-dot {
-  color: #779376;
+  color: var(--muted);
 }
 .page-heading > div > p:last-child {
   font-size: 0.8rem;
@@ -47,7 +47,7 @@ h1 {
   border-radius: 18px;
   min-height: 310px;
   overflow: hidden;
-  color: #fff;
+  color: var(--on-primary);
   position: relative;
 }
 .welcome-copy {
@@ -58,7 +58,7 @@ h1 {
   font-size: 0.55rem;
   letter-spacing: 2px;
   font-weight: 650;
-  color: #d1ddcc;
+  color: var(--on-primary);
 }
 .welcome-copy h2 {
   font-family: Georgia, serif;
@@ -70,7 +70,7 @@ h1 {
 }
 .welcome-copy p {
   font-size: 0.74rem;
-  color: #d6e0d5;
+  color: var(--elixir-inverse-on-surface);
   line-height: 1.9;
   margin: 0;
 }
@@ -80,7 +80,7 @@ h1 {
   gap: 0.45rem;
   margin-top: 1.7rem;
   font-size: 0.6rem;
-  color: #d6e0d5;
+  color: var(--elixir-inverse-on-surface);
 }
 .welcome-status bm-icon {
   width: 14px;
@@ -99,7 +99,7 @@ h1 {
   width: 200px;
   height: 270px;
   border-radius: 110px 110px 0 0;
-  border: 1px solid #b6c7a94d;
+  border: 1px solid color-mix(in srgb, var(--line) 30.2%, transparent);
   bottom: 0;
   transform: rotate(20deg);
 }
@@ -118,7 +118,7 @@ h1 {
   position: relative;
   font-size: 9rem;
   line-height: 1;
-  color: #cad4bc;
+  color: var(--muted);
   font-weight: 400;
   transform: rotate(14deg);
   margin-top: -1.4rem;
@@ -128,140 +128,7 @@ h1 {
   bottom: 2.7rem;
   font-size: 0.45rem;
   letter-spacing: 2.1px;
-  color: #cad4bc;
-}
-.shortcuts {
-  margin-top: 2.5rem;
-}
-.section-title {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-.section-title .eyebrow {
-  font-size: 0.53rem;
-  margin: 0 0 0.6rem;
-}
-.section-title h2 {
-  font-size: 1.2rem;
-  font-weight: 650;
-  letter-spacing: -0.4px;
-  margin: 0;
-}
-.phase-label {
-  display: inline-flex;
-  gap: 0.45rem;
-  align-items: center;
-  font-size: 0.6rem;
   color: var(--muted);
-}
-.phase-label bm-icon {
-  width: 13px;
-  height: 13px;
-}
-.shortcut-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-}
-.shortcut-card {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 1.4rem;
-  display: flex;
-  gap: 1rem;
-  align-items: flex-start;
-  text-decoration: none;
-  color: var(--ink);
-  transition:
-    border-color 0.2s,
-    transform 0.2s;
-}
-.shortcut-card:hover {
-  border-color: #a1b29d;
-  transform: translateY(-2px);
-}
-.shortcut-icon {
-  background: var(--sage);
-  color: var(--forest);
-  padding: 0.75rem;
-  display: inline-flex;
-  border-radius: 11px;
-}
-.shortcut-content {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.shortcut-title {
-  font-size: 0.8rem;
-  font-weight: 700;
-  margin: 0.2rem 0 0.4rem;
-}
-.shortcut-description {
-  font-size: 0.64rem;
-  color: var(--muted);
-  line-height: 1.7;
-}
-.coming-label {
-  font-size: 0.53rem;
-  color: #5c6d5e;
-  margin-top: 0.8rem;
-}
-.shortcut-card > bm-icon {
-  margin-left: auto;
-  width: 16px;
-  height: 16px;
-  color: #5f7064;
-  flex-shrink: 0;
-}
-.no-permissions {
-  grid-column: 1/-1;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 2rem;
-  display: flex;
-  gap: 1rem;
-  background: var(--paper);
-}
-.no-permissions > bm-icon {
-  color: var(--forest);
-}
-.no-permissions h3 {
-  font-size: 0.9rem;
-  margin: 0 0 0.5rem;
-}
-.no-permissions p {
-  font-size: 0.8rem;
-  color: var(--muted);
-  line-height: 1.7;
-  margin: 0;
-}
-.quiet-note {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  padding: 2rem 0 0.5rem;
-  color: var(--muted);
-}
-.quiet-note > bm-icon {
-  width: 16px;
-  height: 16px;
-  color: var(--forest);
-}
-.quiet-note p {
-  font-size: 0.66rem;
-  margin: 0;
-}
-.quiet-note > span {
-  font-family: Georgia, serif;
-  font-style: italic;
-  font-size: 0.85rem;
-  margin-left: auto;
-  color: var(--forest);
 }
 @media (max-width: 1000px) {
   .welcome-copy {
@@ -273,20 +140,10 @@ h1 {
   .date-chip {
     display: none;
   }
-  .shortcut-card {
-    padding: 1rem;
-    gap: 0.8rem;
-  }
-  .shortcut-description {
-    font-size: 0.61rem;
-  }
   .art-flower {
     font-size: 7rem;
   }
   .art-caption {
-    display: none;
-  }
-  .quiet-note > span {
     display: none;
   }
 }
@@ -306,26 +163,5 @@ h1 {
   }
   .welcome-art {
     display: none;
-  }
-  .shortcut-grid {
-    grid-template-columns: 1fr;
-  }
-  .section-title {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 0.8rem;
-  }
-  .shortcut-card {
-    padding: 1.2rem;
-  }
-  .shortcut-description {
-    font-size: 0.68rem;
-  }
-  .quiet-note {
-    align-items: flex-start;
-  }
-  .quiet-note p {
-    line-height: 1.7;
-    font-size: 0.63rem;
   }
 }

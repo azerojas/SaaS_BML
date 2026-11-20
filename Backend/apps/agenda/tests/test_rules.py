@@ -1,7 +1,7 @@
 from datetime import datetime,time
 from decimal import Decimal as D
 from types import SimpleNamespace
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase,override_settings
 from apps.agenda.domain.rules import transition,overlaps,fits,amounts,ZONE
 from apps.agenda.domain.errors import AgendaError
 from apps.agenda.presentation.serializers import BookingInput,ProfessionalInput
@@ -16,6 +16,7 @@ class RuleTests(SimpleTestCase):
         self.assertFalse(fits(a.replace(minute=7),b,[(2,time(10),time(18))],15))
         self.assertFalse(fits(a,b,[(1,time(10),time(18))],15))
 
+    @override_settings(AGENDA_REQUIRE_DEPOSITS=True)
     def test_transitions_terminal_and_money_rounding(self):
         transition('PROGRAMADA','CONFIRMADA')
         for state in ['CANCELADA','COMPLETADA','EXPIRADA','NO_ASISTIO']:

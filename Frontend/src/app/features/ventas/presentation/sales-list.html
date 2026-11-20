@@ -1,0 +1,149 @@
+<header class="feature-heading">
+  <div>
+    <p class="eyebrow">ATENCIÓN Y CAJA</p>
+    <h1>Ventas y pagos</h1>
+    <p>Consulta las ventas y todos los pagos registrados.</p>
+  </div>
+  @if (session.hasPermission('finanzas.manage_sales')) {
+    <a mat-flat-button routerLink="/admin/ventas/nueva">Venta de mostrador</a>
+  }
+</header>
+<section class="surface" aria-labelledby="sales-history-title">
+  <h2 id="sales-history-title">Ventas registradas</h2>
+  <form class="sales-filters" [formGroup]="form" (ngSubmit)="filter()">
+    <div class="sales-filter-fields">
+      <div class="sales-filter-field">
+        <label for="sales-state">Estado de venta</label>
+        <select id="sales-state" formControlName="estado">
+          <option value="">Todas</option>
+          <option value="BORRADOR">Borrador</option>
+          <option value="CONFIRMADA">Confirmada</option>
+          <option value="ANULADA">Anulada</option>
+        </select>
+      </div>
+      <div class="sales-filter-field">
+        <span>Desde</span><bm-date-field ariaLabel="Desde" formControlName="desde" />
+      </div>
+      <div class="sales-filter-field">
+        <span>Hasta</span><bm-date-field ariaLabel="Hasta" formControlName="hasta" />
+      </div>
+    </div>
+    <div class="sales-filter-actions">
+      <button mat-stroked-button type="submit">Filtrar ventas</button>
+      <button mat-button type="button" (click)="refresh()">Actualizar</button>
+    </div>
+  </form>
+  @if (facade.list.error(); as error) {
+    <bm-alert [message]="error" /><button mat-button type="button" (click)="facade.list.reload()">
+      Reintentar ventas
+    </button>
+  } @else if (facade.list.loading()) {
+    <bm-loading label="Consultando ventas…" />
+  } @else if (facade.list.rows().length) {
+    <div class="finance-list-head sale-columns" aria-hidden="true">
+      <span>Venta</span><span>Fecha</span><span>Estado</span><span>Total</span>
+    </div>
+    <ul class="finance-records" aria-label="Ventas registradas">
+      @for (sale of facade.list.rows(); track sale.id) {
+        <li>
+          <a class="finance-history-row sale-columns" [routerLink]="['/admin/ventas', sale.id]">
+            <span class="finance-record-main"
+              ><strong>Venta #{{ sale.id }}</strong
+              ><small>{{ sale.visita_id ? 'Visita #' + sale.visita_id : 'Mostrador' }}</small></span
+            >
+            <span class="finance-record-field"
+              ><span class="finance-field-label">Fecha</span>{{ date(sale.creada_en) }}</span
+            >
+            <span class="finance-record-field"
+              ><span class="finance-field-label">Estado</span
+              ><span class="badge" [class.inactive]="sale.estado === 'ANULADA'">{{
+                sale.estado
+              }}</span></span
+            >
+            <span class="finance-record-field finance-amount"
+              ><span class="finance-field-label">Total</span
+              ><strong>{{ money(sale.total) }}</strong></span
+            >
+          </a>
+        </li>
+      }
+    </ul>
+  } @else {
+    <p class="empty-panel">No hay ventas para estos filtros.</p>
+  }
+  <bm-pager
+    [count]="facade.list.count()"
+    [page]="Number(facade.list.query()['page'])"
+    [busy]="facade.list.loading()"
+    (changed)="facade.list.page($event)"
+  />
+</section>
+<section class="surface section-gap" aria-labelledby="payments-history-title">
+  <div class="payments-heading">
+    <div>
+      <h2 id="payments-history-title">Pagos registrados</h2>
+      <p class="muted">
+        Todos los cobros registrados, incluidos los anulados. Abre un pago para consultar su venta.
+      </p>
+    </div>
+    <button mat-button type="button" (click)="facade.payments.reload()">Actualizar pagos</button>
+  </div>
+  @if (facade.payments.error(); as error) {
+    <bm-alert [message]="error" /><button
+      mat-button
+      type="button"
+      (click)="facade.payments.reload()"
+    >
+      Reintentar pagos
+    </button>
+  } @else if (facade.payments.loading()) {
+    <bm-loading label="Consultando pagos…" />
+  } @else if (facade.payments.rows().length) {
+    <div class="finance-list-head payment-columns" aria-hidden="true">
+      <span>Pago / Venta</span><span>Fecha</span><span>Método</span><span>Estado</span
+      ><span>Importe</span>
+    </div>
+    <ul class="finance-records" aria-label="Pagos registrados">
+      @for (payment of facade.payments.rows(); track payment.id) {
+        <li>
+          <a
+            class="finance-history-row payment-columns"
+            [routerLink]="['/admin/ventas', payment.venta_id]"
+          >
+            <span class="finance-record-main"
+              ><strong>Pago #{{ payment.id }}</strong
+              ><small>Venta #{{ payment.venta_id }}</small>
+              @if (payment.referencia) {
+                <small>Ref. {{ payment.referencia }}</small>
+              }
+            </span>
+            <span class="finance-record-field"
+              ><span class="finance-field-label">Fecha</span>{{ date(payment.pagado_en) }}</span
+            >
+            <span class="finance-record-field"
+              ><span class="finance-field-label">Método</span>{{ payment.metodo }}</span
+            >
+            <span class="finance-record-field"
+              ><span class="finance-field-label">Estado</span
+              ><span class="badge" [class.inactive]="payment.estado === 'ANULADO'">{{
+                payment.estado
+              }}</span></span
+            >
+            <span class="finance-record-field finance-amount"
+              ><span class="finance-field-label">Importe</span
+              ><strong>{{ money(payment.monto) }}</strong></span
+            >
+          </a>
+        </li>
+      }
+    </ul>
+  } @else {
+    <p class="empty-panel">Todavía no hay pagos registrados.</p>
+  }
+  <bm-pager
+    [count]="facade.payments.count()"
+    [page]="Number(facade.payments.query()['page'])"
+    [busy]="facade.payments.loading()"
+    (changed)="facade.payments.page($event)"
+  />
+</section>

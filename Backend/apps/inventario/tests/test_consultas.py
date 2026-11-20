@@ -8,6 +8,19 @@ from .base import API, InventoryTestCase
 
 
 class QueryTests(InventoryTestCase):
+    def test_depleted_filter_applies_before_pagination_and_excludes_inactive(self):
+        empty = self.article(nombre='Agotado', stock_minimo='0')
+        low = self.article(nombre='Con existencias', stock_minimo='5')
+        self.adjustment(low, cantidad='2')
+        inactive = self.article(nombre='Inactivo sin existencias', activo=False)
+        response = self.client.get(API+'inventario/stock/', {'agotados':'true', 'page_size':1})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['count'], 1)
+        self.assertEqual(response.json()['results'][0]['articulo_id'], empty['id'])
+        available = self.client.get(API+'inventario/stock/', {'agotados':'false'}).json()
+        self.assertEqual([row['articulo_id'] for row in available['results']], [low['id']])
+        self.assertEqual(self.client.get(API+'inventario/stock/', {'agotados':'incorrecto'}).status_code, 400)
+
     def test_supplier_validation_and_soft_deactivation(self):
         provider=self.provider(nombre='  Proveedor  prueba ',ruc='RUC-FICTICIO',telefono='999123456',email='prueba@example.com')
         self.assertEqual(provider['nombre'],'Proveedor prueba')

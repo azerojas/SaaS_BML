@@ -1,55 +1,66 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { ReportsFacade } from '../application/reports-facade';
 import { ReportDownload } from '../infrastructure/report-download';
 import { SessionStore } from '../../../core/auth/application/session-store';
-import { REPORT_LABELS } from '../domain/analytics';
-import { ReportFilters } from './report-filters';
+import { REPORT_LABELS, Report } from '../domain/analytics';
+import { presetFilters } from '../domain/periods';
 import { ReportPanel } from './report-panel';
-import { ReportQuality } from './report-quality';
-import { KpiGrid } from './kpi-grid';
-import { FinancialTrend } from './financial-trend';
-import { PaymentMethods } from './payment-methods';
-import { ReportTable } from './report-table';
+import { ReportChart } from './report-chart';
 import { Alert } from '../../../shared/ui/alert';
-import { Pager } from '../../../shared/ui/pager';
+import { Icon } from '../../../shared/ui/icon';
 @Component({
   selector: 'bm-reports-page',
-  imports: [
-    ReactiveFormsModule,
-    MatButtonModule,
-    ReportFilters,
-    ReportPanel,
-    ReportQuality,
-    KpiGrid,
-    FinancialTrend,
-    PaymentMethods,
-    ReportTable,
-    Alert,
-    Pager,
-  ],
+  imports: [MatButtonModule, ReportPanel, ReportChart, Alert, Icon],
   providers: [ReportsFacade, ReportDownload],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './reports-page.html',
+  styles: `
+    :host {
+      display: block;
+      width: 100%;
+      min-width: 0;
+    }
+    .general-report {
+      margin-bottom: 24px;
+    }
+    .report-selection {
+      margin-bottom: 24px;
+    }
+    .report-selection label {
+      display: block;
+      margin-bottom: 8px;
+    }
+    .report-selection select {
+      width: 100%;
+      max-width: 480px;
+    }
+    .report-export {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 24px;
+    }
+    .export-content {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      vertical-align: middle;
+    }
+    .report-period {
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.7;
+    }
+  `,
 })
 export class ReportsPage {
   readonly facade = inject(ReportsFacade);
   readonly session = inject(SessionStore);
   readonly labels = REPORT_LABELS;
-  readonly selection = inject(FormBuilder).nonNullable.group({
-    report: this.facade.selected(),
-    orden: 'importe',
-  });
   constructor() {
-    this.facade.reload();
+    this.facade.apply(presetFilters('month'));
   }
-  select() {
-    this.facade.select(this.selection.controls.report.value);
-    this.selection.controls.orden.setValue('importe');
-  }
-  order() {
-    this.facade.ordering.set(this.selection.controls.orden.value);
-    this.facade.changePage(1);
+  select(event: Event) {
+    this.facade.select((event.target as HTMLSelectElement).value as Report);
   }
 }

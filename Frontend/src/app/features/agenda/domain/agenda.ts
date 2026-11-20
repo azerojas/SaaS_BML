@@ -10,6 +10,8 @@ export const APPOINTMENT_STATES = [
   'EXPIRADA',
 ] as const;
 export interface Professional {
+  publicacion_propia?: boolean;
+  servicios?: number[];
   id: number;
   nombres: string;
   apellidos: string;
@@ -26,6 +28,20 @@ export interface Schedule {
   hora_inicio: string;
   hora_fin: string;
 }
+export interface DayInterval {
+  inicio: string;
+  fin: string;
+  cupo_unico?: boolean;
+  ocupado?: boolean;
+}
+export interface DailySchedule {
+  id: number;
+  profesional_id: number | null;
+  fecha: string;
+  franjas: DayInterval[];
+  cerrado: boolean;
+  origen: 'FECHA';
+}
 export interface Block {
   id: number;
   profesional_id: number | null;
@@ -34,6 +50,8 @@ export interface Block {
   motivo: string;
 }
 export interface Appointment {
+  clienta_nombre?: string;
+  servicios_nombres?: string[];
   id: number;
   clienta_id: number;
   profesional_id: number;
@@ -110,6 +128,32 @@ export interface MutationResult {
   estado?: string;
 }
 export type WriteMethod = 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+export function intentOperation(path: string, method: WriteMethod): string {
+  const pieces = path.split('/').filter(Boolean);
+  if (path.startsWith('/api/anticipos/'))
+    return 'anticipo.' + (pieces.length === 2 ? 'crear' : pieces[3]);
+  if (!path.startsWith('/api/v1/agenda/')) throw new Error('Operación de agenda no reconocida.');
+  const resource = pieces[3],
+    action = pieces[5];
+  if (resource === 'disponibilidad-diaria')
+    return 'agenda.jornada.' + (pieces[4] === 'restablecer' ? 'restablecer' : 'guardar');
+  if (resource === 'calendario') return 'agenda.configurar';
+  const names: Record<string, string> = {
+    profesionales: 'profesional',
+    horarios: 'horario',
+    bloqueos: 'bloqueo',
+    citas: 'cita',
+    'lista-espera': 'espera',
+  };
+  if (!names[resource]) throw new Error('Operación no reconocida.');
+  const verb =
+    resource === 'citas' && pieces[4] === 'expirar'
+      ? 'expirar'
+      : action === 'vincular-llegada'
+        ? 'llegada'
+        : (action ?? (method === 'DELETE' ? 'retirar' : method === 'PATCH' ? 'editar' : 'crear'));
+  return 'agenda.' + names[resource] + '.' + verb;
+}
 export function calendarDays(date: string, view: CalendarView): string[] {
   if (!validDate(date)) throw new Error('Selecciona una fecha válida.');
   let start = date,

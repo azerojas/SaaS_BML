@@ -10,7 +10,7 @@ export class DashboardFacade {
   private readonly api = inject(AnalyticsApi);
   private readonly session = inject(SessionStore);
   readonly download = inject(ReportDownload);
-  readonly filters = signal(presetFilters('day'));
+  readonly filters = signal(presetFilters('last7'));
   readonly overview = new ReportResource((q) => this.api.overview(q));
   readonly series = new ReportResource((q) => this.api.series(q));
   readonly methods = new ReportResource((q) => this.api.methods(q));

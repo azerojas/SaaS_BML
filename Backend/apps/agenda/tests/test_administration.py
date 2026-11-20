@@ -15,6 +15,54 @@ from .base import AgendaTestCase,API,NOW,START
 
 
 class AdministrationTests(AgendaTestCase):
+    def test_personal_calendar_uses_people_assigned_from_treatment_catalog(self):
+        from django.test import override_settings
+        from apps.agenda.infrastructure import repositories as repo
+        identifier=self.call('profesionales/', {'nombres':'Atencion','apellidos':'Personal',
+            'usuario_id':self.admin.pk,'visible_reservas':True}, status=201).json()['profesional_id']
+        self.assertFalse(m.ProfesionalServicios.objects.filter(profesional_id=identifier).exists())
+        assigned=self.client.patch('/api/admin/catalogo/servicios/'+str(self.item.pk)+'/',
+            {'profesionales_ids':[self.prof,identifier]}, format='json')
+        self.assertEqual(assigned.status_code,200,assigned.data)
+        professional, services=repo.eligible(identifier,[self.item.pk])
+        self.assertEqual(professional.pk,identifier)
+        self.assertEqual(services[0].pk,self.item.pk)
+        private=self.client.get(API+'profesionales/'+str(identifier)+'/').json()
+        self.assertIn(self.item.pk,private['servicios'])
+        filtered=self.client.get(API+'profesionales/',{'servicio_id':self.item.pk}).json()
+        self.assertIn(identifier,[row['id'] for row in filtered['results']])
+        m.Servicios.objects.filter(pk=self.item.pk).update(visible_catalogo=True)
+        with override_settings(AGENDA_PUBLIC_READ_ENABLED=True):
+            public=self.client.get('/api/v1/public/agenda/profesionales/').json()
+            self.assertIn(self.item.pk,next(row for row in public['results'] if row['id']==identifier)['servicios'])
+        self.call('disponibilidad-diaria/',{'profesional_id':identifier,'fecha':START.date().isoformat(),
+            'franjas':[{'inicio':'16:00','fin':'17:00','cupo_unico':True}]},status=200)
+        self.reserve(profesional_id=identifier,start=START.replace(hour=16))
+        blocked=self.client.patch('/api/admin/catalogo/servicios/'+str(self.item.pk)+'/',
+            {'profesionales_ids':[self.prof],'precio_base':'999'},format='json')
+        self.assertEqual(blocked.status_code,409,blocked.data)
+        self.assertTrue(m.ProfesionalServicios.objects.filter(servicio_id=self.item.pk,profesional_id=identifier).exists())
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.precio_base,D('80'))
+
+    def test_administrator_can_receive_bookings_only_at_personal_published_times(self):
+        from apps.agenda.infrastructure import repositories as repo
+        from django.contrib.auth.models import Permission
+        m.Profesionales.objects.filter(pk=self.prof).update(usuario_id=self.admin.pk)
+        self.assertTrue(repo.requires_personal_slots(self.prof))
+        self.assertEqual(self.get_slots()['slots'], [])
+        self.call('disponibilidad-diaria/', {
+            'profesional_id':self.prof,'fecha':START.date().isoformat(),
+            'franjas':[{'inicio':'16:00','fin':'17:00','cupo_unico':True},
+                       {'inicio':'17:00','fin':'18:00','cupo_unico':True}],
+        },status=200)
+        self.assertEqual([row['inicio_en'][11:16] for row in self.get_slots()['slots']],['16:00','17:00'])
+        # Staff administrators also use personal dates through direct or group permissions.
+        m.Profesionales.objects.filter(pk=self.prof).update(usuario_id=self.staff.pk)
+        permission=Permission.objects.get(content_type__app_label='agenda',codename='manage_schedules')
+        self.staff.user_permissions.add(permission)
+        self.assertTrue(repo.requires_personal_slots(self.prof))
+
     def test_successful_schedule_and_block_retirements_are_audited_and_require_explicit_intent(self):
         self.call('horarios/'+str(self.schedule)+'/',{'motivo':'Retiro ficticio horario'},method='delete',status=400)
         self.call('horarios/'+str(self.schedule)+'/',{'motivo':'Retiro ficticio horario','confirmar_retiro':True},method='delete',status=200)
@@ -81,15 +129,21 @@ class AdministrationTests(AgendaTestCase):
         self.assertFalse(audit.datos['reembolso_automatico'])
 
     def test_permissions_proxy_migration_reversible_without_business_ddl(self):
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT relname,relkind FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind IN ('r','v') ORDER BY 1")
-            original=cursor.fetchall()
-        MigrationExecutor(connection).migrate([('agenda',None)])
-        self.assertEqual(self.client.get(API+'citas/').status_code,503)
-        MigrationExecutor(connection).migrate([('agenda','0001_agenda_permissions')])
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT relname,relkind FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind IN ('r','v') ORDER BY 1")
-            self.assertEqual(original,cursor.fetchall())
+        leaves=MigrationExecutor(connection).loader.graph.leaf_nodes('agenda')
+        try:
+            # Isolate the permission-only migration from later additive support tables.
+            MigrationExecutor(connection).migrate([('agenda','0001_agenda_permissions')])
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT relname,relkind FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind IN ('r','v') ORDER BY 1")
+                original=cursor.fetchall()
+            MigrationExecutor(connection).migrate([('agenda',None)])
+            self.assertEqual(self.client.get(API+'citas/').status_code,503)
+            MigrationExecutor(connection).migrate([('agenda','0001_agenda_permissions')])
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT relname,relkind FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind IN ('r','v') ORDER BY 1")
+                self.assertEqual(original,cursor.fetchall())
+        finally:
+            MigrationExecutor(connection).migrate(leaves)
 
     def test_availability_is_bounded_queries_and_read_only_with_many_bookings(self):
         query=AvailabilityQuery(self.prof,(self.item.pk,),START.date())
@@ -100,7 +154,7 @@ class AdministrationTests(AgendaTestCase):
         with CaptureQueriesContext(connection) as busy:result=available(query)
         elapsed=perf_counter()-start
         self.assertEqual(len(empty),len(busy))
-        self.assertLessEqual(len(busy),8)
+        self.assertLessEqual(len(busy),12)
         self.assertEqual(result['slots'],[])
         self.assertEqual(m.Auditoria.objects.count(),count)
         evidence={'appointments':30,'queries':len(busy),'empty_queries':len(empty),'elapsed_seconds':round(elapsed,6)}

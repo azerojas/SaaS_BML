@@ -25,12 +25,25 @@ class UnidadOutput(serializers.ModelSerializer):
 
 
 class ServicioOutput(serializers.ModelSerializer):
+    profesionales_ids = serializers.SerializerMethodField()
+
+    def get_profesionales_ids(self, obj):
+        return sorted(row.profesional_id for row in obj.profesionalservicios_set.all())
+
     categoria_nombre = serializers.CharField(source='categoria.nombre', default=None)
+    imagen_principal = serializers.SerializerMethodField()
+
+    def get_imagen_principal(self, obj):
+        if hasattr(obj, 'foto_principal'):
+            return public_image_url(obj.foto_principal)
+        url = m.ImagenesCatalogo.objects.filter(servicio_id=obj.pk).order_by(
+            '-es_principal', 'orden', 'id').values_list('url', flat=True).first()
+        return public_image_url(url)
     class Meta:
         model = m.Servicios
         fields = ['id', 'categoria_id', 'categoria_nombre', 'nombre', 'slug', 'descripcion',
                   'duracion_minutos', 'precio_base', 'visible_catalogo', 'reservable_online',
-                  'requiere_anticipo', 'orden', 'activo', 'creado_en', 'actualizado_en']
+                  'requiere_anticipo', 'orden', 'activo', 'creado_en', 'actualizado_en', 'imagen_principal', 'profesionales_ids']
         read_only_fields = fields
 
 

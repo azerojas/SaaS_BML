@@ -22,3 +22,14 @@ REVOKE UPDATE, DELETE ON finanzas_reembolso, finanzas_ajusteventa, finanzas_conc
 REVOKE UPDATE ON auditoria, movimientos_inventario, consumos_servicio, idempotency_records FROM beauty_runtime;
 REVOKE UPDATE ON pagos FROM beauty_runtime;
 GRANT UPDATE(estado) ON pagos TO beauty_runtime;
+-- Public booking support is installed only by the reviewed agenda migration.
+-- Preserve ownership and request results as append-only records.
+DO $$ BEGIN
+    IF to_regclass('public.catalogo_uploadedphoto') IS NOT NULL THEN
+        REVOKE UPDATE ON catalogo_uploadedphoto FROM beauty_runtime;
+    END IF;
+    IF to_regclass('public.agenda_publicbookingrequest') IS NOT NULL THEN
+        REVOKE DELETE ON agenda_publicbookingrequest FROM beauty_runtime;
+        REVOKE UPDATE, DELETE ON agenda_publicbookingintent FROM beauty_runtime;
+    END IF;
+END $$;

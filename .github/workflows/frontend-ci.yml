@@ -1,0 +1,130 @@
+name: Frontend integration and release gates
+on:
+  pull_request:
+    paths: ['Frontend/**','Backend/**','.github/workflows/frontend-ci.yml']
+  push:
+    paths: ['Frontend/**','Backend/**','.github/workflows/frontend-ci.yml']
+  workflow_dispatch:
+    inputs:
+      production_approval:
+        description: 'Only after owner approval: APPROVE_PRODUCTION_<full commit SHA>'
+        required: false
+        default: ''
+permissions:
+  contents: read
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:18.6-alpine3.23@sha256:a0cbdbbcc57f7317ca183ac9d10eb3af72b5b05b2f25acad58e765bd2b139099
+        env:
+          POSTGRES_USER: ci_owner
+          POSTGRES_PASSWORD: synthetic-ci-service-only
+          POSTGRES_DB: beauty_ci
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U ci_owner -d beauty_ci" --health-interval 5s --health-retries 15
+    env:
+      BM_E2E_DATABASE_URL: postgresql://ci_owner:synthetic-ci-service-only@127.0.0.1:5432/beauty_ci
+      BM_E2E_PYTHON: ${{ github.workspace }}/Backend/.venv/bin/python
+      BM_E2E_BACKUP_CHECK: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.15.0'
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.14.10'
+      - run: python -m venv Backend/.venv && Backend/.venv/bin/pip install -r Backend/requirements-tools.txt
+      - name: PostgreSQL 18 client for isolated restore rehearsal
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-18
+      - run: npm ci
+        working-directory: Frontend
+      - run: npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && node scripts/check-build.mjs && npm audit --audit-level=high
+        working-directory: Frontend
+      - run: Backend/.venv/bin/python Backend/scripts/frontend_deploy_check.py
+      - run: Backend/.venv/bin/python Backend/scripts/scan_source_secrets.py
+      - run: Backend/.venv/bin/python -m unittest discover -s Frontend/deployment -p test_entrypoint.py
+      - run: npx playwright install --with-deps chromium
+        working-directory: Frontend
+      - run: npm run e2e
+        working-directory: Frontend
+      - name: Build frontend and validate actual Nginx runtime
+        run: |
+          docker build -f Frontend/deployment/Dockerfile -t beauty-frontend:ci Frontend
+          docker run -d --name beauty-frontend -p 8080:8080 -e DJANGO_UPSTREAM=http://127.0.0.1:9 beauty-frontend:ci
+          for n in $(seq 1 30); do curl --fail http://127.0.0.1:8080/health && break || sleep 1; done
+          curl --fail http://127.0.0.1:8080/health
+          curl --fail -H 'X-Forwarded-Proto: https' http://127.0.0.1:8080/login
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Forwarded-Proto: https' http://127.0.0.1:8080/missing.js)" = 404
+          docker exec beauty-frontend nginx -c /tmp/nginx/nginx.conf -t
+      - name: Container vulnerability gate
+        run: >-
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock
+          aquasec/trivy:0.76.2@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb
+          image --scanners vuln --exit-code 1 --severity HIGH,CRITICAL beauty-frontend:ci
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: frontend-isolated-acceptance
+          retention-days: 14
+          path: |
+            Frontend/.artifacts/e2e-results.json
+            Frontend/.artifacts/phase7-restore.json
+            Frontend/.artifacts/phase7-lighthouse-summary.json
+      - if: always()
+        run: docker rm -f beauty-frontend || true
+  staging:
+    needs: quality
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.STAGING_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.15.0'
+      - run: npm install -g @railway/cli@5.71.0
+      - name: Deploy configured staging frontend only
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_STAGING_TOKEN }}
+          PROJECT: ${{ vars.RAILWAY_STAGING_PROJECT_ID }}
+          SERVICE: ${{ vars.RAILWAY_STAGING_FRONTEND_ID }}
+          ENVIRONMENT: ${{ vars.RAILWAY_STAGING_ENVIRONMENT_ID }}
+        run: |
+          test -n "$RAILWAY_TOKEN" && test -n "$PROJECT" && test -n "$SERVICE" && test -n "$ENVIRONMENT"
+          railway up Frontend --path-as-root --project "$PROJECT" --service "$SERVICE" --environment "$ENVIRONMENT" --ci
+  production:
+    needs: quality
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && vars.PRODUCTION_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Require GO evidence and explicit approval of this exact commit
+        run: python Frontend/deployment/release_gate.py --sha "$GITHUB_SHA" --approval "$APPROVAL"
+        env:
+          APPROVAL: ${{ inputs.production_approval }}
+          BEAUTY_RELEASE_ATTESTATION: ${{ secrets.PRODUCTION_GO_ATTESTATION }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.15.0'
+      - run: npm install -g @railway/cli@5.71.0
+      - name: Deploy approved frontend only; never run migrations
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_PRODUCTION_TOKEN }}
+          PROJECT: ${{ vars.RAILWAY_PRODUCTION_PROJECT_ID }}
+          SERVICE: ${{ vars.RAILWAY_PRODUCTION_FRONTEND_ID }}
+          ENVIRONMENT: ${{ vars.RAILWAY_PRODUCTION_ENVIRONMENT_ID }}
+        run: |
+          test -n "$RAILWAY_TOKEN" && test -n "$PROJECT" && test -n "$SERVICE" && test -n "$ENVIRONMENT"
+          railway up Frontend --path-as-root --project "$PROJECT" --service "$SERVICE" --environment "$ENVIRONMENT" --ci

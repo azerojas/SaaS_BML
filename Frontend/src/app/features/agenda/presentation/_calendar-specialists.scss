@@ -1,0 +1,54 @@
+.specialist-filter {
+  display: grid;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+.specialist-filter select {
+  min-height: 44px;
+  max-width: 260px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font: inherit;
+}
+.specialist-avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  color: var(--on-primary);
+  font-size: 1rem;
+  font-weight: 700;
+}
+.specialist-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+  z-index: 2;
+  pointer-events: none;
+}
+.month-more {
+  border: 0;
+  background: var(--surface-low);
+  color: var(--forest);
+  border-radius: 6px;
+  min-height: 32px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 0.75rem;
+  text-align: left;
+}
+@media (max-width: 650px) {
+  .specialist-filter,
+  .specialist-filter select {
+    width: 100%;
+    max-width: none;
+  }
+}

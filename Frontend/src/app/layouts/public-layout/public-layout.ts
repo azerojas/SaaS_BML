@@ -1,13 +1,31 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { RouterLink, RouterOutlet } from '@angular/router';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Brand } from '../../shared/ui/brand';
+import { ThemeToggle } from '../../shared/ui/theme-toggle';
 @Component({
   selector: 'bm-public-layout',
-  imports: [RouterOutlet, RouterLink, Brand],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Brand, ThemeToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template:
-    '<header><a routerLink="/catalogo"><bm-brand/></a><a routerLink="/catalogo">Explorar catálogo</a></header><main id="main-content" tabindex="-1"><router-outlet/></main><footer>Lasheo · Un espacio de cuidado</footer>',
-  styles:
-    ':host{display:flex;min-height:100dvh;flex-direction:column;background:var(--canvas)}header{padding:2rem clamp(1.5rem,6vw,5rem);border-bottom:1px solid var(--line);background:var(--paper)}header a{text-decoration:none}main{flex:1;padding:2rem 1rem;outline:none}footer{padding:2rem;text-align:center;font-size:.7rem;color:var(--muted)}',
+  template: `<header class="public-header">
+      <div class="header-inner">
+        <a class="brand-link" routerLink="/catalogo"><bm-brand [compact]="false" /></a>
+        <nav aria-label="Navegación principal">
+          <a routerLink="/catalogo" routerLinkActive="active" ariaCurrentWhenActive="page"
+            >Explorar catálogo</a
+          ><a routerLink="/mis-reservas" routerLinkActive="active" ariaCurrentWhenActive="page"
+            >Mis reservas</a
+          >
+          <bm-theme-toggle />
+        </nav>
+      </div>
+    </header>
+    <main id="main-content" tabindex="-1"><router-outlet /></main>
+    <footer>
+      <div class="footer-inner">
+        <div><strong>lasheo</strong><span>Un espacio de cuidado, pensado para ti.</span></div>
+        <span>Tu próxima visita empieza aquí.</span>
+      </div>
+    </footer>`,
+  styleUrl: './public-layout.scss',
 })
 export class PublicLayout {}

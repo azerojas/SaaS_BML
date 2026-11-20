@@ -1,0 +1,86 @@
+pid /tmp/nginx/nginx.pid;
+error_log stderr crit;
+events { worker_connections 1024; }
+http {
+  include /etc/nginx/mime.types;
+  default_type application/octet-stream;
+  access_log off;
+  server_tokens off;
+  client_max_body_size 64k;
+  client_body_temp_path /tmp/nginx/client;
+  proxy_temp_path /tmp/nginx/proxy;
+  fastcgi_temp_path /tmp/nginx/fastcgi;
+  uwsgi_temp_path /tmp/nginx/uwsgi;
+  scgi_temp_path /tmp/nginx/scgi;
+  gzip on;
+  gzip_vary on;
+  gzip_types text/css application/javascript application/json image/svg+xml;
+  map $uri $cache_policy {
+    default "no-store";
+    ~^/api/ "no-store, private";
+    ~^/(main|chunk|styles)-[a-zA-Z0-9_-]+\.(js|css)$ "public, max-age=31536000, immutable";
+    ~^/media/ "public, max-age=31536000, immutable";
+    ~^/icons/ "public, max-age=86400";
+  }
+  map "$uri:$http_x_forwarded_proto" $reject_plaintext {
+    default 1;
+    ~^/health: 0;
+    ~:https$ 0;
+  }
+  server {
+    listen __PORT__;
+    server_name _;
+    root /srv/frontend;
+    index index.html;
+    if ($reject_plaintext) { return 426; }
+    add_header Cache-Control $cache_policy always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy same-origin always;
+    add_header X-Frame-Options DENY always;
+    add_header Strict-Transport-Security "max-age=3600" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: __CATALOG_IMAGE_SOURCES__; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" always;
+    location = /health { default_type application/json; return 200 '{"frontend":"ready"}'; }
+    location = /api { default_type application/json; return 404 '{"code":"not_found"}'; }
+    location ~ ^/api/admin/catalogo/servicios/(?:[1-9][0-9]*/)?$ {
+        client_max_body_size 6m;
+      proxy_pass __DJANGO_UPSTREAM__;
+      proxy_http_version 1.1;
+      proxy_set_header Host $host;
+      proxy_set_header X-Forwarded-Proto https;
+      proxy_set_header X-Forwarded-Host "";
+      proxy_set_header Forwarded "";
+      proxy_set_header X-Forwarded-For "";
+      proxy_connect_timeout 5s;
+      proxy_read_timeout 50s;
+      proxy_ssl_server_name on;
+      proxy_ssl_verify on;
+      proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+      proxy_hide_header Cache-Control;
+      proxy_no_cache 1;
+      proxy_cache_bypass 1;
+    }
+    location ~ ^/(api|health)/ {
+      proxy_pass __DJANGO_UPSTREAM__;
+      proxy_http_version 1.1;
+      proxy_set_header Host $host;
+      proxy_set_header X-Forwarded-Proto https;
+      proxy_set_header X-Forwarded-Host "";
+      proxy_set_header Forwarded "";
+      proxy_set_header X-Forwarded-For "";
+      proxy_connect_timeout 5s;
+      proxy_read_timeout 50s;
+      proxy_ssl_server_name on;
+      proxy_ssl_verify on;
+      proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+      proxy_hide_header Cache-Control;
+      proxy_no_cache 1;
+      proxy_cache_bypass 1;
+    }
+    location = /ngsw-worker.js { try_files $uri =404; }
+    location = /ngsw.json { try_files $uri =404; }
+    location = /manifest.webmanifest { default_type application/manifest+json; try_files $uri =404; }
+    location ~* \.(js|css|json|woff2?|png|svg|ico|webmanifest|map)$ { try_files $uri =404; }
+    location / { try_files $uri $uri/ /index.html; }
+  }
+}

@@ -12,22 +12,30 @@ import { localDateTime, money } from '../../dashboard/domain/analytics';
   selector: 'bm-advances-panel',
   imports: [ReactiveFormsModule, Alert],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<section class="surface">
+  styleUrl: './advances-panel.scss',
+  template: `<section class="advances-card">
     <h2>Anticipos de la cita</h2>
-    <p>
-      Requerido: {{ money(cita().anticipo_requerido) }} · Confirmado:
-      {{ money(cita().anticipo_confirmado) }} · Pendiente según Django:
-      {{ money(cita().anticipo_pendiente) }}
-    </p>
+    <p class="subtitle">Control de los pagos recibidos para esta reserva.</p>
+    <dl class="payment-totals">
+      <div>
+        <dt>Requerido</dt>
+        <dd>{{ money(cita().anticipo_requerido) }}</dd>
+      </div>
+      <div>
+        <dt>Confirmado</dt>
+        <dd>{{ money(cita().anticipo_confirmado) }}</dd>
+      </div>
+      <div>
+        <dt>Pendiente</dt>
+        <dd>{{ money(cita().anticipo_pendiente) }}</dd>
+      </div>
+    </dl>
     @if (cita().expira_en) {
       <p>
         Plazo de pago: {{ localDateTime(cita().expira_en!) }} · Estado oficial: {{ cita().estado }}
       </p>
     }
-    <p>
-      El vencimiento se refleja cuando Django cambia la cita a EXPIRADA. Cancelar una cita no
-      devuelve ni anula automáticamente su anticipo.
-    </p>
+    <p class="payment-note">Cancelar una cita no devuelve ni anula automáticamente su anticipo.</p>
     @if (rows.loading()) {
       <p role="status">Cargando anticipos…</p>
     }
@@ -69,6 +77,7 @@ import { localDateTime, money } from '../../dashboard/domain/analytics';
     }
     @if (session.hasPermission('finanzas.manage_advances')) {
       <form [formGroup]="form" (ngSubmit)="create()">
+        <h3>Registrar o gestionar un anticipo</h3>
         <label
           >Método de pago<select formControlName="method">
             @for (method of methods; track method) {

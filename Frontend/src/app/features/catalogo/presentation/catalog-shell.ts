@@ -20,5 +20,5 @@ import { DEFINITIONS } from '../domain/catalog';
 })
 export class CatalogShell {
   readonly session = inject(SessionStore);
-  readonly items = Object.values(DEFINITIONS);
+  readonly items = [DEFINITIONS.servicios, DEFINITIONS.articulos];
 }

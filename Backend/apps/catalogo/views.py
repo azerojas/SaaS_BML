@@ -5,6 +5,12 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser
+from rest_framework.views import APIView
+from rest_framework.exceptions import PermissionDenied
+from django.http import HttpResponse
+from django.db.models import Q
+from apps.operaciones.presentation.parsers import BoundedJSONParser
 from negocio import models as m
 from . import selectors, services
 from .entities import ENTITIES
@@ -80,6 +86,27 @@ class ImageParentViewSet(ActiveEntityViewSet):
 class ServicioViewSet(ImageParentViewSet):
     kind = 'servicios'
     http_method_names = ImageParentViewSet.http_method_names + ['put']
+    parser_classes = [BoundedJSONParser, MultiPartParser]
+
+    def photo_response(self, request, pk=None):
+        from .photos import multipart_photo, save_with_photo
+        if not request.user.has_perm('negocio.add_imagenescatalogo'):
+            raise PermissionDenied('No tienes permiso para añadir fotografías.')
+        data, photo = multipart_photo(request)
+        serializer = ENTITIES[self.kind][1](data=data, partial=pk is not None)
+        serializer.is_valid(raise_exception=True)
+        obj = save_with_photo(serializer.validated_data, photo, request.user, pk)
+        return Response(self.get_serializer(obj).data, status=200 if pk is not None else 201)
+
+    def create(self, request):
+        if request.content_type.split(';', 1)[0].strip().lower() == 'multipart/form-data':
+            return self.photo_response(request)
+        return super().create(request)
+
+    def partial_update(self, request, pk=None):
+        if request.content_type.split(';', 1)[0].strip().lower() == 'multipart/form-data':
+            return self.photo_response(request, self.get_object().pk)
+        return super().partial_update(request, pk)
 
     @action(detail=True, methods=['get', 'put'])
     def receta(self, request, pk=None):
@@ -93,6 +120,34 @@ class ServicioViewSet(ImageParentViewSet):
 
 class ArticuloViewSet(ImageParentViewSet):
     kind = 'articulos'
+
+
+class UploadedPhotoView(APIView):
+    permission_classes = [AllowAny]
+    http_method_names = ['get', 'head', 'options']
+
+    def get(self, request, photo_id):
+        from .models import UploadedPhoto
+        from uuid import UUID
+        from rest_framework.exceptions import NotFound
+        url = '/api/catalogo/fotos/' + photo_id + '.jpg'
+        references = m.ImagenesCatalogo.objects.filter(url=url)
+        public = (Q(servicio__activo=True, servicio__visible_catalogo=True)
+                  & (Q(servicio__categoria__isnull=True) | Q(servicio__categoria__activa=True)))
+        public |= Q(articulo__activo=True, articulo__visible_catalogo=True,
+                    articulo__tipo__in=['VENTA', 'AMBOS'])
+        allowed = references.filter(public).exists()
+        if not allowed and request.user.is_authenticated and request.user.is_staff and request.user.is_active:
+            allowed = ((request.user.has_perm('negocio.view_servicios')
+                        and references.filter(servicio_id__isnull=False).exists())
+                       or (request.user.has_perm('negocio.view_articulos')
+                           and references.filter(articulo_id__isnull=False).exists()))
+        if not allowed:
+            raise NotFound()
+        photo = get_object_or_404(UploadedPhoto, pk=UUID(photo_id))
+        response = HttpResponse(bytes(photo.content), content_type='image/jpeg')
+        response['Content-Disposition'] = 'inline; filename="foto-catalogo.jpg"'
+        return response
 
 
 class ImagenViewSet(viewsets.GenericViewSet):

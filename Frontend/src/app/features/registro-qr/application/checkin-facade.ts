@@ -44,7 +44,7 @@ export class CheckinFacade extends RecordState<CheckinConfig> {
     if (result) {
       this.state.set('received');
       this.success.set(
-        'Si los datos son válidos, tu solicitud se ha recibido. Acércate a recepción para confirmar tu identidad.',
+        'Si los datos son válidos y tu ficha está habilitada, tu visita queda registrada automáticamente. Si es tu primera visita, completa tus datos y acepta el aviso.',
       );
     } else {
       const error: ApiFailure | null = this.failure();

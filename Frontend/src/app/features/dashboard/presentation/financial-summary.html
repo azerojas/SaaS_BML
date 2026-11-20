@@ -1,0 +1,165 @@
+<header class="dashboard-title">
+  <div>
+    <h2>Resumen visual de Finanzas</h2>
+    <p>Ventas, cobros y desgloses del período seleccionado.</p>
+  </div>
+</header>
+<bm-report-filters
+  initialPreset="last7"
+  [disabled]="facade.download.busy()"
+  (applied)="facade.apply($event)"
+>
+  <details dashboard-controls class="dashboard-chart-filters">
+    <summary>Opciones de los gráficos</summary>
+    <div class="dashboard-chart-filter-grid">
+      <label for="dashboard-chart-mode"
+        >Tipo de gráfico
+        <select
+          id="dashboard-chart-mode"
+          [value]="chartMode()"
+          (change)="chartMode.set($any($event.target).value)"
+        >
+          <option value="bars">Barras</option>
+          <option value="lines">Líneas</option>
+        </select>
+      </label>
+      <label for="dashboard-series"
+        >Mostrar en la evolución
+        <select
+          id="dashboard-series"
+          [value]="activeSeries()"
+          (change)="activeSeries.set($any($event.target).value)"
+        >
+          <option value="all">Ventas, cobros y anticipos</option>
+          <option value="ventas_confirmadas">Ventas</option>
+          <option value="cobros_registrados">Cobros</option>
+          <option value="anticipos_recibidos">Anticipos</option>
+        </select>
+      </label>
+      <label for="dashboard-payment-mode"
+        >Distribución por medio de pago
+        <select
+          id="dashboard-payment-mode"
+          [value]="paymentMode()"
+          (change)="paymentMode.set($any($event.target).value)"
+        >
+          <option value="cobros_registrados">Cobros</option>
+          <option value="anticipos_recibidos">Anticipos</option>
+        </select>
+      </label>
+    </div>
+  </details>
+  <p filter-summary class="applied-period" role="status">
+    Período aplicado: {{ facade.filters().desde }} al {{ facade.filters().hasta }} inclusive ·
+    America/Lima · PEN
+  </p>
+</bm-report-filters>
+
+<bm-report-panel class="dashboard-overview" title="Resumen del período" [state]="facade.overview">
+  @if (facade.overview.data(); as data) {
+    <bm-dashboard-metrics [data]="data" />
+    @if (data.indicadores['numero_ventas'] === 0) {
+      <p class="dashboard-empty" role="status">
+        Sin ventas confirmadas en este período. Puedes cambiar las fechas para consultar otra
+        actividad.
+      </p>
+    }
+  }
+</bm-report-panel>
+<div class="dashboard-main-grid">
+  <bm-report-panel title="Evolución de ventas y dinero recibido" [state]="facade.series">
+    @if (facade.series.data(); as data) {
+      <bm-dashboard-trend
+        [data]="data"
+        [summary]="facade.overview.data()"
+        [chartMode]="chartMode()"
+        [active]="activeSeries()"
+      />
+    }
+  </bm-report-panel>
+  <bm-report-panel title="Ingresos por medio de pago" [state]="facade.methods">
+    @if (facade.methods.data(); as data) {
+      <bm-dashboard-methods
+        [data]="data"
+        [summary]="facade.overview.data()"
+        [mode]="paymentMode()"
+      />
+    }
+  </bm-report-panel>
+</div>
+<details class="dashboard-details">
+  <summary>Ver más detalles del negocio</summary>
+  <div class="dashboard-detail-grid">
+    <bm-report-panel title="Tratamientos destacados" [state]="facade.services">
+      @if (facade.services.data(); as data) {
+        <bm-dashboard-ranking [data]="data" report="top-services" />
+      }
+    </bm-report-panel>
+    @if (session.hasPermission('reporting.view_clients')) {
+      <bm-report-panel title="Clientas destacadas" [state]="facade.clients">
+        @if (facade.clients.data(); as data) {
+          <bm-dashboard-ranking [data]="data" report="top-clients" />
+        }
+      </bm-report-panel>
+    }
+  </div>
+  <bm-report-panel
+    class="dashboard-expenses-panel"
+    title="Gastos operativos por categoría"
+    [state]="facade.expenses"
+  >
+    @if (facade.expenses.data(); as data) {
+      <bm-dashboard-ranking [data]="data" report="expenses" />
+    }
+  </bm-report-panel>
+  @if (session.hasPermission('reporting.view_inventory')) {
+    <bm-report-panel title="Alertas actuales de inventario" [state]="facade.inventory">
+      @if (facade.inventory.data(); as data) {
+        <bm-report-quality [data]="data" /><bm-report-table
+          report="inventory-alerts"
+          [data]="data"
+          [canOpenInventory]="session.hasPermission('negocio.view_articulos')"
+        />
+      }
+    </bm-report-panel>
+  }
+  @if (facade.monthly()) {
+    <bm-report-panel title="Comparación mensual" [state]="facade.comparison">
+      @if (facade.comparison.data(); as data) {
+        <bm-report-quality [data]="data.actual" /><bm-report-quality
+          [data]="data.anterior"
+        /><bm-month-comparison [data]="data" />
+      }
+    </bm-report-panel>
+  }
+</details>
+<section class="dashboard-options" aria-label="Opciones del resumen financiero">
+  <h2>Opciones</h2>
+  <div class="dashboard-actions">
+    <button
+      mat-stroked-button
+      [disabled]="facade.download.busy()"
+      (click)="facade.apply(facade.filters())"
+    >
+      <bm-icon name="clock" />Actualizar resumen
+    </button>
+    @if (session.hasPermission('reporting.export')) {
+      <button
+        mat-stroked-button
+        [disabled]="facade.download.busy() || !facade.overview.data()"
+        (click)="facade.export()"
+      >
+        <bm-icon name="receipt" />Exportar resumen Excel
+      </button>
+    }
+  </div>
+  @if (facade.download.error(); as error) {
+    <bm-alert [message]="error" />
+  }
+  @if (facade.download.success(); as success) {
+    <bm-alert kind="info" [message]="success" />
+  }
+  @if (facade.download.busy()) {
+    <p role="status">Generando Excel con los filtros aplicados…</p>
+  }
+</section>

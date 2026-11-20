@@ -40,7 +40,10 @@ def execute(operation, key, payload, actor, callback):
             with connection.cursor() as cursor:
                 cursor.execute('SELECT pg_advisory_xact_lock(718302453)')
                 cursor.execute('SELECT pg_advisory_xact_lock(718302451)')
-            previous = IdempotencyRecord.objects.select_for_update().filter(actor_id=actor.pk, operation=operation, key=parsed).first()
+            # The advisory lock above already serializes lookup and insertion.
+            # FOR UPDATE would require UPDATE privileges on this append-only
+            # ledger, which the production runtime deliberately does not have.
+            previous = IdempotencyRecord.objects.filter(actor_id=actor.pk, operation=operation, key=parsed).first()
             if previous:
                 if previous.request_hash != digest:
                     raise FinanceError('idempotencia_conflicto', 'La clave ya se uso con otra solicitud.')

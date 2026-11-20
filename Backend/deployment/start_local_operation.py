@@ -10,6 +10,34 @@ import time
 from urllib.request import urlopen
 # Prevent console flashes from scheduled pythonw jobs and every child process.
 BACKGROUND_PROCESS = {'creationflags': subprocess.CREATE_NO_WINDOW} if os.name == 'nt' else {}
+
+
+def require_docker_engine():
+    """Fail before inspecting resources when the Docker engine is unavailable."""
+    try:
+        result = subprocess.run(
+            ['docker', 'info'], **BACKGROUND_PROCESS,
+            capture_output=True, timeout=30,
+        )
+    except FileNotFoundError:
+        raise RuntimeError(
+            'Docker no esta instalado o no esta disponible en PATH. '
+            'Instala Docker Desktop y vuelve a ejecutar este comando.'
+        ) from None
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(
+            'Docker no responde. Abre Docker Desktop, espera a que el motor '
+            'este listo y vuelve a ejecutar este comando.'
+        ) from None
+    if result.returncode:
+        raise RuntimeError(
+            'No se pudo conectar al motor de Docker. Abre Docker Desktop '
+            'con contenedores Linux y espera a que docker info funcione '
+            'antes de volver a ejecutar este comando.'
+        )
+
+
+require_docker_engine()
 ROOT=Path(__file__).resolve().parents[1]
 PRIVATE=Path.home()/'.codex/lasheo-private/local-operation'
 assert json.loads((PRIVATE/'prepared.json').read_text())['prepared']

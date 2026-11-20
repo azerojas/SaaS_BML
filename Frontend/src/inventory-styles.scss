@@ -98,7 +98,8 @@
   font-size: 0.8rem;
 }
 .inventory-fieldset {
-  border: 1px solid var(--line);
+  border: 0;
+  padding: 0;
   margin: 0;
   min-width: 0;
   width: 100%;
@@ -107,10 +108,22 @@
 .inventory-fieldset legend {
   font-size: 0.9rem;
   font-weight: 600;
-  padding: 0 0.6rem;
+  padding: 0;
 }
 .inventory-fieldset:disabled {
   opacity: 0.75;
+}
+.purchase-editor-dialog .reference-picker {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.purchase-editor-dialog .inventory-fieldset {
+  background: transparent;
+}
+.purchase-editor-dialog .purchase-notes textarea {
+  min-height: 80px;
+  height: 80px;
 }
 .purchase-line {
   background: var(--canvas);

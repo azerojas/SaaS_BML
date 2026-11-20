@@ -4,7 +4,7 @@ export type Kind =
 export interface CatalogRecord {
   id: number;
   nombre: string;
-  [key: string]: string | number | boolean | null;
+  [key: string]: string | number | boolean | number[] | null;
 }
 export interface CatalogImage {
   id: number;
@@ -54,7 +54,8 @@ const description: Field = {
   key: 'descripcion',
   label: 'Descripción',
   type: 'textarea',
-  max: 20000,
+  min: 10,
+  max: 2000,
 };
 const visible: Field = {
   key: 'visible_catalogo',

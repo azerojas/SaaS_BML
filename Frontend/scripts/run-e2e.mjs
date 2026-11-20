@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { X509Certificate, createHash } from 'node:crypto';
 import {
   mkdtempSync,
   readFileSync,
@@ -17,19 +18,33 @@ mkdirSync('.artifacts', { recursive: true });
 const logFile = openSync('.artifacts/e2e-backend.log', 'w');
 const env = { ...process.env, BM_E2E_FIXTURE: fixture };
 const backend = spawn(
-  resolve('../Backend/.venv/Scripts/python.exe'),
+  process.env['BM_E2E_PYTHON'] ||
+    resolve(
+      process.platform === 'win32'
+        ? '../Backend/.venv/Scripts/python.exe'
+        : '../Backend/.venv/bin/python',
+    ),
   ['-X', 'utf8', resolve('../Backend/scripts/frontend_e2e_server.py')],
   { env, stdio: ['ignore', logFile, logFile], windowsHide: true },
 );
 let web;
 let exit = 1;
 try {
-  for (let n = 0; n < 120 && !existsSync(fixture); n++) {
+  for (let n = 0; n < 240 && !existsSync(fixture); n++) {
     if (backend.exitCode !== null)
       throw new Error('Django fixture failed; inspect .artifacts/e2e-backend.log');
     await delay(500);
   }
   if (!existsSync(fixture)) throw new Error('Isolated backend startup timed out.');
+  const certificate = JSON.parse(readFileSync(fixture, 'utf8')).certificate;
+  env.BM_E2E_CERT_SPKI = createHash('sha256')
+    .update(
+      new X509Certificate(readFileSync(certificate)).publicKey.export({
+        type: 'spki',
+        format: 'der',
+      }),
+    )
+    .digest('base64');
   web = spawn(process.execPath, ['scripts/e2e-server.mjs'], {
     env,
     stdio: ['ignore', 'pipe', 'inherit'],

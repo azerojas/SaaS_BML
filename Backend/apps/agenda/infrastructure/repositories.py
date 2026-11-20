@@ -24,16 +24,50 @@ def eligible(professional_id,service_ids,public=False):
     return professional,[found[pk] for pk in service_ids]
 
 
-def hours(professional_id):
+def hours(professional_id,day=None):
+    if day is not None:
+        from apps.agenda.application.daily_schedule import dated_hours
+        override=dated_hours(professional_id,day)
+        if override is not None:return override
     return list(m.HorariosProfesional.objects.filter(profesional_id=professional_id).order_by('dia_semana','hora_inicio','id').values_list('dia_semana','hora_inicio','hora_fin'))
 
 
-def collision(professional_id,start,end,client_id=None,exclude=None):
+def booking_windows(professional_id,day):
+    from apps.agenda.application.daily_schedule import dated_hours
+    personal=requires_personal_slots(professional_id)
+    override=dated_hours(professional_id,day,include_slot_mode=True,personal_only=personal)
+    if override is not None:
+        if personal:
+            return [(weekday,begin,finish,True) for weekday,begin,finish,_ in override]
+        return override
+    if personal:
+        return []
+    return [(weekday,begin,finish,False) for weekday,begin,finish in hours(professional_id)]
+
+
+def requires_personal_slots(professional_id):
+    return personal_slot_professionals().filter(pk=professional_id).exists()
+
+
+def personal_slot_professionals():
+    return m.Profesionales.objects.filter(
+        Q(usuario__is_superuser=True) |
+        Q(usuario__user_permissions__codename__in=['manage_own_schedule','manage_schedules'],usuario__user_permissions__content_type__app_label='agenda') |
+        Q(usuario__groups__permissions__codename__in=['manage_own_schedule','manage_schedules'],usuario__groups__permissions__content_type__app_label='agenda')
+    )
+
+
+def collision(professional_id,start,end,client_id=None,exclude=None,client_interval=None):
     qs=m.Citas.objects.filter(estado__in=ACTIVE,inicio_en__lt=end,fin_en__gt=start)
     if exclude:qs=qs.exclude(pk=exclude)
     match=Q(profesional_id=professional_id)
-    if client_id:match|=Q(clienta_id=client_id)
-    return qs.filter(match).exists() or m.BloqueosAgenda.objects.filter(Q(profesional_id=professional_id)|Q(profesional_id=None),inicio_en__lt=end,fin_en__gt=start).exists()
+    if client_id:
+        client_start,client_end=client_interval or (start,end)
+        match|=Q(clienta_id=client_id,inicio_en__lt=client_end,fin_en__gt=client_start)
+    collision_found=qs.filter(match).exists() or m.BloqueosAgenda.objects.filter(Q(profesional_id=professional_id)|Q(profesional_id=None),inicio_en__lt=end,fin_en__gt=start).exists()
+    if collision_found:return True
+    from apps.agenda.application.public_booking import installed,holds
+    return installed() and holds().filter(profesional_id=professional_id,inicio_en__lt=end,fin_en__gt=start).exists()
 
 
 def appointments():

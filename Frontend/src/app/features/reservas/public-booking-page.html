@@ -1,0 +1,450 @@
+<div class="booking-page" [attr.aria-busy]="busy() || loading()">
+  <div class="booking-heading">
+    <p class="eyebrow">
+      <span class="heading-dot" aria-hidden="true"></span> LASHEO · RESERVAS ONLINE
+    </p>
+    <h1>{{ managing ? 'Mis reservas' : 'Reserva tu cita' }}</h1>
+    <p class="heading-description">
+      {{
+        managing
+          ? 'Un espacio para consultar y organizar tus próximas visitas.'
+          : 'Haz espacio para ti. Elige tu tratamiento y encuentra el momento ideal.'
+      }}
+    </p>
+  </div>
+  @if (!managing && !completed()) {
+    <ol class="booking-progress" aria-label="Pasos de la solicitud">
+      <li [class.reached]="selectedServices().length"><span>01</span> Tus servicios</li>
+      <li [class.reached]="selectedSlot()"><span>02</span> Día y hora</li>
+      <li [class.reached]="detailsForm.valid"><span>03</span> Tus datos</li>
+    </ol>
+  }
+  <div
+    class="booking-body"
+    [class.single-column]="managing || !!completed() || !config()?.habilitada"
+  >
+    <div class="booking-main">
+      @if (error()) {
+        <bm-alert [message]="error()" />
+      }
+      @if (message()) {
+        <bm-alert kind="info" [message]="message()" />
+      }
+      @if (pwa.blocked()) {
+        <bm-alert message="Necesitas conexión y una versión actualizada para realizar cambios." />
+      }
+      @if (loading()) {
+        <p role="status">Preparando tu espacio…</p>
+      }
+      @if (!loading() && !config()) {
+        <button type="button" (click)="load()">Volver a intentar</button>
+      }
+      @if (config(); as cfg) {
+        @if (pending()) {
+          <section class="booking-panel pending" role="status">
+            <h2>Una operación necesita confirmación</h2>
+            <p>Consulta su resultado antes de enviar otra solicitud.</p>
+            <button type="button" [disabled]="busy()" (click)="recover()">
+              Consultar resultado
+            </button>
+            @if (canRetry()) {
+              <button type="button" [disabled]="busy()" (click)="submitPending()">
+                Reintentar la misma operación
+              </button>
+            }
+            @if (canResume()) {
+              <button type="button" [disabled]="busy()" (click)="resume()">
+                Completar con la misma referencia
+              </button>
+            }
+          </section>
+        }
+        @if (completed(); as result) {
+          <section class="booking-panel confirmation" role="status">
+            <p class="eyebrow">{{ status(result.estado) }}</p>
+            <h2>Solicitud {{ result.codigo_reserva }}</h2>
+            <p>{{ dateTime(result.inicio_en) }} · {{ result.profesional }}</p>
+            <p>
+              Total: <strong>{{ money(result.precio_total) }}</strong> · Sin anticipo
+            </p>
+            @if (result.estado === 'PENDIENTE') {
+              <p>
+                Tu cita aún necesita la confirmación del salón. Si no se confirma antes de
+                {{ dateTime(result.expira_en!) }}, la solicitud vence y el horario se libera.
+              </p>
+            }
+            @if (accessCode()) {
+              <label
+                >Clave de gestión (8 cifras)<input
+                  type="text"
+                  readonly
+                  [value]="accessCode()"
+                  (focus)="$any($event.target).select()"
+              /></label>
+              <button type="button" (click)="copyAccessCode()">Copiar clave</button>
+              <p>
+                Guarda esta clave. Junto con el teléfono registrado, permite gestionar esta
+                solicitud. No se envía por mensajes.
+              </p>
+            }
+            <a routerLink="/mis-reservas">Ver mis solicitudes</a>
+          </section>
+        }
+        @if (!managing && !cfg.habilitada) {
+          <section class="booking-panel">
+            <h2>Solicitudes online cerradas</h2>
+            <p>
+              Si ya tienes una solicitud, puedes consultarla en “Mis reservas” con el teléfono y la
+              clave que guardaste. También puedes contactar al salón.
+            </p>
+          </section>
+        }
+        @if (!managing && cfg.habilitada && !completed()) {
+          <section class="booking-panel">
+            <h2><span>1</span> Elige tus servicios</h2>
+            <p class="section-description">Selecciona uno o varios tratamientos para tu visita.</p>
+            <fieldset [disabled]="busy() || !!pending()">
+              <legend class="sr-only">Servicios disponibles, hasta diez por solicitud</legend>
+              <div class="service-grid">
+                @for (service of services(); track service.id) {
+                  <label
+                    class="service-option"
+                    [class.selected]="selectedServices().includes(service.id)"
+                  >
+                    <input
+                      type="checkbox"
+                      [checked]="selectedServices().includes(service.id)"
+                      [disabled]="
+                        !selectedServices().includes(service.id) && selectedServices().length >= 10
+                      "
+                      (change)="toggleService(service.id, $any($event.target).checked)"
+                    />
+                    <strong>{{ service.nombre }}</strong
+                    ><small
+                      >{{ service.duracion_minutos }} min · {{ money(service.precio_base) }}</small
+                    >
+                  </label>
+                } @empty {
+                  <p>No hay servicios reservables en este momento.</p>
+                }
+              </div>
+            </fieldset>
+          </section>
+          <section class="booking-panel">
+            <h2><span>2</span> Encuentra tu horario</h2>
+            <p class="section-description">
+              Elige una profesional y consulta sus espacios disponibles.
+            </p>
+            <form [formGroup]="slotForm" (ngSubmit)="searchSlots()">
+              <fieldset [disabled]="busy() || !!pending()">
+                <div class="form-grid">
+                  <label
+                    >Profesional<select formControlName="professional">
+                      <option value="">Selecciona una profesional</option>
+                      @for (person of eligibleProfessionals(); track person.id) {
+                        <option [value]="person.id">
+                          {{ person.nombres }} {{ person.apellidos }}
+                        </option>
+                      }
+                    </select></label
+                  >
+                  <div class="calendar-field-label">
+                    <span>Fecha</span
+                    ><bm-date-field ariaLabel="Fecha" formControlName="date" [min]="today" />
+                  </div>
+                </div>
+                @if (selectedServices().length && !eligibleProfessionals().length) {
+                  <p>No hay una profesional que combine estos servicios. Prueba otra selección.</p>
+                }
+                <button
+                  type="submit"
+                  [disabled]="slotForm.invalid || !selectedServices().length || pwa.blocked()"
+                >
+                  Ver horarios
+                </button>
+              </fieldset>
+            </form>
+            @if (available(); as slots) {
+              <div class="slots" aria-label="Horarios disponibles">
+                @for (slot of slots.slots; track slot.inicio_en) {
+                  <button
+                    type="button"
+                    [disabled]="busy() || !!pending()"
+                    [attr.aria-pressed]="selectedSlot() === slot.inicio_en"
+                    (click)="selectedSlot.set(slot.inicio_en)"
+                  >
+                    {{ time(slot.inicio_en) }} – {{ time(slot.fin_en) }}
+                  </button>
+                } @empty {
+                  <p>No hay horarios disponibles. Prueba otro día o profesional.</p>
+                }
+              </div>
+              <p>
+                {{ slots.duracion_minutos }} minutos · Total:
+                <strong>{{ money(slots.precio_total) }}</strong>
+              </p>
+            }
+          </section>
+          <section class="booking-panel">
+            <h2><span>3</span> Solicita tu reserva</h2>
+            <p class="section-description">
+              Déjanos tus datos para que el salón pueda confirmar tu cita.
+            </p>
+            @if (selectedSlot()) {
+              <p>
+                Horario elegido: <strong>{{ dateTime(selectedSlot()) }}</strong>
+              </p>
+            }
+            <form [formGroup]="detailsForm" (ngSubmit)="reserve()">
+              <fieldset [disabled]="busy() || !!pending()">
+                <div class="form-grid">
+                  <label
+                    >Nombres<input
+                      formControlName="nombres"
+                      autocomplete="given-name"
+                      maxlength="120" /></label
+                  ><label
+                    >Apellidos<input
+                      formControlName="apellidos"
+                      autocomplete="family-name"
+                      maxlength="120"
+                  /></label>
+                </div>
+                <label
+                  >Teléfono<input
+                    formControlName="telefono"
+                    type="tel"
+                    autocomplete="tel"
+                    placeholder="999 123 456"
+                    maxlength="40"
+                /></label>
+                <label class="consent"
+                  ><input type="checkbox" formControlName="consent" /><span
+                    >He leído y acepto el
+                    <a [href]="cfg.privacy_notice.url" target="_blank" rel="noopener noreferrer"
+                      >aviso de privacidad</a
+                    >
+                    para gestionar mi solicitud.</span
+                  ></label
+                >
+                <p>
+                  El salón revisará tu solicitud. El horario se mantiene hasta
+                  {{ cfg.minutos_revision }} minutos mientras se confirma. No necesitas correo,
+                  contraseña ni anticipo.
+                </p>
+                @if (detailsForm.touched && detailsForm.invalid) {
+                  <p class="field-error">Completa tus datos y acepta el aviso de privacidad.</p>
+                }
+                <button
+                  class="primary"
+                  type="submit"
+                  [disabled]="!selectedSlot() || detailsForm.invalid || pwa.blocked()"
+                >
+                  Enviar solicitud de reserva
+                </button>
+              </fieldset>
+            </form>
+          </section>
+        }
+        @if (managing) {
+          <section class="booking-panel">
+            <h2>Consulta tus reservas</h2>
+            <p class="section-description">
+              Ingresa el teléfono usado al solicitar la cita y la clave de ocho cifras que
+              guardaste.
+            </p>
+            <form [formGroup]="accessForm" (ngSubmit)="openBooking()">
+              <label
+                >Teléfono<input
+                  formControlName="telefono"
+                  type="tel"
+                  autocomplete="tel"
+                  maxlength="40"
+              /></label>
+              <label
+                >Clave de gestión<input
+                  formControlName="codigo"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]{8}"
+                  maxlength="8"
+                  autocomplete="off" /></label
+              ><button type="submit" [disabled]="busy() || accessForm.invalid">
+                Consultar reservas
+              </button>
+            </form>
+          </section>
+          <section class="booking-panel">
+            <div class="section-title">
+              <h2>Solicitudes de esta sesión</h2>
+              <button type="button" [disabled]="busy()" (click)="refresh()">Actualizar</button>
+            </div>
+            @for (booking of bookings(); track booking.id) {
+              <article class="booking-card">
+                <div class="section-title">
+                  <h3>{{ booking.nombres }} {{ booking.apellidos }}</h3>
+                  <span class="state">{{ status(booking.estado) }}</span>
+                </div>
+                <p>Solicitud {{ booking.codigo_reserva }}</p>
+                <p>{{ dateTime(booking.inicio_en) }} · {{ booking.profesional }}</p>
+                <ul>
+                  @for (service of booking.servicios; track service.servicio_id) {
+                    <li>{{ service.servicio__nombre }}</li>
+                  }
+                </ul>
+                <p>
+                  Total: <strong>{{ money(booking.precio_total) }}</strong>
+                </p>
+                @if (booking.estado === 'PENDIENTE') {
+                  <p>El salón debe confirmar antes de {{ dateTime(booking.expira_en!) }}.</p>
+                }
+                @if (booking.motivo_publico) {
+                  <p>{{ booking.motivo_publico }}</p>
+                }
+                @if (!booking.puede_reprogramar && !booking.puede_cancelar) {
+                  <p>
+                    Esta solicitud ya no admite cambios ni cancelaciones en línea. Contacta al
+                    salón.
+                  </p>
+                }
+                <div class="actions">
+                  @if (booking.puede_reprogramar) {
+                    <button
+                      type="button"
+                      [disabled]="busy() || !!pending()"
+                      (click)="startChange(booking)"
+                    >
+                      Cambiar horario
+                    </button>
+                  }
+                  @if (booking.puede_cancelar) {
+                    <button
+                      type="button"
+                      [disabled]="busy() || !!pending()"
+                      (click)="cancelling.set(booking); changing.set(null); cancelForm.reset()"
+                    >
+                      Cancelar solicitud
+                    </button>
+                  }
+                </div>
+              </article>
+            } @empty {
+              <p>
+                Ingresa el teléfono y la clave guardada al solicitar la cita para ver tus reservas.
+              </p>
+            }
+            <button type="button" [disabled]="busy()" (click)="logout()">
+              Cerrar acceso a mis solicitudes
+            </button>
+          </section>
+          @if (changing(); as booking) {
+            <section class="booking-panel">
+              <h2>Cambiar horario · {{ booking.codigo_reserva }}</h2>
+              <p>
+                Se mantienen profesional, servicios y precio. Cambiar una solicitud pendiente no
+                amplía su plazo de revisión.
+              </p>
+              <form [formGroup]="changeForm" (ngSubmit)="searchSlots()">
+                <div class="calendar-field-label">
+                  <span>Nueva fecha</span
+                  ><bm-date-field ariaLabel="Nueva fecha" formControlName="date" [min]="today" />
+                </div>
+                <button type="submit" [disabled]="busy() || !!pending()">Consultar horarios</button>
+              </form>
+              @if (available(); as slots) {
+                <div class="slots">
+                  @for (slot of slots.slots; track slot.inicio_en) {
+                    <button
+                      type="button"
+                      [disabled]="busy() || !!pending()"
+                      [attr.aria-pressed]="selectedSlot() === slot.inicio_en"
+                      (click)="selectedSlot.set(slot.inicio_en)"
+                    >
+                      {{ time(slot.inicio_en) }} – {{ time(slot.fin_en) }}
+                    </button>
+                  } @empty {
+                    <p>No hay horarios disponibles.</p>
+                  }
+                </div>
+              }
+              <div class="actions">
+                <button
+                  type="button"
+                  [disabled]="!selectedSlot() || busy() || !!pending() || pwa.blocked()"
+                  (click)="reschedule()"
+                >
+                  Guardar nuevo horario</button
+                ><button type="button" [disabled]="busy()" (click)="changing.set(null)">
+                  Volver
+                </button>
+              </div>
+            </section>
+          }
+          @if (cancelling(); as booking) {
+            <section class="booking-panel">
+              <h2>Cancelar {{ booking.codigo_reserva }}</h2>
+              <form [formGroup]="cancelForm" (ngSubmit)="cancel()">
+                <label
+                  >Motivo de cancelación<textarea
+                    formControlName="reason"
+                    maxlength="250"
+                    rows="3"
+                  ></textarea>
+                </label>
+                <p class="muted">Escribe al menos ocho caracteres.</p>
+                <div class="actions">
+                  <button
+                    type="submit"
+                    [disabled]="cancelForm.invalid || busy() || !!pending() || pwa.blocked()"
+                  >
+                    Confirmar cancelación</button
+                  ><button type="button" [disabled]="busy()" (click)="cancelling.set(null)">
+                    Conservar solicitud
+                  </button>
+                </div>
+              </form>
+            </section>
+          }
+        }
+      }
+    </div>
+    @if (!managing && config()?.habilitada && !completed()) {
+      <aside class="booking-summary" aria-label="Resumen de tu selección">
+        <div class="summary-top"><bm-icon name="sparkles" /><span>TU PRÓXIMA VISITA</span></div>
+        <h2>Un momento <br />solo para ti.</h2>
+        <div class="summary-services">
+          @for (service of chosenServices(); track service.id) {
+            <div>
+              <span>{{ service.nombre }}</span
+              ><small>{{ service.duracion_minutos }} min</small>
+            </div>
+          } @empty {
+            <p>Tu selección aparecerá aquí cuando elijas un servicio.</p>
+          }
+        </div>
+        @if (selectedSlot()) {
+          <div class="summary-time">
+            <bm-icon name="calendar" /><span>{{ dateTime(selectedSlot()) }}</span>
+          </div>
+        }
+        @if (available(); as slots) {
+          <div class="summary-total">
+            <span>Total de servicios</span><strong>{{ money(slots.precio_total) }}</strong>
+          </div>
+        }
+        <div class="summary-note">
+          <bm-icon name="check" />
+          <p><strong>Reserva sin anticipo</strong><span>El pago se realiza en el salón.</span></p>
+        </div>
+        <div class="summary-note">
+          <bm-icon name="clock" />
+          <p>
+            <strong>Confirmación del salón</strong
+            ><span>Revisaremos tu solicitud antes de confirmar la cita.</span>
+          </p>
+        </div>
+        <p class="summary-footnote">Todos los horarios corresponden a Lima, Perú.</p>
+      </aside>
+    }
+  </div>
+</div>
