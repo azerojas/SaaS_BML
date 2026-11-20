@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from apps.agenda.models import DailySchedule
 from apps.agenda.domain.errors import AgendaError
-from apps.agenda.domain.rules import ACTIVE, ZONE, published_window
+from apps.agenda.domain.rules import ACTIVE, ZONE, published_window, hourly_intervals
 from apps.agenda.infrastructure import repositories as repo
 from apps.finanzas.application.audit import record
 from negocio import models as m
@@ -47,6 +47,8 @@ def dated_hours(professional_id, day, include_slot_mode=False, personal_only=Fal
 
 
 def output(row):
+    row.franjas=[{**item,'inicio':item['inicio'].strftime('%H:%M'),'fin':item['fin'].strftime('%H:%M')}
+        for item in hourly_intervals([{**item,'inicio':time.fromisoformat(item['inicio']),'fin':time.fromisoformat(item['fin'])} for item in row.franjas])]
     return {'id':row.pk,'profesional_id':row.profesional_id,'fecha':row.fecha.isoformat(),
         'franjas':row.franjas,'cerrado':not row.franjas,'origen':'FECHA'}
 
@@ -66,8 +68,10 @@ def outputs(rows):
     upper=datetime.combine(max(row.fecha for row in single)+timedelta(days=1),time.min,ZONE)
     occupied=list(m.Citas.objects.filter(profesional_id__in=identifiers,estado__in=ACTIVE,inicio_en__lt=upper,fin_en__gt=lower).values_list('profesional_id','inicio_en','fin_en')[:10001])
     from .public_booking import installed as public_installed, holds
+    pending=[]
     if public_installed():
-        occupied+=list(holds().filter(profesional_id__in=identifiers,inicio_en__lt=upper,fin_en__gt=lower).values_list('profesional_id','inicio_en','fin_en')[:10001])
+        pending=list(holds().filter(profesional_id__in=identifiers,inicio_en__lt=upper,fin_en__gt=lower).values('id','profesional_id','inicio_en','fin_en','nombres','apellidos','expira_en')[:10001])
+        occupied+=[(item['profesional_id'],item['inicio_en'],item['fin_en']) for item in pending]
     if len(occupied)>10000:
         raise AgendaError('CALENDAR_TOO_LARGE','Reduce el rango de fechas para consultar los cupos.','invalid')
     for row,entry in zip(rows,result):
@@ -78,6 +82,9 @@ def outputs(rows):
             start=datetime.combine(row.fecha,time.fromisoformat(item['inicio']),ZONE)
             end=datetime.combine(row.fecha,time.fromisoformat(item['fin']),ZONE)
             item['ocupado']=any(identifier==row.profesional_id and a<end and b>start for identifier,a,b in occupied)
+            held=next((entry for entry in pending if entry['profesional_id']==row.profesional_id and entry['inicio_en']<end and entry['fin_en']>start),None)
+            if held:
+                item['solicitud_pendiente']={'id':str(held['id']),'clienta_nombre':held['nombres']+' '+held['apellidos'],'expira_en':held['expira_en'].isoformat()}
     return result
 
 
@@ -121,7 +128,7 @@ def save(data, actor, restore=False):
         for identifier in ids:
             ensure_coverage(identifier,day,repo.hours(identifier,day))
         return {'fecha':day.isoformat(),'profesional_id':professional_id,'restablecido':True}
-    intervals = data['franjas']
+    intervals = hourly_intervals(data['franjas'],strict=True)
     hours = [(day.isoweekday(),row['inicio'],row['fin'],row.get('cupo_unico',False)) for row in intervals]
     ensure_coverage(professional_id,day,hours)
     stored = [{'inicio':row['inicio'].strftime('%H:%M'),'fin':row['fin'].strftime('%H:%M'), **({'cupo_unico':True} if row.get('cupo_unico') else {})} for row in intervals]

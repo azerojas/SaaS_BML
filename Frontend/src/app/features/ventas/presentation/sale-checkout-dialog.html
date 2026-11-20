@@ -1,0 +1,225 @@
+<header class="checkout-heading">
+  <span class="checkout-symbol"><bm-icon name="receipt" /></span>
+  <div>
+    <p class="eyebrow">RESUMEN DE LA ATENCIÓN</p>
+    <h2 mat-dialog-title>Cobrar</h2>
+  </div>
+  <button
+    mat-icon-button
+    type="button"
+    aria-label="Cerrar cobro"
+    [disabled]="locked()"
+    (click)="ref.close()"
+  >
+    <bm-icon name="close" />
+  </button>
+</header>
+<mat-dialog-content tabindex="0" role="region" aria-label="Información del servicio y cobro">
+  @if (loading()) {
+    <bm-loading label="Consultando la información del servicio…" />
+  } @else {
+    <bm-finance-feedback (recovered)="load()" />
+    @if (error(); as message) {
+      <bm-alert [message]="message" />
+    }
+    <section class="client-summary">
+      <span class="client-symbol"><bm-icon name="users" /></span>
+      <div>
+        <span class="detail-label">CLIENTA</span>
+        <h3>{{ checkout.data.clientName }}</h3>
+        <p>
+          Visita #{{ checkout.data.visitId }}
+          @if (visit(); as visit) {
+            · {{ date(visit.inicio_en) }}
+          }
+        </p>
+      </div>
+    </section>
+    @if (facade.record(); as sale) {
+      <div class="balance-card">
+        <div>
+          <span>IMPORTE PENDIENTE</span>
+          <p>
+            {{
+              sale.saldo.saldo_pendiente === '0.00'
+                ? 'El servicio está pagado.'
+                : 'Importe pendiente de registrar.'
+            }}
+          </p>
+        </div>
+        <strong data-testid="sale-balance">{{ money(sale.saldo.saldo_pendiente) }}</strong>
+      </div>
+      <div class="section-title">
+        <h3>Servicios de esta visita</h3>
+        <span>{{
+          sale.estado === 'BORRADOR'
+            ? 'Pendiente de cobro'
+            : sale.estado === 'ANULADA'
+              ? 'Anulada'
+              : sale.saldo.saldo_pendiente === '0.00'
+                ? 'Pagado'
+                : 'Saldo pendiente'
+        }}</span>
+      </div>
+      <div class="service-list">
+        @for (line of sale.lineas; track line.id) {
+          <article class="service-row">
+            <span class="service-symbol"
+              ><bm-icon [name]="line.tipo === 'SERVICIO' ? 'sparkles' : 'box'"
+            /></span>
+            <div class="service-info">
+              <h4>{{ line.descripcion_snapshot }}</h4>
+              <p>
+                @if (line.profesional_id) {
+                  {{ line.profesional_nombre || 'Profesional #' + line.profesional_id
+                  }}<span> · </span>
+                }
+                Cantidad: {{ line.cantidad }}
+                @if (line.duracion_minutos) {
+                  <span> · </span>{{ line.duracion_minutos }} min
+                }
+              </p>
+              @if (line.descuento_linea !== '0.00') {
+                <small>Descuento: {{ money(line.descuento_linea) }}</small>
+              }
+            </div>
+            <strong>{{ money(line.precio_unitario) }}<small>por unidad</small></strong>
+          </article>
+        } @empty {
+          <p class="empty-copy">Esta venta todavía no tiene servicios registrados.</p>
+        }
+      </div>
+      <div class="totals">
+        <div>
+          <span>Subtotal</span><strong>{{ money(sale.saldo.subtotal) }}</strong>
+        </div>
+        @if (sale.saldo.descuento_global !== '0.00') {
+          <div>
+            <span>Descuento</span><strong>− {{ money(sale.saldo.descuento_global) }}</strong>
+          </div>
+        }
+        @if (sale.saldo.propina !== '0.00') {
+          <div>
+            <span>Propina</span><strong>{{ money(sale.saldo.propina) }}</strong>
+          </div>
+        }
+        <div>
+          <span>Total del servicio</span
+          ><strong data-testid="sale-total">{{ money(sale.saldo.total) }}</strong>
+        </div>
+        @if (sale.saldo.cobertura_total !== '0.00') {
+          <div>
+            <span>Pagos y anticipos aplicados, netos de reembolsos</span
+            ><strong>{{ money(sale.saldo.cobertura_total) }}</strong>
+          </div>
+        }
+        @if (sale.saldo.ajustes_comerciales !== '0.00') {
+          <div>
+            <span>Ajustes comerciales</span
+            ><strong>− {{ money(sale.saldo.ajustes_comerciales) }}</strong>
+          </div>
+        }
+      </div>
+      @if (paid()) {
+        <p #paymentSuccess tabindex="-1" class="payment-success" role="status">
+          <bm-icon name="check" /> Cobro registrado correctamente.
+        </p>
+      }
+      @if (collecting()) {
+        <form id="checkout-payment" class="payment-form" [formGroup]="form" (ngSubmit)="charge()">
+          <h3 #paymentStart tabindex="-1">Datos del pago recibido</h3>
+          <fieldset [disabled]="locked()">
+            <div class="payment-fields">
+              <label
+                >Medio de pago<select formControlName="metodo">
+                  @for (method of methods; track method) {
+                    <option [value]="method">{{ method }}</option>
+                  }
+                </select></label
+              ><label
+                >Monto recibido (PEN)<input formControlName="monto" inputmode="decimal" required
+              /></label>
+            </div>
+            @if (form.controls.metodo.value !== 'EFECTIVO') {
+              <label
+                >Referencia de operación<input
+                  formControlName="referencia"
+                  maxlength="100"
+                  required
+              /></label>
+            }
+            @if (sale.estado === 'BORRADOR' && consumptions.length) {
+              <div class="consumption-review" formArrayName="consumptions">
+                <h4>Insumos utilizados</h4>
+                <p>Revisa las cantidades propuestas. Usa 0 si no se utilizó un insumo.</p>
+                @for (group of consumptions.controls; track group; let index = $index) {
+                  <div [formGroupName]="index">
+                    <strong>{{ group.controls.nombre.value }}</strong>
+                    <div formArrayName="items">
+                      @for (
+                        item of group.controls.items.controls;
+                        track item;
+                        let itemIndex = $index
+                      ) {
+                        <label [formGroupName]="itemIndex"
+                          >Insumo #{{ item.controls.articulo.value
+                          }}<input formControlName="cantidad" inputmode="decimal" required
+                        /></label>
+                      } @empty {
+                        <p>Sin insumos propuestos. Confirma que no hubo consumo.</p>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+            <label class="verified"
+              ><input type="checkbox" formControlName="verificado" /><span
+                >Verifiqué los servicios, los consumos reales y la recepción de este dinero. No
+                corresponde a un anticipo ya registrado.</span
+              ></label
+            >
+          </fieldset>
+        </form>
+      }
+    } @else if (!error()) {
+      <p class="empty-copy">
+        No hay servicios registrados para cobrar en esta visita. Primero registra su atención.
+      </p>
+    }
+  }
+</mat-dialog-content>
+@if (facade.record(); as sale) {
+  @if (
+    sale.estado !== 'ANULADA' &&
+    sale.saldo.saldo_pendiente !== '0.00' &&
+    sale.lineas.length &&
+    session.hasPermission('finanzas.register_payment') &&
+    (sale.estado !== 'BORRADOR' || session.hasPermission('finanzas.confirm_sale'))
+  ) {
+    <mat-dialog-actions
+      ><p>
+        <bm-icon name="shield" />
+        {{
+          collecting()
+            ? 'Confirma únicamente dinero recibido.'
+            : 'Los importes corresponden a esta atención.'
+        }}
+      </p>
+      @if (collecting()) {
+        <button
+          mat-flat-button
+          type="submit"
+          form="checkout-payment"
+          [disabled]="locked() || form.invalid"
+        >
+          {{ working() ? 'Registrando…' : 'Cobrar' }}<bm-icon name="arrow" />
+        </button>
+      } @else {
+        <button mat-flat-button type="button" [disabled]="locked()" (click)="startPayment()">
+          Cobrar<bm-icon name="arrow" />
+        </button>
+      }
+    </mat-dialog-actions>
+  }
+}

@@ -2,17 +2,22 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  Injector,
+  afterNextRender,
   computed,
   inject,
   signal,
 } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
-import { VisitDetail } from './visit-detail';
-import { catchError, debounceTime, forkJoin, map, merge, of, switchMap } from 'rxjs';
+import { ClientaDetail } from '../../clientas/presentation/clienta-detail';
+import { SaleCheckoutDialog } from '../../ventas/presentation/sale-checkout-dialog';
+import { catchError, debounceTime, filter, forkJoin, map, merge, of, switchMap, take } from 'rxjs';
 import { VisitsFacade } from '../application/visits-facade';
+import { VisitFilters } from '../application/visit-filters';
 import { VisitsApi } from '../infrastructure/visits-api';
 import { Visit } from '../domain/visit';
 import { ClientasApi } from '../../clientas/infrastructure/clientas-api';
@@ -35,21 +40,64 @@ import { dateLima } from '../../inventario/domain/inventory';
 export class VisitsList {
   readonly facade = inject(VisitsFacade);
   readonly session = inject(SessionStore);
+  private readonly filters = inject(VisitFilters);
   private readonly api = inject(VisitsApi);
   private readonly clients = inject(ClientasApi);
   private readonly dialog = inject(MatDialog);
   private readonly destroy = inject(DestroyRef);
-  openVisit(row: Visit) {
+  private readonly injector = inject(Injector);
+  private readonly document = inject(DOCUMENT);
+  private refreshAndFocus(row: Visit, action: 'client' | 'checkout') {
+    this.refresh();
+    toObservable(this.facade.list.loading, { injector: this.injector })
+      .pipe(
+        filter((loading) => !loading),
+        take(1),
+        takeUntilDestroyed(this.destroy),
+      )
+      .subscribe(() => {
+        afterNextRender(
+          () => {
+            this.document
+              .querySelector<HTMLElement>(
+                `[data-visit-id="${row.id}"] [data-visit-action="${action}"]`,
+              )
+              ?.focus();
+          },
+          { injector: this.injector },
+        );
+      });
+  }
+  openClient(row: Visit) {
+    if (!this.session.hasPermission('negocio.view_clientas')) return;
     this.dialog
-      .open(VisitDetail, {
-        width: '820px',
+      .open(ClientaDetail, {
+        width: '1080px',
         maxWidth: '96vw',
         maxHeight: '94dvh',
-        data: { id: row.id, clientName: this.clientName(row) },
+        data: { id: row.clienta_id },
+        autoFocus: 'first-heading',
+        closePredicate: (_result, _config, instance) =>
+          !(instance instanceof ClientaDetail && instance.facade.busy()),
       })
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroy))
-      .subscribe(() => this.refresh());
+      .subscribe(() => this.refreshAndFocus(row, 'client'));
+  }
+  openCheckout(row: Visit) {
+    this.dialog
+      .open(SaleCheckoutDialog, {
+        width: '700px',
+        maxWidth: '96vw',
+        maxHeight: '94dvh',
+        data: { visitId: row.id, clientName: this.clientName(row) },
+        autoFocus: 'first-heading',
+        closePredicate: (_result, _config, instance) =>
+          !(instance instanceof SaleCheckoutDialog) || instance.canClose(),
+      })
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroy))
+      .subscribe(() => this.refreshAndFocus(row, 'checkout'));
   }
   readonly date = dateLima;
   readonly Number = Number;
@@ -63,11 +111,9 @@ export class VisitsList {
     year: 'numeric',
     timeZone: 'America/Lima',
   }).format(new Date());
-  readonly form = inject(FormBuilder).nonNullable.group({
-    estado: '',
-    desde: this.today,
-    hasta: this.today,
-  });
+  readonly form = inject(FormBuilder).nonNullable.group(
+    this.filters.read(this.session.currentUser()?.id, this.today),
+  );
   readonly search = signal('');
   readonly names = signal<Record<number, string>>({});
   readonly totals = signal<{
@@ -115,6 +161,9 @@ export class VisitsList {
   });
 
   constructor() {
+    this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+      this.filters.save(this.session.currentUser()?.id, this.form.getRawValue());
+    });
     merge(this.form.controls.desde.valueChanges, this.form.controls.hasta.valueChanges)
       .pipe(debounceTime(250), takeUntilDestroyed())
       .subscribe(() => this.filter());

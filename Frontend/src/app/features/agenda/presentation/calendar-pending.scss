@@ -1,0 +1,21 @@
+.calendar-page .working-band.pending-request {
+  opacity: 1;
+  background: var(--sage);
+  border-color: var(--forest);
+  color: var(--on-primary-soft);
+  gap: 5px;
+}
+.pending-request .window-status {
+  background: var(--paper);
+  color: var(--forest);
+}
+.pending-request .window-note {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 1.3;
+}

@@ -1,5 +1,7 @@
-<bm-finance-nav /><a routerLink="/admin/ventas" class="back-link">← Ventas y pagos</a
-><bm-finance-feedback (recovered)="recovered()" />
+@if (!checkout) {
+  <bm-finance-nav /><a routerLink="/admin/ventas" class="back-link">← Ventas y pagos</a>
+}
+<bm-finance-feedback (recovered)="recovered()" />
 @if (facade.error(); as error) {
   <bm-alert [message]="error" />
   @if (!facade.record() && !facade.loading()) {
@@ -26,11 +28,22 @@
         Consultar venta y saldo
       </button>
       @if (sale.estado === 'BORRADOR' && session.hasPermission('finanzas.manage_sales')) {
-        <a mat-flat-button [routerLink]="['/admin/ventas', sale.id, 'editar']"
-          >Editar tratamientos y productos</a
-        >
+        @if (checkout) {
+          <button
+            mat-flat-button
+            type="button"
+            [disabled]="locked()"
+            (click)="checkout.editing.set(true)"
+          >
+            Editar tratamientos y productos
+          </button>
+        } @else {
+          <a mat-flat-button [routerLink]="['/admin/ventas', sale.id, 'editar']"
+            >Editar tratamientos y productos</a
+          >
+        }
       }
-      @if (sale.visita_id) {
+      @if (sale.visita_id && !checkout) {
         <a mat-button [routerLink]="['/admin/visitas', sale.visita_id]"
           >Ver visita #{{ sale.visita_id }}</a
         >

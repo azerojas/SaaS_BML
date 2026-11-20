@@ -43,7 +43,7 @@ export class SessionStore {
     if (!force && this.state() !== 'unknown') return Promise.resolve();
     if (this.logoutPending()) return Promise.resolve();
     const wasAuthenticated = this.isAuthenticated();
-    this.state.set('loading');
+    if (!wasAuthenticated) this.state.set('loading');
     this.hydration = firstValueFrom(this.api.me())
       .then((user) => {
         this.currentUser.set(user);

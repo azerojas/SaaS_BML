@@ -15,7 +15,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from apps.agenda.models import PublicBookingRequest, PublicBookingIntent
 from apps.agenda.domain.commands import BookingCommand, AvailabilityQuery
 from apps.agenda.domain.errors import AgendaError
-from apps.agenda.domain.rules import ACTIVE, amounts
+from apps.agenda.domain.rules import ACTIVE, amounts, booking_duration
 from apps.agenda.infrastructure import repositories as repo
 from apps.agenda.infrastructure.transactions import agenda_transaction, ensure_ready
 from apps.checkin.application.selectors import matching_clients, provisional
@@ -72,6 +72,23 @@ def management_code_hash(phone, code):
     return hmac.new(settings.SECRET_KEY.encode(), value, sha256).hexdigest()
 
 
+def authorize_request(request, row):
+    """Keep only explicitly authorized requests for the current contact."""
+    ids=request.session.get('booking_requests', []) if request.session.get('booking_phone')==row.telefono else []
+    request.session['booking_phone']=row.telefono
+    request.session['booking_requests']=list(dict.fromkeys([str(row.pk),*ids]))[:50]
+
+
+def authorized_requests(request):
+    phone=request.session.get('booking_phone')
+    if not phone:
+        # Older browser sessions may contain requests belonging to several people.
+        # Require their phone and code again instead of choosing an identity.
+        request.session.pop('booking_requests',None)
+        return PublicBookingRequest.objects.none()
+    return PublicBookingRequest.objects.filter(telefono=phone,pk__in=request.session.get('booking_requests',[]))
+
+
 def access(request, *, token=None, telefono=None, codigo=None):
     ready()
     if token:
@@ -95,17 +112,14 @@ def access(request, *, token=None, telefono=None, codigo=None):
                 'No pudimos validar el teléfono y la clave. Revísalos e intenta de nuevo.',
                 'not_found',
             )
-    ids = request.session.get('booking_requests', [])
-    request.session['booking_requests'] = list(dict.fromkeys([str(row.pk), *ids]))[:50]
+    authorize_request(request,row)
     return detail(row, customer=True)
 
 
 def owned(request, pk):
-    if str(pk) not in request.session.get('booking_requests', []):
-        raise PermissionDenied('Ingresa el teléfono y la clave de acceso de esta solicitud.')
-    row = PublicBookingRequest.objects.filter(pk=pk).first()
+    row = authorized_requests(request).filter(pk=pk).first()
     if not row:
-        raise AgendaError('BOOKING_NOT_FOUND', 'Solicitud no disponible.', 'not_found')
+        raise PermissionDenied('Ingresa el teléfono y la clave de acceso de esta solicitud.')
     return row
 
 
@@ -121,7 +135,7 @@ def detail(row, include_code=False, customer=False, staff=False):
         'inicio_en': start, 'fin_en': end, 'precio_total': appointment.precio_total if appointment else row.precio_total,
         'profesional': str(appointment.profesional.nombres if appointment else m.Profesionales.objects.get(pk=row.profesional_id).nombres),
         'servicios': list(appointment.citaservicios_set.order_by('orden').values('servicio_id','servicio__nombre','precio_snapshot','duracion_minutos')) if appointment else row.servicios,
-        'expira_en': row.expira_en, 'motivo_publico': row.motivo_publico,
+        'expira_en': row.expira_en if state=='PENDIENTE' else None, 'motivo_publico': row.motivo_publico,
         'limite_cambios_en': cutoff, 'puede_cancelar': editable, 'puede_reprogramar': editable,
         'anticipo_requerido': appointment.anticipo_requerido if appointment else '0.00'}
     if include_code:
@@ -197,7 +211,18 @@ def create(request, data):
         row.management_token = uuid.uuid4()
     row.management_code_hash = digest
     row.save(update_fields=['management_token', 'management_code_hash'])
-    request.session['booking_requests'] = list(dict.fromkeys([str(row.pk), *request.session.get('booking_requests', [])]))[:50]
+    if settings.AGENDA_AUTO_CONFIRM_PUBLIC_BOOKINGS:
+        client=client_for_booking(row)
+        # Remove the temporary hold before creating the appointment under the same lock.
+        row.estado='CONFIRMADA'
+        row.save(update_fields=['estado'])
+        result=bookings.create(BookingCommand(client.pk,row.profesional_id,tuple(item['servicio_id'] for item in row.servicios),row.inicio_en,origen='ONLINE'),None,public=True,quote=row.servicios)
+        appointment=m.Citas.objects.get(pk=result['cita_id'])
+        set_state(appointment,'CONFIRMADA',None,'Reserva online confirmada automaticamente en un cupo publicado.')
+        row.appointment_id=appointment.pk
+        row.save(update_fields=['appointment_id'])
+        system_audit(row,'CONFIRMAR_RESERVA_WEB',{'cita_id':appointment.pk,'automatica':True,'contacto_verificado':False,'version_aviso':row.version_aviso})
+    authorize_request(request,row)
     system_audit(row, 'SOLICITAR_RESERVA', {'contacto_verificado': False, 'version_aviso': row.version_aviso})
     return detail(row, include_code=True)
 
@@ -221,6 +246,7 @@ def change(request, pk, action, data):
         if appointment:
             row.profesional_id, row.duracion_minutos = appointment.profesional_id, appointment.duracion_total_minutos
             row.servicios = canonical(list(appointment.citaservicios_set.order_by('orden').values('servicio_id','servicio__nombre','precio_snapshot','duracion_minutos')))
+        row.duracion_minutos = booking_duration(row.duracion_minutos)
         end = start + timedelta(minutes=row.duracion_minutos)
         # Temporarily remove this request's hold within the same transaction.
         old_state = row.estado
@@ -230,7 +256,8 @@ def change(request, pk, action, data):
         bookings.validate_slot(row.profesional_id, appointment.clienta_id if appointment else None, start, end, cfg, exclude=appointment.pk if appointment else None)
         if appointment:
             appointment.inicio_en, appointment.fin_en = start, end
-            appointment.save(update_fields=['inicio_en', 'fin_en'])
+            appointment.duracion_total_minutos = row.duracion_minutos
+            appointment.save(update_fields=['inicio_en', 'fin_en', 'duracion_total_minutos'])
         row.inicio_en, row.fin_en, row.estado = start, end, old_state
         if not appointment:row.expira_en=min(row.expira_en,start)
         row.save(update_fields=['inicio_en', 'fin_en', 'estado','expira_en','profesional_id','duracion_minutos','servicios'])
@@ -238,11 +265,7 @@ def change(request, pk, action, data):
     return detail(row, customer=True)
 
 
-def approve(pk, actor):
-    ready()
-    row = get_object_or_404(PublicBookingRequest.objects.select_for_update(),pk=pk)
-    if row.estado != 'PENDIENTE' or row.expira_en <= timezone.now():
-        raise AgendaError('REQUEST_NOT_PENDING', 'La solicitud ya fue resuelta o venció.')
+def client_for_booking(row,actor=None):
     ids = matching_clients(row.telefono)
     if len(ids) > 1:
         raise AgendaError('CONTACT_REVIEW_REQUIRED', 'Revisa las fichas duplicadas antes de confirmar.')
@@ -253,7 +276,17 @@ def approve(pk, actor):
     else:
         client = m.Clientas.objects.create(nombres=row.nombres, apellidos=row.apellidos, telefono=row.telefono,
             activa=True, consentimiento_datos=True, consentimiento_fecha=timezone.now(), acepta_recordatorios=False, canal_preferido='EMAIL')
-        system_audit(client, 'ALTA_RESERVA_REVISADA', {'solicitud_id': str(row.pk), 'responsable': actor.pk})
+        system_audit(client, 'ALTA_RESERVA_REVISADA' if actor else 'ALTA_RESERVA_ONLINE',
+            {'solicitud_id':str(row.pk),**({'responsable':actor.pk} if actor else {'contacto_verificado':False,'version_aviso':row.version_aviso})})
+    return client
+
+
+def approve(pk, actor):
+    ready()
+    row = get_object_or_404(PublicBookingRequest.objects.select_for_update(),pk=pk)
+    if row.estado != 'PENDIENTE' or row.expira_en <= timezone.now():
+        raise AgendaError('REQUEST_NOT_PENDING', 'La solicitud ya fue resuelta o venció.')
+    client=client_for_booking(row,actor)
     row.estado = 'CONFIRMADA'
     row.save(update_fields=['estado'])
     # Use the immutable public quote, even if the catalogue price changed during review.

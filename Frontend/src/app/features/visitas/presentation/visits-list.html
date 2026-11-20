@@ -134,9 +134,13 @@
                 <div class="avatar" aria-hidden="true">{{ initials(row) }}</div>
                 <div>
                   <h3>
-                    <button type="button" class="visit-name" (click)="openVisit(row)">
+                    @if (session.hasPermission('negocio.view_clientas')) {
+                      <button type="button" class="visit-name" (click)="openClient(row)">
+                        {{ clientName(row) }}
+                      </button>
+                    } @else {
                       {{ clientName(row) }}
-                    </button>
+                    }
                   </h3>
                   <p class="visit-reference">
                     <strong>#VIS-{{ row.id }}</strong
@@ -164,22 +168,24 @@
                 <button
                   type="button"
                   class="action"
+                  data-visit-action="checkout"
                   [class.primary]="row.estado === 'ABIERTA'"
                   [class.secondary]="row.estado !== 'ABIERTA'"
-                  (click)="openVisit(row)"
+                  (click)="openCheckout(row)"
                 >
                   <bm-icon name="receipt" />
-                  {{
-                    row.estado === 'ABIERTA'
-                      ? 'Gestionar atención y cobro'
-                      : 'Ver detalle de visita'
-                  }}
+                  {{ row.estado === 'ABIERTA' ? 'Cobrar' : 'Ver cobro' }}
                 </button>
               </div>
               @if (session.hasPermission('negocio.view_clientas')) {
-                <a class="text-link client-link" [routerLink]="['/admin/clientas', row.clienta_id]"
-                  >Ficha de la clienta <bm-icon name="arrow"
-                /></a>
+                <button
+                  type="button"
+                  class="action secondary client-link"
+                  data-visit-action="client"
+                  (click)="openClient(row)"
+                >
+                  <bm-icon name="users" /> Ficha de la clienta
+                </button>
               }
             </div>
           </article>

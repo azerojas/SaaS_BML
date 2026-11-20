@@ -65,7 +65,7 @@ interface CalendarWindow extends DayInterval {
   imports: [DateField, ReactiveFormsModule, RouterLink, Alert, Icon, AgendaFeedback, MatMenuModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './calendar-page.html',
-  styleUrl: './calendar-page.scss',
+  styleUrls: ['./calendar-page.scss', './calendar-pending.scss'],
 })
 export class CalendarPage {
   readonly readOnly = input(false);
@@ -280,8 +280,39 @@ export class CalendarPage {
         this.load();
       });
     });
-    const timer = setInterval(() => this.now.set(new Date()), 60000);
-    inject(DestroyRef).onDestroy(() => clearInterval(timer));
+    const refreshVisible = () => {
+      if (
+        document.visibilityState === 'visible' &&
+        !this.intent.busy() &&
+        !this.resource.loading()
+      ) {
+        const focusedDay = this.focusDate();
+        this.load();
+        if (this.days().includes(focusedDay)) this.focusDate.set(focusedDay);
+      }
+    };
+    const timer = setInterval(() => {
+      this.now.set(new Date());
+      if (
+        this.daily
+          .data()
+          ?.some((day) =>
+            day.franjas.some(
+              (slot) =>
+                slot.solicitud_pendiente &&
+                Date.parse(slot.solicitud_pendiente.expira_en) <= this.now().getTime(),
+            ),
+          )
+      )
+        refreshVisible();
+    }, 60000);
+    window.addEventListener('focus', refreshVisible);
+    document.addEventListener('visibilitychange', refreshVisible);
+    inject(DestroyRef).onDestroy(() => {
+      clearInterval(timer);
+      window.removeEventListener('focus', refreshVisible);
+      document.removeEventListener('visibilitychange', refreshVisible);
+    });
   }
   load() {
     this.error.set(null);
@@ -625,13 +656,19 @@ export class CalendarPage {
       : [];
   }
   events(day: string, rows: Appointment[]) {
-    return this.groupedByProfessional()
+    const individualTracks =
+      this.groupedByProfessional() ||
+      this.professionals.data()?.some((row) => row.publicacion_propia);
+    return individualTracks
       ? positionByProfessional(this.visibleAppointments(rows), day, this.professionalIds())
       : positionAppointments(this.visibleAppointments(rows), day);
   }
   displayedHours(day: string) {
     return this.layer() === 'all' || this.layer() === 'availability'
-      ? this.scheduleWindows(day).filter((interval) => !interval.ocupado)
+      ? this.scheduleWindows(day).filter(
+          (interval) =>
+            !interval.ocupado || (this.layer() === 'all' && !!interval.solicitud_pendiente),
+        )
       : [];
   }
   scheduleWindows(day: string): CalendarWindow[] {

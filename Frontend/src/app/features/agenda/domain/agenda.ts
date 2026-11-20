@@ -33,6 +33,7 @@ export interface DayInterval {
   fin: string;
   cupo_unico?: boolean;
   ocupado?: boolean;
+  solicitud_pendiente?: { id: string; clienta_nombre: string; expira_en: string };
 }
 export interface DailySchedule {
   id: number;
@@ -89,6 +90,7 @@ export interface Slot {
   fin_en: string;
 }
 export interface Availability {
+  cupo_minutos?: number;
   timezone: string;
   fecha_local: string;
   profesional_id: number;

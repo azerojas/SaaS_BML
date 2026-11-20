@@ -30,7 +30,7 @@ import {
   selector: 'bm-public-booking-page',
   imports: [DateField, ReactiveFormsModule, RouterLink, Alert, Icon],
   templateUrl: './public-booking-page.html',
-  styleUrl: './public-booking-page.scss',
+  styleUrls: ['./public-booking-page.scss', './public-reservations.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PublicBookingPage {
@@ -47,6 +47,7 @@ export class PublicBookingPage {
   readonly services = signal<BookingService[]>([]);
   readonly professionals = signal<BookingProfessional[]>([]);
   readonly selectedServices = signal<number[]>([]);
+  readonly catalogService = signal<BookingService | null>(null);
   readonly chosenServices = computed(() =>
     this.services().filter((service) => this.selectedServices().includes(service.id)),
   );
@@ -116,9 +117,17 @@ export class PublicBookingPage {
         if (this.destroyRef.destroyed) return;
         this.services.set(data.services.results);
         this.professionals.set(data.professionals.results);
-        const service = Number(this.route.snapshot.queryParamMap.get('servicio'));
-        if (service && data.services.results.some((row) => row.id === service))
-          this.selectedServices.set([service]);
+        const requested = this.route.snapshot.queryParamMap.get('servicio');
+        const service =
+          requested && /^[1-9]\d*$/.test(requested)
+            ? data.services.results.find((row) => row.id === Number(requested))
+            : undefined;
+        this.catalogService.set(service ?? null);
+        if (service) this.selectedServices.set([service.id]);
+        else if (requested)
+          this.error.set(
+            'El tratamiento elegido no está disponible para reservar en línea. Consulta otro tratamiento del catálogo.',
+          );
       }
       const token = this.managing ? window.location.hash.slice(1) : '';
       if (token) {
@@ -131,13 +140,6 @@ export class PublicBookingPage {
     } finally {
       this.loading.set(false);
     }
-  }
-  toggleService(id: number, checked: boolean) {
-    this.selectedServices.update((ids) =>
-      checked ? [...ids, id] : ids.filter((item) => item !== id),
-    );
-    this.slotForm.controls.professional.setValue('');
-    this.invalidateSlots();
   }
   async searchSlots() {
     if (this.busy() || this.pending()) return;
@@ -291,7 +293,9 @@ export class PublicBookingPage {
         ? 'Tu solicitud fue cancelada.'
         : result.estado === 'PENDIENTE'
           ? 'Solicitud recibida. Falta la confirmación del salón.'
-          : 'Cambio guardado.',
+          : result.management_code && result.estado === 'CONFIRMADA'
+            ? 'Tu cita está confirmada. El horario ya está reservado para ti.'
+            : 'Cambio guardado.',
     );
     await this.refreshBookings();
   }

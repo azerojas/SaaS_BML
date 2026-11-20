@@ -21,8 +21,7 @@
   <p class="description">
     @if (singleSlots) {
       {{ data.professionalName }} · Elige horas exactas, por ejemplo 16:00, 17:00 y 18:00. Cada hora
-      admite una sola reserva. El fin máximo solo limita la duración del servicio: no habilita horas
-      de inicio intermedias.
+      admite una sola reserva.
     } @else {
       Elige cuándo estarás disponible. Puedes añadir una pausa entre tus horarios.
     }
@@ -113,7 +112,7 @@
                 />
                 <span class="separator" aria-hidden="true"><bm-icon name="arrow" /></span>
                 <bm-time-field
-                  [label]="singleSlots ? 'Fin máximo del servicio' : 'Hasta'"
+                  label="Hasta"
                   [ariaLabel]="'Fin de franja ' + (index + 1)"
                   formControlName="fin"
                   [readOnly]="intent.busy() || intent.pending() || past"

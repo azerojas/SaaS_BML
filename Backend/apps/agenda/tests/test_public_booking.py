@@ -15,7 +15,7 @@ from negocio import models as m
 ROOT = '/api/v1/public/reservas/'
 
 
-@override_settings(AGENDA_PUBLIC_WRITE_ENABLED=True, AGENDA_REQUIRE_DEPOSITS=False, AGENDA_REQUEST_HOLD_MINUTES=30,
+@override_settings(AGENDA_AUTO_CONFIRM_PUBLIC_BOOKINGS=False, AGENDA_PUBLIC_WRITE_ENABLED=True, AGENDA_REQUIRE_DEPOSITS=False, AGENDA_REQUEST_HOLD_MINUTES=30,
     PRIVACY_NOTICE_URL='https://example.test/privacidad', PRIVACY_NOTICE_VERSION='test-v1')
 class PublicBookingTests(AgendaTestCase):
     def setUp(self):
@@ -107,6 +107,47 @@ class PublicBookingTests(AgendaTestCase):
             }).status_code,404)
         limited=self.post('acceso/',{'telefono':'+51987654321','codigo':'12345678'})
         self.assertEqual(limited.status_code,429)
+
+    def test_two_people_using_same_browser_do_not_share_booking_access(self):
+        first=self.reserve_public().json()
+        second=self.reserve_public(telefono='+51987654322',inicio_en=(START+timedelta(hours=1)).isoformat()).json()
+        self.assertEqual([row['id'] for row in self.public.get(ROOT+'solicitudes/').json()['results']],[second['id']])
+        self.assertEqual(self.public.get(ROOT+f'solicitudes/{first["id"]}/').status_code,403)
+        self.assertEqual(self.post(f'solicitudes/{first["id"]}/cancelar/',{'motivo':'Cambio de planes'},str(uuid.uuid4())).status_code,403)
+        self.assertEqual(self.public.get(ROOT+f'solicitudes/{first["id"]}/disponibilidad/',{'fecha':START.date().isoformat()}).status_code,403)
+        result=self.post('acceso/',{'telefono':'+51987654321','codigo':first['management_code']})
+        self.assertEqual(result.status_code,200,result.data)
+        self.assertEqual([row['id'] for row in self.public.get(ROOT+'solicitudes/').json()['results']],[first['id']])
+        self.assertEqual(self.public.get(ROOT+f'solicitudes/{second["id"]}/').status_code,403)
+
+    def test_same_contact_keeps_only_requests_explicitly_authorized_in_that_session(self):
+        first=self.reserve_public().json()
+        second=self.reserve_public(inicio_en=(START+timedelta(hours=1)).isoformat()).json()
+        self.assertEqual({row['id'] for row in self.public.get(ROOT+'solicitudes/').json()['results']},{first['id'],second['id']})
+        fresh=self.browser()
+        result=self.post('acceso/',{'telefono':'+51987654321','codigo':first['management_code']},client=fresh)
+        self.assertEqual(result.status_code,200,result.data)
+        self.assertEqual([row['id'] for row in fresh.get(ROOT+'solicitudes/').json()['results']],[first['id']])
+
+    def test_legacy_mixed_session_requires_a_new_phone_and_code_login(self):
+        first=self.reserve_public().json()
+        second=self.reserve_public(telefono='+51987654322',inicio_en=(START+timedelta(hours=1)).isoformat()).json()
+        session=self.public.session
+        session.pop('booking_phone',None)
+        session['booking_requests']=[first['id'],second['id']]
+        session.save()
+        self.assertEqual(self.public.get(ROOT+'solicitudes/').json()['results'],[])
+        self.assertEqual(self.public.get(ROOT+f'solicitudes/{first["id"]}/').status_code,403)
+        self.assertEqual(self.public.get(ROOT+f'solicitudes/{second["id"]}/').status_code,403)
+
+    def test_failed_login_does_not_change_current_identity_and_logout_revokes_access(self):
+        first=self.reserve_public().json()
+        result=self.post('acceso/',{'telefono':'+51987654322','codigo':'12345678'})
+        self.assertEqual(result.status_code,404)
+        self.assertEqual([row['id'] for row in self.public.get(ROOT+'solicitudes/').json()['results']],[first['id']])
+        self.assertEqual(self.post('salir/',{}).status_code,204)
+        self.assertNotIn('booking_phone',self.public.session)
+        self.assertEqual(self.public.get(ROOT+'solicitudes/').json()['results'],[])
 
     def test_same_key_recovers_the_code_without_storing_it_in_plaintext(self):
         key=str(uuid.uuid4())

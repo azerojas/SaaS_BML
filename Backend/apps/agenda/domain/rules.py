@@ -22,6 +22,35 @@ def transition(previous,target):
 def overlaps(a,b,c,d):return a<d and c<b
 
 
+def booking_duration(service_minutes):
+    """A fixed booking slot is independent of treatment duration and price."""
+    return settings.AGENDA_BOOKING_SLOT_MINUTES or service_minutes
+
+
+def hourly_windows(hours):
+    minutes=settings.AGENDA_BOOKING_SLOT_MINUTES
+    if not minutes:
+        return list(hours)
+    result=[]
+    for day,begin,finish,*_ in hours:
+        start=datetime.combine(datetime(2000,1,3).date(),begin)
+        bound=datetime.combine(start.date(),finish)
+        while start+timedelta(minutes=minutes)<=bound:
+            end=start+timedelta(minutes=minutes)
+            result.append((day,start.time(),end.time(),True))
+            start=end
+    return result
+
+
+def hourly_intervals(intervals,strict=False):
+    if not settings.AGENDA_BOOKING_SLOT_MINUTES:
+        return intervals
+    if strict and any((datetime.combine(datetime.min.date(),row['fin'])-datetime.combine(datetime.min.date(),row['inicio'])).total_seconds() % 3600 for row in intervals):
+        raise AgendaError('INVALID_SLOT_DURATION','Publica cupos completos de una hora.','invalid')
+    return [{'inicio':begin,'fin':end,'cupo_unico':True}
+            for _,begin,end,_ in hourly_windows([(1,row['inicio'],row['fin']) for row in intervals])]
+
+
 def fits(start,end,hours,step,aligned=True):
     local_start,local_end=start.astimezone(ZONE),end.astimezone(ZONE)
     if local_start.date()!=local_end.date():return False
@@ -66,4 +95,4 @@ def amounts(services,cfg):
         required=quantize(total*cfg.anticipo_porcentaje/Decimal('100')) if requires_deposit else Decimal('0.00')
         if requires_deposit and total>0 and required==0:
             raise AgendaError('DEPOSIT_POLICY_UNSET','Un servicio exige anticipo pero el porcentaje/monto configurado resulta cero.')
-        return total,duration,required
+        return total,booking_duration(duration),required

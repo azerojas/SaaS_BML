@@ -1,5 +1,19 @@
 # Fase 5: contrato de visitas y finanzas
 
+El detalle `GET /api/visitas/{id}/` incluye `cita_para_cobro` cuando una visita
+abierta sin venta tiene una única cita compatible. Prioriza la cita vinculada;
+en visitas QR sin vínculo busca citas de la misma clienta dentro de la ventana
+configurada, tomando como referencia la hora de registro. Si hay varias, no
+selecciona ninguna. La consulta no escribe ni prepara ventas.
+
+`POST /api/ventas/` admite `cita_id` junto a `visita_id`. Si se omite `lineas`,
+prepara los tratamientos y el profesional de la cita usando `precio_snapshot`,
+sin sustituirlo por el precio actual del catálogo ni exigir permiso de precio
+excepcional por conservar lo reservado. El backend vuelve a validar y bloquear
+la cita y la visita antes de enlazarlas. Un precio enviado por el cliente sigue
+requiriendo el permiso de excepción. La operación conserva idempotencia; crea
+solo un borrador, sin cobros, consumos ni finalización automática.
+
 Estado: implementación probada y activada en Lasheo el 2026-11-06, tras autorización explícita para la migración aditiva. Se verificaron 47 tablas, 7 vistas y preservación de todas las estructuras y filas originales. En otros entornos donde falte `finanzas.0001_finance_support`, el módulo responde 503 a usuarios autorizados. No se han insertado operaciones ficticias en la base real.
 
 El backend conserva el monolito modular. `apps/finanzas/presentation` valida DTO, sesión y permisos; `application` coordina visitas, ventas, pagos, anticipos y auditoría; `domain` contiene dinero y comandos sin HTTP; `infrastructure` implementa idempotencia y disponibilidad del esquema. Los modelos heredados siguen en `negocio` con `managed=False`. La salida de existencias utiliza el servicio público de `apps/inventario/services.py`, compartiendo locks con compras y ajustes. No hay HTTP interno entre módulos.

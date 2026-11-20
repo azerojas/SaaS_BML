@@ -71,7 +71,10 @@ import { Alert } from '../../../shared/ui/alert';
             [attr.aria-pressed]="selected === slot.inicio_en"
             (click)="select(slot, available)"
           >
-            {{ slotTime(slot.inicio_en) }} – {{ slotTime(slot.fin_en) }}
+            {{ slotTime(slot.inicio_en) }}
+            @if (!available.cupo_minutos) {
+              – {{ slotTime(slot.fin_en) }}
+            }
           </button>
         } @empty {
           <p>No hay horarios disponibles para esta selección.</p>

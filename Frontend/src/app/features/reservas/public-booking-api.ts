@@ -4,6 +4,7 @@ import { switchMap } from 'rxjs';
 import { LOCAL_ERROR_HANDLED, PUBLIC_REQUEST } from '../../core/http/api-interceptor';
 
 export interface BookingConfig {
+  confirmacion_automatica?: boolean;
   habilitada: boolean;
   horas_limite_cancelacion: number;
   minutos_revision: number;
@@ -22,6 +23,7 @@ export interface BookingProfessional {
   servicios: number[];
 }
 export interface BookingSlots {
+  cupo_minutos?: number;
   precio_total: string;
   anticipo_requerido: string;
   duracion_minutos: number;

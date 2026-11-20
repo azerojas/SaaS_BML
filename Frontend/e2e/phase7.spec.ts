@@ -1,7 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { spawn } from 'node:child_process';
-import { fixture, control, login } from './helpers';
+import { bookClientForQr, fixture, control, login } from './helpers';
 const f = fixture.agenda;
 test('Django rechaza un contrato viejo y el navegador bloquea escrituras sin perder UUID', async ({
   page,
@@ -262,14 +262,9 @@ async function registeredVisit(page: Page, phone: string) {
   return visits.results[0];
 }
 async function publicArrival(page: Page, phone: string, fresh: boolean) {
+  if (fresh) await bookClientForQr(page, phone, 'Integral F7', 'Ficticia');
   await page.goto('/registro/' + fixture.finance.token);
   await page.getByLabel('Tel\u00e9fono', { exact: true }).fill(phone);
-  if (fresh) {
-    await page.getByLabel('Es mi primera visita').check();
-    await page.getByLabel('Nombres', { exact: true }).fill('Integral F7');
-    await page.getByLabel('Apellidos', { exact: true }).fill('Ficticia');
-    await page.getByLabel('He le\u00eddo el aviso').check();
-  }
   await page.getByRole('button', { name: 'Registrar mi visita', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Registro recibido' })).toBeVisible();
 }

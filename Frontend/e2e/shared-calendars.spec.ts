@@ -88,7 +88,7 @@ test('reservas públicas usan el mismo calendario y respetan fechas pasadas', as
   request,
 }) => {
   await control(request, 'booking-mode');
-  await page.goto('/reservar');
+  await page.goto('/reservar?servicio=' + fixture.agenda.service);
   const field = page.getByLabel('Fecha', { exact: true });
   await field.fill('2027-02-01');
   await page
@@ -100,7 +100,7 @@ test('reservas públicas usan el mismo calendario y respetan fechas pasadas', as
   expect((await popup.boundingBox())!.height).toBeCloseTo(384, 0);
   await popup.locator('.mat-calendar-body-cell-content').getByText('15', { exact: true }).click();
   await expect(field).toHaveValue('2027-02-15');
-  await page.getByRole('checkbox', { name: /Servicio agenda F6 E2E/ }).check();
+  await expect(page.locator('.chosen-treatment')).toContainText('Servicio agenda F6 E2E');
   await page
     .getByRole('combobox', { name: 'Profesional', exact: true })
     .selectOption(String(fixture.agenda.professional));

@@ -51,7 +51,7 @@ schemas['AgendaWaitDetail']=copy.deepcopy(schemas['AgendaWait'])
 schemas['AgendaWaitDetail']['properties']['cita_id']={**identifier,'nullable':True}
 schemas['AgendaConfig']=copy.deepcopy(schemas['AgendaConfigInput'])
 schemas['AgendaAvailability']={'type':'object','properties':{'timezone':{'type':'string','enum':['America/Lima']},'fecha_local':{'type':'string','format':'date'},
-    'profesional_id':identifier,'servicios':{'type':'array','items':identifier},'duracion_minutos':identifier,'precio_total':money,'anticipo_requerido':money,
+    'profesional_id':identifier,'servicios':{'type':'array','items':identifier},'duracion_minutos':identifier,'cupo_minutos':{'type':'integer','enum':[0,60]},'precio_total':money,'anticipo_requerido':money,
     'disponibilidad_es_propuesta':{'type':'boolean','enum':[True]},'pendientes_vencidas_ocupan_hasta_expirar':{'type':'boolean','enum':[True]},
     'slots':{'type':'array','items':{'type':'object','properties':{'inicio_en':{'type':'string','format':'date-time'},'fin_en':{'type':'string','format':'date-time'}}}}}}
 outputs={'ProfessionalView':'AgendaProfessional','ScheduleView':'AgendaSchedule','BlockView':'AgendaBlock','AppointmentView':'AgendaAppointment','WaitView':'AgendaWait','CalendarView':'AgendaAppointment'}

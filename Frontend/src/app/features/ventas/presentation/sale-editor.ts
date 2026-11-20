@@ -13,6 +13,7 @@ import { FinanceFeedback } from './finance-feedback';
 import { Alert } from '../../../shared/ui/alert';
 import { Loading } from '../../../shared/ui/loading';
 import { Pager } from '../../../shared/ui/pager';
+import { SaleCheckoutContext } from './sale-checkout-context';
 @Component({
   selector: 'bm-sale-editor',
   imports: [
@@ -30,6 +31,7 @@ import { Pager } from '../../../shared/ui/pager';
   templateUrl: './sale-editor.html',
 })
 export class SaleEditor {
+  readonly checkout = inject(SaleCheckoutContext, { optional: true });
   readonly facade = inject(SaleEditorFacade);
   readonly lookup = inject(LookupsFacade);
   readonly session = inject(SessionStore);
@@ -49,8 +51,12 @@ export class SaleEditor {
     void this.initialize();
   }
   async initialize() {
-    const id = Number(this.route.snapshot.paramMap.get('id')) || undefined;
-    const visit = Number(this.route.snapshot.queryParamMap.get('visita')) || undefined;
+    const id = this.checkout
+      ? (this.checkout.saleId() ?? undefined)
+      : Number(this.route.snapshot.paramMap.get('id')) || undefined;
+    const visit = this.checkout
+      ? this.checkout.data.visitId
+      : Number(this.route.snapshot.queryParamMap.get('visita')) || undefined;
     const result = await this.facade.initialize(id, visit);
     if (result) {
       this.form.patchValue({
@@ -108,6 +114,7 @@ export class SaleEditor {
         : { articulo_id: item.id, unidad_id: Number(item['unidad_id']) }),
     };
     this.lines.push(this.line(data, item.nombre));
+    this.form.markAsDirty();
   }
   async save() {
     this.invalid.set(false);
@@ -155,6 +162,9 @@ export class SaleEditor {
     }
   }
   async done(result: FinanceResult) {
-    if (result.venta_id) await this.router.navigate(['/admin/ventas', result.venta_id]);
+    if (result.venta_id) {
+      if (this.checkout) this.checkout.showSale(result.venta_id);
+      else await this.router.navigate(['/admin/ventas', result.venta_id]);
+    }
   }
 }

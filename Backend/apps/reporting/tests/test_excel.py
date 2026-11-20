@@ -16,16 +16,17 @@ class ExcelTests(ReportTestCase):
         self.client.force_authenticate(self.staff)
         workbook=self.workbook('top-clients')
         labels={row[0].value for row in workbook['Resumen'].iter_rows(min_row=2)}
-        self.assertNotIn('utilidad_estimada',labels)
-        self.assertNotIn('costo_directo',labels)
-        self.assertEqual(workbook['Clientas']['B2'].value,'Daniela Ficticia')
+        self.assertNotIn('Resultado operativo estimado',labels)
+        self.assertNotIn('Costo de productos e insumos',labels)
+        self.assertEqual(workbook['Clientas']['B5'].value,'Daniela Ficticia')
         self.assertEqual(self.client.get('/api/v1/analytics/overview/'+RANGE).status_code,403)
 
     def workbook(self, report='overview', query=RANGE):
         response=self.client.get(EXPORT+query+'&report='+report)
         self.assertEqual(response.status_code,200,getattr(response,'data',None))
         self.assertEqual(response['Content-Type'],'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        self.assertIn('attachment; filename="beauty_manager_reporte_',response['Content-Disposition'])
+        self.assertIn('attachment; filename="Lasheo - ',response['Content-Disposition'])
+        self.assertNotIn('_',response['Content-Disposition'])
         self.assertIn('no-store',response['Cache-Control'])
         return load_workbook(BytesIO(response.content),data_only=False)
 
@@ -33,14 +34,14 @@ class ExcelTests(ReportTestCase):
         self.dated_sale(payment='5.00')
         report=self.get_report()
         workbook=self.workbook()
-        self.assertEqual(workbook.sheetnames,['Resumen','Ingresos'])
-        sheet=workbook['Ingresos']
-        values={row[0].value:row[1] for row in sheet.iter_rows(min_row=2)}
-        self.assertEqual(str(values['ventas_confirmadas'].value),str(int(report['indicadores']['ventas_confirmadas'].split('.')[0])))
-        self.assertEqual(values['ventas_confirmadas'].data_type,'n')
-        self.assertIn('S/',values['ventas_confirmadas'].number_format)
-        self.assertIsNone(values['dinero_recaudado'].value)
-        self.assertEqual(sheet.freeze_panes,'A2')
+        self.assertEqual(workbook.sheetnames,['Resumen','Ingresos','Egresos','Tratamientos','Medios de pago','Visitas'])
+        sheet=workbook['Resumen']
+        values={row[0].value:row[1] for row in sheet.iter_rows(min_row=5)}
+        self.assertEqual(str(values['Ventas confirmadas'].value),str(int(report['indicadores']['ventas_confirmadas'].split('.')[0])))
+        self.assertEqual(values['Ventas confirmadas'].data_type,'n')
+        self.assertIn('S/',values['Ventas confirmadas'].number_format)
+        self.assertIsNone(values['Recaudación conciliada'].value)
+        self.assertEqual(sheet.freeze_panes,'A5')
         self.assertTrue(sheet.auto_filter.ref)
         audit=m.Auditoria.objects.get(entidad='reporting',accion='EXPORTAR_XLSX')
         self.assertNotIn('Daniela',str(audit.datos))
@@ -52,7 +53,7 @@ class ExcelTests(ReportTestCase):
         for index,attack in enumerate(['=HYPERLINK("https://example.com")','  +SUM(1,1)','\t-1+2','\r@SUM(1,1)']):
             m.Clientas.objects.filter(pk=self.person.pk).update(nombres=attack)
             workbook=self.workbook('top-clients')
-            cell=workbook['Clientas']['B2']
+            cell=workbook['Clientas']['B5']
             self.assertEqual(cell.data_type,'s')
             self.assertTrue(cell.quotePrefix)
             self.assertTrue(cell.value.startswith(attack.replace('\r','\n')))
@@ -61,9 +62,9 @@ class ExcelTests(ReportTestCase):
         self.assertEqual(m.Auditoria.objects.filter(entidad='reporting').count(),4)
 
     def test_all_report_types_are_valid_and_have_expected_sheets(self):
-        for report,sheet in [('revenue-series','Ingresos'),('payment-methods','Pagos'),('top-services','Servicios'),('expenses','Gastos'),('inventory-alerts','Inventario')]:
+        for report,sheet in [('revenue-series','Ingresos'),('payment-methods','Medios de pago'),('top-services','Tratamientos'),('expenses','Egresos'),('inventory-alerts','Inventario')]:
             workbook=self.workbook(report)
-            self.assertEqual(workbook.sheetnames,['Resumen',sheet])
+            self.assertEqual(workbook.sheetnames,['Resumen',sheet,'Visitas'])
 
     def test_unknown_report_filters_limits_and_success_rate(self):
         for suffix in ['&report=../../../private','&report=top-clients&limit=101','&report=overview&page=2','&report=overview&metodo=EFECTIVO']:

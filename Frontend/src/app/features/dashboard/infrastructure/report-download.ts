@@ -4,20 +4,27 @@ import { firstValueFrom } from 'rxjs';
 import { AnalyticsApi } from './analytics-api';
 import { Query, messageOf } from '../../../shared/domain/records';
 import { Report } from '../domain/analytics';
+import { addDays } from '../domain/periods';
 export const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 export function reportFilename(header: string | null, report: Report, query: Query): string {
+  const names: Record<Report, string> = {
+    overview: 'Reporte general',
+    'revenue-series': 'Ingresos',
+    'payment-methods': 'Medios de pago',
+    'top-services': 'Tratamientos',
+    'top-clients': 'Clientas',
+    expenses: 'Egresos',
+    'inventory-alerts': 'Inventario',
+  };
   const fallback =
-    'beauty_manager_reporte_' +
-    report +
-    '_' +
+    'Lasheo - ' +
+    names[report] +
+    ' - ' +
     String(query['desde']) +
-    '_' +
-    String(query['hasta']) +
+    ' al ' +
+    addDays(String(query['hasta']), -1) +
     '.xlsx';
-  const match =
-    /(?:^|;)\s*filename="(beauty_manager_reporte_[a-z-]+_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}\.xlsx)"(?:;|$)/.exec(
-      header ?? '',
-    );
+  const match = /(?:^|;)\s*filename="([^"\r\n]+\.xlsx)"(?:;|$)/.exec(header ?? '');
   return match?.[1] === fallback ? match[1] : fallback;
 }
 @Injectable()
@@ -78,11 +85,7 @@ export class ReportDownload {
           if (this.urls.delete(url)) URL.revokeObjectURL(url);
         }, 1000);
       }
-      this.success.set(
-        'Excel generado por el servidor. La fecha final del archivo es exclusiva: ' +
-          String(query['hasta']) +
-          '.',
-      );
+      this.success.set('Excel generado con los registros del período seleccionado.');
     } catch (error: unknown) {
       if (!this.destroy.destroyed) this.error.set(messageOf(error));
     } finally {

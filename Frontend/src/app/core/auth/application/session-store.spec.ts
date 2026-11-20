@@ -52,6 +52,22 @@ describe('SessionStore Signals + HTTP', () => {
     await store.restore();
     http.expectNone('/api/auth/me/');
   });
+  it('comprobar la sesión al volver mantiene la interfaz hasta recibir la respuesta', async () => {
+    const initial = store.restore();
+    http.expectOne('/api/auth/me/').flush(USER);
+    await initial;
+    const background = store.restore(true);
+    expect(store.isAuthenticated()).toBe(true);
+    http.expectOne('/api/auth/me/').flush(USER);
+    await background;
+    expect(store.isAuthenticated()).toBe(true);
+    const expired = store.restore(true);
+    http
+      .expectOne('/api/auth/me/')
+      .flush({ code: 'not_authenticated' }, { status: 403, statusText: 'Forbidden' });
+    await expired;
+    expect(store.isAuthenticated()).toBe(false);
+  });
   it('403 not_authenticated del bootstrap deja anónimo sin aviso falso', async () => {
     const task = store.restore();
     http

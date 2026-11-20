@@ -69,6 +69,15 @@ Evidencia ignorada por Git: `.artifacts/e2e-results.json`, `.artifacts/e2e-backe
 
 ## Apariencia
 
+En recepción, el rango de fechas y el estado de visitas se conservan por usuario
+en `sessionStorage` al navegar o recargar. La comprobación de sesión al volver a
+la aplicación mantiene el tablero abierto mientras se valida el acceso.
+
+El modal **Cobrar** recupera tratamientos, profesional y precios de la reserva
+cuando la visita tiene una cita compatible inequívoca. Prepara un borrador;
+la confirmación de consumos y el registro del dinero siguen siendo explícitos.
+Una visita sin cita conserva la preparación manual.
+
 El botón de sol/luna permite alternar entre modo claro y oscuro desde el acceso,
 el catálogo público y el panel administrativo. La primera visita sigue la
 preferencia del sistema; al cambiarla, se guarda únicamente el tema en

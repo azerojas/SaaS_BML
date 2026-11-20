@@ -1,7 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import AxeBuilder from '@axe-core/playwright';
-import { control, fixture, login } from './helpers';
+import { bookClientForQr, control, fixture, login } from './helpers';
 const f = fixture.finance;
 const ORIGIN = 'https://localhost:4443';
 test.beforeEach(async ({ request }) => control(request, 'reset'));
@@ -48,15 +48,9 @@ async function registeredVisit(page: Page, phone: string) {
   return visits.results[0];
 }
 async function publicArrival(page: Page, phone: string, fresh = false) {
+  if (fresh) await bookClientForQr(page, phone, 'Nueva QR F4', 'Ficticia');
   await page.goto('/registro/' + f.token);
   await page.getByLabel('Teléfono', { exact: true }).fill(phone);
-  if (fresh) {
-    await page.getByLabel('Es mi primera visita').check();
-    await page.getByLabel('Nombres', { exact: true }).fill('Nueva QR F4');
-    await page.getByLabel('Apellidos', { exact: true }).fill('Ficticia');
-    await expect(page.getByLabel('He leído el aviso')).not.toBeChecked();
-    await page.getByLabel('He leído el aviso').check();
-  }
   await page.getByRole('button', { name: 'Registrar mi visita', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Registro recibido' })).toBeVisible();
 }

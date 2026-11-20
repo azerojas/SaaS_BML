@@ -1,8 +1,14 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialog } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import { SessionStore } from '../../../core/auth/application/session-store';
 import { ClientasFacade } from '../application/clientas-facade';
@@ -17,13 +23,25 @@ import { ClientaForm } from './clienta-form';
 import { Clienta } from '../domain/clienta';
 @Component({
   selector: 'bm-clienta-detail',
-  imports: [RouterLink, ReactiveFormsModule, MatButtonModule, Alert, Loading, Button, Icon],
+  imports: [
+    RouterLink,
+    ReactiveFormsModule,
+    MatButtonModule,
+    Alert,
+    Loading,
+    Button,
+    Icon,
+    NgTemplateOutlet,
+    MatDialogModule,
+  ],
   providers: [ClientasFacade],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './clienta-detail.html',
   styleUrl: './clienta-detail.scss',
 })
 export class ClientaDetail {
+  readonly data = inject<{ id: number } | null>(MAT_DIALOG_DATA, { optional: true });
+  readonly ref = inject<MatDialogRef<ClientaDetail> | null>(MatDialogRef, { optional: true });
   readonly facade = inject(ClientasFacade);
   readonly session = inject(SessionStore);
   private readonly route = inject(ActivatedRoute);
@@ -57,7 +75,7 @@ export class ClientaDetail {
     }).format(date);
   }
   constructor() {
-    void this.facade.loadClient(Number(this.route.snapshot.paramMap.get('id')));
+    void this.facade.loadClient(this.data?.id ?? Number(this.route.snapshot.paramMap.get('id')));
     void this.facade.configure();
   }
   canEdit() {

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { control, fixture, login } from './helpers';
+import { bookClientForQr, control, fixture, login } from './helpers';
 
 test.beforeEach(async ({ request }) => control(request, 'reset'));
 
@@ -9,15 +9,16 @@ test('QR registra una visita sin recepción ni walk-in y los reenvíos no la dup
   browser,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  await bookClientForQr(page, '+51955123881', 'Autónoma QR', 'Ficticia');
   await page.goto('/registro/' + fixture.finance.token);
   await page.getByLabel('Teléfono', { exact: true }).fill('955123881');
-  await page.getByLabel('Es mi primera visita').check();
-  await page.getByLabel('Nombres', { exact: true }).fill('Autónoma QR');
-  await page.getByLabel('Apellidos', { exact: true }).fill('Ficticia');
-  const consent = page.getByLabel('He leído el aviso');
-  await expect(consent).not.toBeChecked();
-  await consent.check();
+  await expect(page.getByRole('checkbox')).toHaveCount(0);
+  await expect(page.getByLabel('Nombres', { exact: true })).toHaveCount(0);
+  const sent = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/api/public/checkin/'),
+  );
   await page.getByRole('button', { name: 'Registrar mi visita', exact: true }).click();
+  expect((await sent).postDataJSON()).toEqual({ telefono: '+51955123881' });
   await expect(page.getByRole('heading', { name: 'Registro recibido' })).toBeVisible();
   await expect(page.getByText('No necesitas confirmar tu llegada en recepción.')).toBeVisible();
   expect(
@@ -48,9 +49,6 @@ test('QR registra una visita sin recepción ni walk-in y los reenvíos no la dup
     await expect(admin.getByRole('link', { name: 'Llegadas & Check-in' })).toHaveCount(0);
     await expect(admin.getByRole('link', { name: 'Registrar Walk-in' })).toHaveCount(0);
     await expect(admin.getByText('Autónoma QR Ficticia', { exact: false }).first()).toBeVisible();
-    await admin.goto('/admin/visitas/' + visitId);
-    await expect(admin.getByRole('link', { name: 'Preparar tratamientos y venta' })).toBeVisible();
-    await expect(admin.getByRole('link', { name: /Consultar llegada/ })).toHaveCount(0);
     await admin.goto('/admin/visitas/nueva');
     await expect(admin).toHaveURL(/\/admin\/visitas$/);
     await admin.goto('/admin/llegadas');
@@ -68,22 +66,18 @@ test('QR registra una visita sin recepción ni walk-in y los reenvíos no la dup
   }
 });
 
-test('el formulario QR exige consentimiento para una ficha nueva y funciona en móvil', async ({
-  page,
-}) => {
+test('el formulario QR solo pide teléfono y valida el número en móvil', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/registro/' + fixture.finance.token);
-  await page.getByLabel('Teléfono', { exact: true }).fill('955123882');
-  await page.getByLabel('Es mi primera visita').check();
-  await page.getByLabel('Nombres', { exact: true }).fill('Otra autónoma');
-  await page.getByLabel('Apellidos', { exact: true }).fill('Ficticia');
+  await expect(page.getByRole('checkbox')).toHaveCount(0);
+  await expect(page.locator('form input')).toHaveCount(1);
   let submissions = 0;
   page.on('request', (request) => {
     if (request.method() === 'POST' && request.url().includes('/api/public/checkin/'))
       submissions++;
   });
   await page.getByRole('button', { name: 'Registrar mi visita', exact: true }).click();
-  await expect(page.getByRole('alert').filter({ hasText: 'consentimiento' })).toBeVisible();
+  await expect(page.getByRole('alert').filter({ hasText: 'teléfono válido' })).toBeVisible();
   expect(submissions).toBe(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(

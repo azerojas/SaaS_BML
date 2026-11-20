@@ -23,7 +23,7 @@ class ContractTests(SimpleTestCase):
     def test_openapi_routes_methods_security_and_idempotency_headers(self):
         doc=json.loads((settings.BASE_DIR/'docs/openapi.json').read_text(encoding='utf-8'))
         paths={path:spec for path,spec in doc['paths'].items() if path.startswith(('/api/v1/agenda/','/api/v1/public/agenda/')) and not path.startswith('/api/v1/agenda/solicitudes/')}
-        self.assertEqual(len(paths),30)
+        self.assertEqual(len(paths),31)
         for path,spec in paths.items():
             match=resolve(path.replace('{id}','1').replace('{key}','550e8400-e29b-41d4-a716-446655440000'))
             public='/public/' in path
@@ -39,4 +39,7 @@ class ContractTests(SimpleTestCase):
                         self.assertIn('agenda.',operation['description'])
                         if method in ('post','put','patch','delete'):
                             headers={item['name'] for item in operation['parameters'] if item['in']=='header'}
-                            self.assertEqual(headers,{'Idempotency-Key','X-CSRFToken'})
+                            expected={'X-CSRFToken'}
+                            if path!='/api/v1/agenda/profesionales/mi-agenda/':
+                                expected.add('Idempotency-Key')
+                            self.assertEqual(headers,expected)

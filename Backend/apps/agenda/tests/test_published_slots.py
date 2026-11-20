@@ -15,7 +15,7 @@ from .base import AgendaTestCase, START, API
 from . import test_public_booking as public_tests
 
 
-@override_settings(AGENDA_PUBLIC_WRITE_ENABLED=True, AGENDA_REQUIRE_DEPOSITS=False,
+@override_settings(AGENDA_AUTO_CONFIRM_PUBLIC_BOOKINGS=False, AGENDA_PUBLIC_WRITE_ENABLED=True, AGENDA_REQUIRE_DEPOSITS=False,
     PRIVACY_NOTICE_URL='https://example.test/privacidad', PRIVACY_NOTICE_VERSION='test-v1')
 class PublishedSlotTests(AgendaTestCase):
     browser = public_tests.PublicBookingTests.browser

@@ -20,6 +20,7 @@ import { exactDecimal } from './form-validators';
 import { pen } from '../../../shared/domain/records';
 import { dateLima } from '../../inventario/domain/inventory';
 import { StockCards } from '../../inventario/presentation/stock-ui';
+import { SaleCheckoutContext } from './sale-checkout-context';
 @Component({
   selector: 'bm-sale-detail',
   imports: [
@@ -40,6 +41,7 @@ import { StockCards } from '../../inventario/presentation/stock-ui';
   templateUrl: './sale-detail.html',
 })
 export class SaleDetailPage {
+  readonly checkout = inject(SaleCheckoutContext, { optional: true });
   readonly facade = inject(SalesFacade);
   readonly session = inject(SessionStore);
   private readonly dialog = inject(MatDialog);
@@ -60,6 +62,11 @@ export class SaleDetailPage {
     revisado: [false, Validators.requiredTrue],
   });
   constructor() {
+    if (this.checkout) {
+      this.id = this.checkout.saleId()!;
+      void this.refresh();
+      return;
+    }
     inject(ActivatedRoute)
       .paramMap.pipe(takeUntilDestroyed())
       .subscribe((params) => {

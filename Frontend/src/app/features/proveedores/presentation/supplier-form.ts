@@ -75,7 +75,11 @@ import { OperationsNav } from '../../../shared/ui/operations-nav';
         }
       </header>
     }
-    <bm-form-feedback [message]="facade.error()" [errors]="facade.fields()" />
+    <bm-form-feedback
+      [compact]="!!dialogRef"
+      [message]="facade.error()"
+      [errors]="facade.fields()"
+    />
     @if (facade.success(); as success) {
       <bm-alert kind="info" [message]="success" />
     }
@@ -97,6 +101,7 @@ import { OperationsNav } from '../../../shared/ui/operations-nav';
                 [fields]="identityFields"
                 [form]="form"
                 [errors]="facade.fields()"
+                [compact]="true"
               />
             </section>
             <section class="form-section">
@@ -107,7 +112,12 @@ import { OperationsNav } from '../../../shared/ui/operations-nav';
                   <p>Canales para coordinar tus compras.</p>
                 </div>
               </header>
-              <bm-editor-fields [fields]="contactFields" [form]="form" [errors]="facade.fields()" />
+              <bm-editor-fields
+                [fields]="contactFields"
+                [form]="form"
+                [errors]="facade.fields()"
+                [compact]="true"
+              />
             </section>
           } @else {
             <bm-editor-fields [fields]="fields" [form]="form" [errors]="facade.fields()" />

@@ -5,11 +5,11 @@ import { control, fixture, login } from './helpers';
 async function enter(page: Page) {
   await control(page.request, 'reset');
   await control(page.request, 'booking-mode');
-  await page.goto('/reservar');
+  await page.goto('/reservar?servicio=' + fixture.agenda.service);
   await expect(page.getByRole('heading', { name: 'Reserva tu cita', exact: true })).toBeVisible();
 }
 async function choose(page: Page, time: string) {
-  await page.getByRole('checkbox', { name: /Servicio agenda F6 E2E/ }).check();
+  await expect(page.locator('.chosen-treatment')).toContainText('Servicio agenda F6 E2E');
   await page
     .getByRole('combobox', { name: 'Profesional', exact: true })
     .selectOption(String(fixture.agenda.professional));
@@ -90,9 +90,19 @@ test('solicitud sin correo, aprobación del salón, clave de acceso, cambio y ca
   try {
     const customer = await fresh.newPage();
     await customer.goto('/mis-reservas');
+    await expect(
+      customer.getByRole('heading', { name: 'Consulta tus reservas', exact: true }),
+    ).toBeVisible();
+    await expect(
+      customer.getByRole('heading', { name: 'Tus reservas', exact: true }),
+    ).toHaveCount(0);
+    await expect(customer.getByLabel('Clave de gestión', { exact: true })).toHaveAttribute(
+      'type',
+      'password',
+    );
     await customer.getByLabel('Teléfono', { exact: true }).fill('+51977123451');
     await customer.getByLabel('Clave de gestión', { exact: true }).fill(code);
-    await customer.getByRole('button', { name: 'Consultar reservas', exact: true }).click();
+    await customer.getByRole('button', { name: 'Ingresar', exact: true }).click();
     await expect(customer.getByText('Confirmada por el salón', { exact: true })).toBeVisible();
     await customer.getByRole('button', { name: 'Cambiar horario', exact: true }).click();
     await customer.getByRole('button', { name: 'Consultar horarios', exact: true }).click();
@@ -113,9 +123,7 @@ test('solicitud sin correo, aprobación del salón, clave de acceso, cambio y ca
       .getByRole('button', { name: 'Cerrar acceso a mis solicitudes', exact: true })
       .click();
     await expect(
-      customer.getByText(
-        'Ingresa el teléfono y la clave guardada al solicitar la cita para ver tus reservas.',
-      ),
+      customer.getByRole('heading', { name: 'Consulta tus reservas', exact: true }),
     ).toBeVisible();
   } finally {
     await fresh.close();
@@ -163,4 +171,38 @@ test('reservas accesibles en móvil y selección invalida horarios anteriores', 
   );
   await page.getByLabel('Fecha', { exact: true }).fill(fixture.agenda.date.slice(0, 8) + '01');
   await expect(page.getByRole('button', { name: '14:00 – 14:30', exact: true })).toHaveCount(0);
+});
+
+test('dos personas con teléfonos distintos no comparten Mis reservas en el mismo navegador', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await enter(page);
+  let firstCode = '';
+  for (const [index, phone, time, name] of [
+    [0, '+51977123981', '14:00 – 14:30', 'Persona uno'],
+    [1, '+51977123982', '15:00 – 15:30', 'Persona dos'],
+  ] as const) {
+    if (index) await page.goto('/reservar?servicio=' + fixture.agenda.service);
+    await choose(page, time);
+    await details(page, phone);
+    await page.getByLabel('Nombres', { exact: true }).fill(name);
+    await page.getByRole('button', { name: 'Enviar solicitud de reserva', exact: true }).click();
+    await expect(page.getByLabel('Clave de gestión (8 cifras)')).toBeVisible();
+    if (!index) firstCode = await page.getByLabel('Clave de gestión (8 cifras)').inputValue();
+  }
+  await page.goto('/mis-reservas');
+  await expect(page.locator('.booking-card')).toHaveCount(1);
+  await expect(page.locator('.booking-card')).toContainText('Persona dos');
+  await expect(page.locator('.booking-card')).not.toContainText('Persona uno');
+  await page.getByRole('button', { name: 'Cerrar acceso a mis solicitudes', exact: true }).click();
+  await page.getByLabel('Teléfono', { exact: true }).fill('+51977123981');
+  await page.getByLabel('Clave de gestión', { exact: true }).fill(firstCode);
+  await page.getByRole('button', { name: 'Ingresar', exact: true }).click();
+  await expect(page.locator('.booking-card')).toHaveCount(1);
+  await expect(page.locator('.booking-card')).toContainText('Persona uno');
+  await expect(page.locator('.booking-card')).not.toContainText('Persona dos');
+  await page.reload();
+  await expect(page.locator('.booking-card')).toHaveCount(1);
+  await expect(page.locator('.booking-card')).toContainText('Persona uno');
 });

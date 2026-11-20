@@ -17,7 +17,7 @@ import { ValidationSummary } from '../../../shared/ui/validation-summary';
   template: `<div class="checkin-page">
     <p class="eyebrow">TU VISITA · LASHEO</p>
     <h1>Qué gusto recibirte.</h1>
-    <p>Completa tu teléfono o tus datos. Tu visita se registrará automáticamente.</p>
+    <p>Ingresa el teléfono con el que reservaste tu cita para registrar tu visita.</p>
     @if (facade.loading()) {
       <bm-loading />
     }
@@ -59,32 +59,11 @@ import { ValidationSummary } from '../../../shared/ui/validation-summary';
           <p id="phone-hint" class="muted">
             Celular peruano de 9 dígitos o número con prefijo internacional.
           </p>
-          <label class="check-row"
-            ><input type="checkbox" formControlName="alta" /> Es mi primera visita: quiero registrar
-            mis datos</label
-          >
-          <p class="muted">
-            Si ya tienes una ficha, puedes enviar solo tu teléfono. No se consulta ni muestra si
-            está registrado.
-          </p>
-          @if (form.controls.alta.value) {
-            <label for="checkin-names">Nombres</label
-            ><input id="checkin-names" formControlName="nombres" maxlength="120" />
-            <label for="checkin-surnames">Apellidos</label
-            ><input id="checkin-surnames" formControlName="apellidos" maxlength="120" />
-            <label class="check-row"
-              ><input type="checkbox" formControlName="consentimiento" /> He leído el aviso y
-              autorizo el tratamiento de mis datos para este registro.</label
-            >
-          }
           <a [href]="url" target="_blank" rel="noopener noreferrer"
             >Leer aviso de privacidad (versión {{ config.aviso_privacidad.version }})</a
           >
           @if (invalid) {
-            <p role="alert">
-              Revisa el teléfono. Para registrar una ficha, completa nombres, apellidos y
-              consentimiento.
-            </p>
+            <p role="alert">Ingresa un teléfono válido, igual al que utilizaste al reservar.</p>
           }
           @if (facade.cooldown() > 0) {
             <p role="status">Espera {{ facade.cooldown() }} segundos antes de reintentar.</p>
@@ -131,10 +110,6 @@ export class PublicCheckin {
   invalid = false;
   readonly form = this.fb.nonNullable.group({
     telefono: ['', [Validators.required, Validators.maxLength(40)]],
-    alta: false,
-    nombres: ['', Validators.maxLength(120)],
-    apellidos: ['', Validators.maxLength(120)],
-    consentimiento: false,
   });
   readonly notice = (url: string) => safeNotice(url, location.origin);
   hasToken() {
@@ -156,24 +131,9 @@ export class PublicCheckin {
   async submit() {
     const raw = this.form.getRawValue();
     const telefono = phone(raw.telefono);
-    this.invalid =
-      !telefono ||
-      this.form.invalid ||
-      (raw.alta && (!raw.nombres.trim() || !raw.apellidos.trim() || !raw.consentimiento));
+    this.invalid = !telefono || this.form.invalid;
     if (this.invalid || !telefono || !this.token) return;
-    const version = this.facade.record()?.aviso_privacidad.version;
-    await this.facade.submit(
-      this.token,
-      raw.alta
-        ? {
-            telefono,
-            nombres: raw.nombres.trim(),
-            apellidos: raw.apellidos.trim(),
-            consentimiento_datos: true,
-            version_aviso: version,
-          }
-        : { telefono },
-    );
+    await this.facade.submit(this.token, { telefono });
     if (this.facade.state() === 'received') this.form.reset();
   }
 }

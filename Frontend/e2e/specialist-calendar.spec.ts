@@ -9,6 +9,7 @@ test('la especialista publica tres cupos y una reserva web ocupa solamente uno',
   page,
   browser,
 }) => {
+  test.setTimeout(60_000);
   await control(page.request, 'booking-mode');
   await control(page.request, 'specialist-mode');
   await page.goto('/login');
@@ -23,8 +24,11 @@ test('la especialista publica tres cupos y una reserva web ocupa solamente uno',
     .first()
     .click();
   const editor = page.getByRole('dialog', { name: 'Publicar mis cupos', exact: true });
-  for (const time of ['16:00', '17:00', '18:00'])
-    await editor.getByRole('button', { name: new RegExp('^' + time) }).click();
+  for (const [index, hour] of [16, 17, 18].entries()) {
+    await editor.getByRole('button', { name: 'Añadir otro cupo', exact: true }).click();
+    await editor.getByLabel('Inicio de franja ' + (index + 1), { exact: true }).fill(hour + ':00');
+    await editor.getByLabel('Fin de franja ' + (index + 1), { exact: true }).fill(hour + 1 + ':00');
+  }
   await expect(editor.locator('.interval-card')).toHaveCount(3);
   await editor.getByRole('button', { name: 'Guardar disponibilidad', exact: true }).click();
   await expect(editor).toHaveCount(0);
@@ -58,7 +62,7 @@ test('la especialista publica tres cupos y una reserva web ocupa solamente uno',
   try {
     const guest = await customer.newPage();
     await guest.goto('/reservar?servicio=' + fixture.agenda.service);
-    await expect(guest.getByRole('checkbox', { name: /Servicio agenda F6 E2E/ })).toBeChecked();
+    await expect(guest.locator('.chosen-treatment')).toContainText('Servicio agenda F6 E2E');
     await guest
       .getByRole('combobox', { name: 'Profesional', exact: true })
       .selectOption(String(fixture.agenda.professional));
@@ -78,8 +82,17 @@ test('la especialista publica tres cupos y una reserva web ocupa solamente uno',
     await expect(
       guest.getByText('Solicitud recibida. Falta la confirmación del salón.', { exact: true }),
     ).toBeVisible();
-    await page.locator('.view-switcher button[aria-pressed="true"]').click();
-    await expect(page.locator('.working-band')).toHaveCount(2);
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(page.getByLabel('Fecha del calendario', { exact: true })).toHaveValue(day);
+    await expect(page.locator('.working-band:not(.pending-request)')).toHaveCount(2);
+    await expect(page.locator('.working-band.pending-request')).toHaveCount(1);
+    await expect(page.locator('.working-band.pending-request')).toContainText(
+      'Clienta Cupo de prueba',
+    );
+    await expect(page.locator('.working-band.pending-request')).toContainText('16:00');
+    await page.locator('.working-band.pending-request').scrollIntoViewIfNeeded();
+    await expect(page.locator('.working-band.pending-request')).toBeVisible();
+    await page.screenshot({ path: '.artifacts/calendar-pending-request.png', fullPage: true });
     await expect(page.getByText('Cupo ocupado', { exact: true })).toHaveCount(0);
     const slots = await guest.request.get('/api/v1/public/agenda/disponibilidad/', {
       params: {

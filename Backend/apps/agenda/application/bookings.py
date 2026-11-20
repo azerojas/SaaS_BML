@@ -6,7 +6,7 @@ from apps.checkin.application import commands as checkin
 from apps.checkin.application.selectors import provisional
 from apps.finanzas.application.audit import record
 from apps.agenda.domain.errors import AgendaError
-from apps.agenda.domain.rules import ACTIVE,ZONE,amounts,horizon,published_window
+from apps.agenda.domain.rules import ACTIVE,ZONE,amounts,horizon,published_window,booking_duration
 from apps.agenda.infrastructure import repositories as repo
 from .common import deposited,set_state,annotate_history
 from .expiry import expire_locked
@@ -48,7 +48,7 @@ def create(command,actor,*,public=False,quote=None):
         notas=command.notas,creada_por_id=actor.pk if actor else None)
     m.CitaServicios.objects.bulk_create([m.CitaServicios(cita_id=obj.pk,servicio_id=row.pk,orden=index+1,
         duracion_minutos=row.duracion_minutos,precio_snapshot=row.precio_base) for index,row in enumerate(services)])
-    annotate_history(obj,actor,'Reserva privada con precios/duracion del servidor.')
+    annotate_history(obj,actor,'Reserva online con precios/duracion del servidor.' if public else 'Reserva privada con precios/duracion del servidor.')
     from .common import system_audit
     (lambda action,data:record(actor,obj,action,data) if actor else system_audit(obj,action,data))(
         'CREAR_CITA_AGENDA',{'servicios':list(command.servicios),'anticipo_requerido':str(required),'canal':command.origen})
@@ -85,6 +85,7 @@ def reschedule(pk,data,actor):
     received=deposited(pk)
     if received>total:raise AgendaError('DEPOSIT_EXCEEDS_NEW_PRICE','El nuevo precio seria inferior al anticipo; requiere conciliacion.')
     start=data['inicio_en']
+    duration=booking_duration(duration)
     end=start+timedelta(minutes=duration)
     validate_slot(professional_id,obj.clienta_id,start,end,cfg,exclude=pk)
     obj.profesional_id,obj.inicio_en,obj.fin_en=professional_id,start,end

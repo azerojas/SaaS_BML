@@ -7,6 +7,7 @@ import { Icon } from './icon';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<div
     class="feedback"
+    [class.compact]="compact()"
     [class.has-error]="hasError()"
     [attr.role]="hasError() ? 'alert' : null"
     [attr.tabindex]="hasError() ? 0 : null"
@@ -51,6 +52,10 @@ import { Icon } from './icon';
       color: var(--error);
       background: var(--error-soft);
     }
+    .feedback.compact {
+      block-size: auto;
+      padding: 9px 12px;
+    }
     bm-icon {
       width: 17px;
       height: 17px;
@@ -71,6 +76,7 @@ import { Icon } from './icon';
   `,
 })
 export class FormFeedback {
+  readonly compact = input(false);
   readonly message = input<string | null>(null);
   readonly errors = input<Readonly<Record<string, readonly string[]>>>({});
   readonly hint = input('Los campos con * son obligatorios. Revisa los datos antes de guardar.');

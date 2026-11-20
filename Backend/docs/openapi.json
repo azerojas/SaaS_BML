@@ -17926,7 +17926,7 @@
       "post": {
         "operationId": "agendaOwnAdministratorCalendar",
         "summary": "Abrir la agenda de la cuenta administrativa actual",
-        "description": "Devuelve el profesional vinculado al usuario de la sesion. Si no existe, lo crea con los nombres de su cuenta. Repetir la solicitud no duplica el registro. Requiere view_agenda, manage_professionals, assign_users y manage_schedules. No admite datos de otro usuario ni modifica fichas ya existentes.",
+        "description": "Devuelve el profesional vinculado al usuario de la sesion. Si no existe, lo crea con los nombres de su cuenta. Repetir la solicitud no duplica el registro. Requiere agenda.view_agenda, agenda.manage_professionals, agenda.assign_users y agenda.manage_schedules. No admite datos de otro usuario ni modifica fichas ya existentes.",
         "requestBody": {
           "required": true,
           "content": {
@@ -17992,7 +17992,17 @@
           "403": {
             "description": "Sesion administrativa sin los permisos requeridos"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRFToken",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     }
   },
@@ -20800,6 +20810,11 @@
               "additionalProperties": false
             },
             "maxItems": 100
+          },
+          "cita_id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Cita compatible con la visita. Sin lineas, prepara los tratamientos y precios snapshot de la reserva; no confirma ni cobra."
           }
         },
         "additionalProperties": false
@@ -21204,6 +21219,55 @@
                 }
               }
             }
+          },
+          "cita_para_cobro": {
+            "type": "object",
+            "nullable": true,
+            "readOnly": true,
+            "description": "Solo en detalle de una visita abierta sin venta y con una unica cita compatible; no modifica la visita.",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "profesional_id": {
+                "type": "integer"
+              },
+              "profesional_nombre": {
+                "type": "string"
+              },
+              "inicio_en": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "fin_en": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "total": {
+                "type": "string",
+                "pattern": "^\\d+\\.\\d{2}$"
+              },
+              "servicios": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "servicio_id": {
+                      "type": "integer"
+                    },
+                    "nombre": {
+                      "type": "string"
+                    },
+                    "precio": {
+                      "type": "string"
+                    },
+                    "duracion_minutos": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -21422,6 +21486,17 @@
                       }
                     }
                   }
+                },
+                "profesional_nombre": {
+                  "type": "string",
+                  "nullable": true,
+                  "readOnly": true
+                },
+                "duracion_minutos": {
+                  "type": "integer",
+                  "nullable": true,
+                  "readOnly": true,
+                  "description": "Duracion reservada cuando la venta tiene una cita vinculada."
                 }
               },
               "required": [
@@ -23998,6 +24073,13 @@
                 }
               }
             }
+          },
+          "cupo_minutos": {
+            "type": "integer",
+            "enum": [
+              0,
+              60
+            ]
           }
         }
       },

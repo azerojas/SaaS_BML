@@ -22,10 +22,10 @@ describe('descarga XLSX segura y efímera', () => {
   });
   it('usa nombre derivado de filtros ante un filename ajeno o una ruta peligrosa', () => {
     expect(reportFilename('attachment; filename="../../private.xlsx"', 'overview', query)).toBe(
-      'beauty_manager_reporte_overview_2026-10-01_2026-11-01.xlsx',
+      'Lasheo - Reporte general - 2026-10-01 al 2026-10-31.xlsx',
     );
     expect(reportFilename(null, 'top-clients', query)).toBe(
-      'beauty_manager_reporte_top-clients_2026-10-01_2026-11-01.xlsx',
+      'Lasheo - Clientas - 2026-10-01 al 2026-10-31.xlsx',
     );
   });
   it('rechaza HTML o JSON presentado como archivo exitoso', async () => {

@@ -94,6 +94,8 @@ class VisitViewSet(mixins.ListModelMixin,mixins.RetrieveModelMixin,FinanceViewSe
         data=s.VisitOutput(obj).data
         data['historial']=list(m.Auditoria.objects.filter(entidad='visitas',entidad_id=str(obj.pk)).order_by('id').values('accion','creada_en','usuario_id'))
         data['venta_id']=m.Ventas.objects.filter(visita_id=obj.pk).values_list('id',flat=True).first()
+        from apps.finanzas.application.appointment_checkout import proposal
+        data['cita_para_cobro'] = proposal(obj) if not data['venta_id'] and obj.estado == 'ABIERTA' else None
         return Response(canonical(data))
 
     def create(self,request):
@@ -137,7 +139,8 @@ class SaleViewSet(mixins.ListModelMixin,FinanceViewSet):
 
     def retrieve(self,request,pk=None):
         obj=selectors.get_sale(pk)
-        data=s.SaleOutput(obj).data
+        durations = dict(m.CitaServicios.objects.filter(cita__visita_id=obj.visita_id).values_list('servicio_id', 'duracion_minutos')) if obj.visita_id else {}
+        data=s.SaleOutput(obj, context={'durations': durations}).data
         data['saldo']=selectors.balance_summary(obj)
         data['finanzas_congeladas']=selectors.frozen_financials(obj,list(obj.detallesventa_set.all())) if obj.estado=='CONFIRMADA' else None
         data['aplicaciones_anticipo']=list(AdvanceApplication.objects.filter(venta_id=obj.pk).order_by('id').values('id','anticipo_id','monto','creada_en'))

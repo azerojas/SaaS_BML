@@ -8,7 +8,7 @@ from .services import export_data
 
 
 def export_report(report, filters, actor, ordering='importe', limit=100):
-    summary,details=export_data(report,filters,ordering)
+    summary,details=export_data(report,filters,ordering,include_clients=actor.has_perm('reporting.view_clients'))
     content,rows=build_workbook(report,filters,summary,details,limit)
     # Audit is the sole write: after the read-only report transaction and file generation.
     # Per-user advisory lock makes the 5 successful exports/minute limit concurrency safe.

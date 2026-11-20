@@ -75,6 +75,7 @@ class SaleLine(InputSerializer):
 
 class SaleCreate(InputSerializer):
     visita_id = serializers.IntegerField(min_value=1, required=False)
+    cita_id = serializers.IntegerField(min_value=1, required=False)
     clienta_id = serializers.IntegerField(min_value=1, required=False, allow_null=True)
     descuento_global = ExactDecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0'), required=False)
     propina = ExactDecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0'), required=False)
@@ -167,11 +168,17 @@ class ConsumptionOutput(serializers.ModelSerializer):
 
 
 class SaleLineOutput(serializers.ModelSerializer):
+    profesional_nombre = serializers.SerializerMethodField()
+    duracion_minutos = serializers.SerializerMethodField()
     consumos=ConsumptionOutput(source='consumosservicio_set', many=True)
+    def get_profesional_nombre(self, obj):
+        return f'{obj.profesional.nombres} {obj.profesional.apellidos}' if obj.profesional_id else None
+    def get_duracion_minutos(self, obj):
+        return self.context.get('durations', {}).get(obj.servicio_id) if obj.servicio_id else None
     class Meta:
         model=m.DetallesVenta
         fields=['id','tipo','servicio_id','articulo_id','profesional_id','descripcion_snapshot','cantidad',
-                'precio_unitario','descuento_linea','costo_unitario_snapshot','comision_porcentaje_snapshot','consumos']
+                'precio_unitario','descuento_linea','costo_unitario_snapshot','comision_porcentaje_snapshot','consumos','profesional_nombre','duracion_minutos']
         read_only_fields=fields
 
 

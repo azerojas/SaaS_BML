@@ -237,15 +237,26 @@ def execute(report, filters, **kwargs):
             return REPORTS[report](filters,**kwargs)
 
 
-def export_data(report, filters, ordering='importe'):
+def export_data(report, filters, ordering='importe', include_clients=False):
     # Same snapshot and services as the dashboard; no second set of formulas.
     with read_snapshot():
         with localcontext() as ctx:
             ctx.prec=48
             if report=='overview':
                 details=overview(filters)
+                from . import export_sections
+                details['secciones_exportacion']={
+                    'Ingresos':revenue_series(filters)['results'],
+                    'Egresos':export_sections.outgoings(filters),
+                    'Tratamientos':export_sections.treatment_demand(filters,top_services(filters,ordering='cantidad')),
+                    'Medios de pago':payment_methods(filters)['results'],
+                }
+                if include_clients:details['secciones_exportacion']['Visitas']=export_sections.visits(filters)
                 return details,details
             # Client/inventory permissions do not grant access to general profit indicators.
             summary=overview(filters) if report in ('revenue-series','payment-methods','top-services') else envelope(filters)
             details=REPORTS[report](filters,**({'ordering':ordering} if report in ('top-services','top-clients') else {}))
+            if include_clients:
+                from .export_sections import visits
+                details['secciones_exportacion']={'Visitas':visits(filters)}
             return summary,details

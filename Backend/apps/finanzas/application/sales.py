@@ -47,7 +47,7 @@ def clean_draft_sources(sale):
         raise FinanceError('integridad_venta', 'Un borrador con salidas o consumos requiere conciliacion.')
 
 
-def update_lines(sale, incoming, actor):
+def update_lines(sale, incoming, actor, appointment_prices=None):
     clean_draft_sources(sale)
     existing = {row.pk: row for row in m.DetallesVenta.objects.select_for_update().filter(venta_id=sale.pk)}
     seen, kept = set(), []
@@ -73,6 +73,8 @@ def update_lines(sale, incoming, actor):
         if kind == 'PRODUCTO':
             inventory.require_unit(item, data.get('unidad_id'))
         catalog_price = item.precio_base if kind == 'SERVICIO' else item.precio_venta
+        if kind == 'SERVICIO' and appointment_prices is not None:
+            catalog_price = appointment_prices.get(reference, catalog_price)
         price = obj.precio_unitario if obj else catalog_price
         if 'precio_unitario' in data:
             if not actor.has_perm('finanzas.override_price'):
@@ -121,9 +123,25 @@ def create_sale_draft(data, actor):
         client = get_object_or_404(m.Clientas, pk=client_id)
         if not client.activa:
             raise FinanceError('clienta_inactiva', 'La ficha esta inactiva.')
+    appointment = None
+    appointment_prices = None
+    incoming = data.get('lineas', [])
+    if data.get('cita_id'):
+        if visit is None:
+            raise FinanceError('cita_sin_visita', 'La cita requiere una visita.', 'invalid')
+        from . import appointment_checkout
+        appointment = appointment_checkout.lock_for_sale(visit, data['cita_id'])
+        if appointment.visita_id is None:
+            from .visits import link_appointment
+            link_appointment(visit, appointment.pk, actor)
+        appointment_prices = dict(m.CitaServicios.objects.filter(cita_id=appointment.pk).values_list('servicio_id', 'precio_snapshot'))
+        if 'lineas' not in data:
+            incoming = appointment_checkout.lines(appointment)
+            if not incoming:
+                raise FinanceError('cita_sin_servicios', 'La cita no tiene tratamientos registrados.', 'invalid')
     sale = m.Ventas.objects.create(visita_id=visit.pk if visit else None, clienta_id=client_id, creada_por_id=actor.pk)
     sale.descuento_global, sale.propina = data.get('descuento_global', ZERO), data.get('propina', ZERO)
-    update_lines(sale, data.get('lineas', []), actor)
+    update_lines(sale, incoming, actor, appointment_prices=appointment_prices)
     recalculate(sale)
     record(actor, sale, 'CREAR_VENTA', {'numero_lineas': m.DetallesVenta.objects.filter(venta_id=sale.pk).count()})
     return selectors.balance_summary(sale)

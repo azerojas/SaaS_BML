@@ -1,4 +1,6 @@
-<a class="back-link" routerLink="/admin/ventas">← Ventas</a>
+@if (!checkout) {
+  <a class="back-link" routerLink="/admin/ventas">← Ventas</a>
+}
 <header class="feature-heading">
   <div>
     <p class="eyebrow">BORRADOR DE ATENCIÓN</p>
@@ -111,7 +113,12 @@
                 />
               </details>
             }
-            <button mat-button type="button" [disabled]="locked()" (click)="lines.removeAt(index)">
+            <button
+              mat-button
+              type="button"
+              [disabled]="locked()"
+              (click)="lines.removeAt(index); form.markAsDirty()"
+            >
               Retirar {{ row.controls.nombre.value }}
             </button>
           </fieldset>

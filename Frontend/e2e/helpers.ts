@@ -1,6 +1,6 @@
 import { expect, Page, APIRequestContext } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { createHmac } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 export const backendPython =
   process.env['BM_E2E_PYTHON'] ||
@@ -96,6 +96,50 @@ export async function control(request: APIRequestContext, action: string) {
     { headers: { 'X-Test-Control': fixture.control_key } },
   );
   expect(response.status()).toBe(200);
+}
+
+/** Register the client through the real booking flow before testing arrival by QR. */
+export async function bookClientForQr(
+  page: Page,
+  phone: string,
+  nombres: string,
+  apellidos: string,
+) {
+  await control(page.request, 'booking-mode');
+  await control(page.request, 'automatic-booking-mode');
+  const origin = 'https://localhost:4443';
+  await page.request.get(origin + '/api/auth/csrf/');
+  const config = await (
+    await page.request.get(origin + '/api/v1/public/reservas/configuracion/')
+  ).json();
+  const available = await (
+    await page.request.get(origin + '/api/v1/public/agenda/disponibilidad/', {
+      params: {
+        profesional_id: fixture.agenda.professional,
+        servicios: String(fixture.agenda.service),
+        fecha: fixture.agenda.date,
+      },
+    })
+  ).json();
+  expect(available.slots.length).toBeGreaterThan(0);
+  const csrf = (await page.context().cookies()).find(
+    (cookie) => cookie.name === 'csrftoken',
+  )!.value;
+  const response = await page.request.post(origin + '/api/v1/public/reservas/solicitudes/', {
+    data: {
+      nombres,
+      apellidos,
+      telefono: phone,
+      profesional_id: fixture.agenda.professional,
+      servicios: [fixture.agenda.service],
+      inicio_en: available.slots[0].inicio_en,
+      consentimiento_datos: true,
+      version_aviso: config.privacy_notice.version,
+    },
+    headers: { 'X-CSRFToken': csrf, 'Idempotency-Key': randomUUID(), Origin: origin },
+  });
+  expect(response.status(), await response.text()).toBe(201);
+  expect((await response.json()).estado).toBe('CONFIRMADA');
 }
 export type ReportingRole =
   | 'admin'

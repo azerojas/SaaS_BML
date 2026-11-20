@@ -521,7 +521,7 @@
 .calendar-event {
   position: absolute;
   z-index: 3;
-  padding: 10px;
+  padding: 7px 9px;
   border: 1px solid var(--line);
   border-left: 3px solid var(--specialist-accent, var(--forest));
   border-radius: 9px;
@@ -535,6 +535,8 @@
   overflow: hidden;
 }
 .calendar-event strong {
+  flex-shrink: 0;
+  line-height: 1.25;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;

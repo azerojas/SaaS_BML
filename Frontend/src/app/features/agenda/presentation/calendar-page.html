@@ -323,6 +323,8 @@
                   <button
                     type="button"
                     class="working-band"
+                    [class.pending-request]="!!interval.solicitud_pendiente"
+                    [attr.data-professional-id]="interval.ownerId"
                     [style.left]="
                       interval.left === undefined ? null : 'calc(' + interval.left + '% + 6px)'
                     "
@@ -331,9 +333,18 @@
                     "
                     [style.right]="interval.width === undefined ? null : 'auto'"
                     [class.short-window]="intervalHeight(interval) < 96"
-                    [disabled]="!canEditSchedules() || day < todayDate || intent.busy()"
+                    [disabled]="
+                      !!interval.solicitud_pendiente ||
+                      !canEditSchedules() ||
+                      day < todayDate ||
+                      intent.busy()
+                    "
                     [attr.aria-label]="
-                      'Editar disponibilidad del ' +
+                      (interval.solicitud_pendiente
+                        ? 'Solicitud pendiente de ' +
+                          interval.solicitud_pendiente.clienta_nombre +
+                          ' el '
+                        : 'Editar disponibilidad del ') +
                       day +
                       ' de ' +
                       interval.inicio +
@@ -344,16 +355,26 @@
                     [style.top.px]="intervalTop(interval)"
                     [style.height.px]="intervalHeight(interval)"
                     [title]="
-                      interval.cupo_unico
-                        ? 'Una cita a las ' + interval.inicio + ' · Fin máximo: ' + interval.fin
-                        : 'Disponible: ' + interval.inicio + '–' + interval.fin
+                      interval.solicitud_pendiente
+                        ? 'Solicitud pendiente de ' + interval.solicitud_pendiente.clienta_nombre
+                        : interval.cupo_unico
+                          ? 'Una cita a las ' + interval.inicio
+                          : 'Disponible: ' + interval.inicio + '–' + interval.fin
                     "
                   >
                     <span class="window-status"
-                      ><i></i>{{ interval.cupo_unico ? 'Cupo disponible' : 'Disponible' }}</span
+                      ><i></i
+                      >{{
+                        interval.solicitud_pendiente
+                          ? 'Solicitud pendiente'
+                          : interval.cupo_unico
+                            ? 'Cupo disponible'
+                            : 'Disponible'
+                      }}</span
                     >
                     <strong class="window-note">{{
-                      interval.cupo_unico ? 'Una reserva por cupo' : 'Horario de atención'
+                      interval.solicitud_pendiente?.clienta_nombre ||
+                        (interval.cupo_unico ? 'Una reserva por cupo' : 'Horario de atención')
                     }}</strong>
                     <span class="window-time"
                       ><bm-icon name="clock" />{{ interval.inicio }}
@@ -414,9 +435,10 @@
                       event.appointment.clienta_nombre || 'Cita #' + event.appointment.id
                     }}</strong
                     ><span
-                      >{{ time(event.appointment.inicio_en) }}–{{
-                        time(event.appointment.fin_en)
-                      }}</span
+                      >{{ time(event.appointment.inicio_en) }}
+                      @if (event.appointment.duracion_total_minutos !== 60) {
+                        –{{ time(event.appointment.fin_en) }}
+                      }</span
                     ><small>{{ professionalName(event.appointment.profesional_id) }}</small></a
                   >
                 }
@@ -521,7 +543,10 @@
                   <button
                     type="button"
                     class="month-availability"
-                    [disabled]="!canEditSchedules() || day < todayDate"
+                    [class.pending-request]="!!interval.solicitud_pendiente"
+                    [disabled]="
+                      !!interval.solicitud_pendiente || !canEditSchedules() || day < todayDate
+                    "
                     (click)="configureDay(day)"
                     [attr.aria-label]="
                       'Editar disponibilidad del ' +
@@ -532,8 +557,17 @@
                       interval.fin
                     "
                   >
-                    {{ interval.cupo_unico ? 'Cupo' : 'Disponible' }}
-                    · {{ interval.inicio }}–{{ interval.fin }}
+                    {{
+                      interval.solicitud_pendiente
+                        ? 'Solicitud pendiente · ' + interval.solicitud_pendiente.clienta_nombre
+                        : interval.cupo_unico
+                          ? 'Cupo'
+                          : 'Disponible'
+                    }}
+                    · {{ interval.inicio }}
+                    @if (!interval.cupo_unico) {
+                      –{{ interval.fin }}
+                    }
                   </button>
                 }
                 @if (canEditSchedules() && day >= todayDate) {

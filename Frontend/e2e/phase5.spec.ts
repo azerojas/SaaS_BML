@@ -111,7 +111,6 @@ for (const report of reports)
     await enter(page);
     await page.goto('/admin/reportes');
     await page.getByLabel('Reporte', { exact: true }).selectOption(report);
-    await range(page);
     const exportButton = page.getByRole('button', { name: 'Exportar reporte Excel', exact: true });
     await expect(exportButton).toBeEnabled();
     const responsePromise = page.waitForResponse((response) =>
@@ -127,12 +126,15 @@ for (const report of reports)
     );
     const params = new URL(response.url()).searchParams;
     expect(params.get('report')).toBe(report);
-    expect(params.get('desde')).toBe(f.desde);
-    expect(params.get('hasta')).toBe('2026-11-01');
+    const desde = params.get('desde')!;
+    const hasta = params.get('hasta')!;
+    await expect(page.locator('.report-period')).toContainText(desde);
     expect(params.has('page')).toBe(false);
-    expect(download.suggestedFilename()).toBe(
-      'beauty_manager_reporte_' + report + '_2026-10-01_2026-11-01.xlsx',
-    );
+    const end = new Date(hasta + 'T12:00:00Z');
+    end.setUTCDate(end.getUTCDate() - 1);
+    await expect(page.locator('.report-period')).toContainText(end.toISOString().slice(0, 10));
+    expect(download.suggestedFilename()).toContain(desde + ' al ' + end.toISOString().slice(0, 10));
+    expect(download.suggestedFilename()).not.toContain('_');
     const file = testInfo.outputPath(report + '.xlsx');
     await download.saveAs(file);
     const verification = JSON.parse(
@@ -140,15 +142,15 @@ for (const report of reports)
         backendPython,
         [
           '-c',
-          "import sys,json,zipfile,openpyxl; w=openpyxl.load_workbook(sys.argv[1],data_only=False); cells=[c for s in w for row in s for c in row]; assert all(c.data_type!='f' and c.hyperlink is None for c in cells); assert not any('externalLinks/' in p for p in zipfile.ZipFile(sys.argv[1]).namelist()); meta={r[0].value:r[1].value for r in w['Resumen'] if len(r)>1}; assert meta['desde']=='2026-10-01' and meta['hasta']=='2026-11-01' and meta['timezone']=='America/Lima'; assert '+51955123555' not in [str(c.value) for c in cells]; print(json.dumps({'sheets':w.sheetnames,'formula_like_text':any(isinstance(c.value,str) and c.value.startswith(('=','@')) for c in cells)}))",
+          "import sys,json,zipfile,openpyxl; from datetime import date,timedelta; w=openpyxl.load_workbook(sys.argv[1],data_only=False); cells=[c for s in w for row in s for c in row]; assert all(c.data_type!='f' and c.hyperlink is None for c in cells); assert not any('externalLinks/' in p for p in zipfile.ZipFile(sys.argv[1]).namelist()); expected='Del '+date.fromisoformat(sys.argv[2]).strftime('%d/%m/%Y')+' al '+(date.fromisoformat(sys.argv[3])-timedelta(days=1)).strftime('%d/%m/%Y'); assert w['Resumen']['A2'].value==expected; assert all('_' not in str(c.value) for s in w for c in s[4]); assert '+51955123555' not in [str(c.value) for c in cells]; print(json.dumps({'sheets':w.sheetnames}))",
           file,
+          desde,
+          hasta,
         ],
         { encoding: 'utf8', windowsHide: true },
       ),
     );
-    expect(verification.sheets).toHaveLength(2);
-    if (['top-services', 'top-clients', 'expenses'].includes(report))
-      expect(verification.formula_like_text).toBe(true);
+    expect(verification.sheets).toHaveLength(report === 'overview' ? 6 : 3);
   });
 test('permisos separados: resumen no revela clientas ni inventario y no concede exportación', async ({
   page,

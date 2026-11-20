@@ -7,6 +7,8 @@ from apps.reporting.domain.errors import ReportError
 from apps.reporting.application import services
 from apps.reporting.application.exports import export_report
 from apps.reporting.infrastructure.snapshot import ensure_ready, read_snapshot
+from apps.reporting.infrastructure.excel_export import REPORT_TITLES
+from datetime import timedelta
 from .permissions import ReportingPermission
 from .serializers import parse_filters, parse_month
 
@@ -31,7 +33,8 @@ class ReportView(APIView):
             if self.report=='export':
                 content=export_report(target,filters,request.user,params['orden'],params['limit'])
                 response=HttpResponse(content,content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-                response['Content-Disposition']='attachment; filename="beauty_manager_reporte_'+target+'_'+filters.desde.isoformat()+'_'+filters.hasta.isoformat()+'.xlsx"'
+                filename='Lasheo - '+REPORT_TITLES[target]+' - '+filters.desde.isoformat()+' al '+(filters.hasta-timedelta(days=1)).isoformat()+'.xlsx'
+                response['Content-Disposition']='attachment; filename="'+filename+'"'
                 response['Cache-Control']='private, no-store'
                 response['X-Content-Type-Options']='nosniff'
                 return response

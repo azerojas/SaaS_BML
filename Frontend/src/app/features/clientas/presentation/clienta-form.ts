@@ -35,7 +35,7 @@ import { Icon } from '../../../shared/ui/icon';
         <span class="edit-icon"><bm-icon name="edit" /></span>
         <div>
           <p class="eyebrow">INFORMACIÓN PERSONAL</p>
-          <h2 mat-dialog-title>Editar ficha</h2>
+          <h2 mat-dialog-title>{{ id ? 'Editar ficha' : 'Nueva clienta' }}</h2>
         </div>
         <button
           mat-icon-button
@@ -85,8 +85,13 @@ import { Icon } from '../../../shared/ui/icon';
       </form>
     }
     <ng-template #editorFields>
-      <bm-form-feedback [message]="facade.error()" [errors]="facade.fields()" />
-      <bm-editor-fields [fields]="fields" [form]="form" [errors]="facade.fields()" />
+      <bm-form-feedback [compact]="true" [message]="facade.error()" [errors]="facade.fields()" />
+      <bm-editor-fields
+        [compact]="true"
+        [fields]="fields"
+        [form]="form"
+        [errors]="facade.fields()"
+      />
       <p class="muted">
         El consentimiento de datos se gestiona por separado desde la ficha de la clienta.
       </p>

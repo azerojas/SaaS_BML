@@ -146,6 +146,8 @@ try:
                     settings.LOGIN_RATE_LIMIT=1000
                     settings.AGENDA_REQUIRE_DEPOSITS=True
                     settings.AGENDA_PUBLIC_WRITE_ENABLED=False
+                    settings.AGENDA_AUTO_CONFIRM_PUBLIC_BOOKINGS=False
+                    settings.AGENDA_BOOKING_SLOT_MINUTES=0
                     get_user_model().objects.get(username='e2e_specialist').user_permissions.remove(Permission.objects.get(content_type__app_label='agenda',codename='manage_own_schedule'))
                     m.ConfiguracionReservas.objects.filter(pk=1).update(reservas_online_activas=False)
                     settings.CHECKIN_POST_IP_LIMIT=1000
@@ -159,6 +161,9 @@ try:
                     m.Servicios.objects.filter(pk=agenda_fixture['service']).update(visible_catalogo=True,reservable_online=True)
                 elif path=='/__test__/specialist-mode':
                     get_user_model().objects.get(username='e2e_specialist').user_permissions.add(Permission.objects.get(content_type__app_label='agenda',codename='manage_own_schedule'))
+                elif path=='/__test__/automatic-booking-mode':
+                    settings.AGENDA_AUTO_CONFIRM_PUBLIC_BOOKINGS=True
+                    settings.AGENDA_BOOKING_SLOT_MINUTES=60
                 elif path=='/__test__/contract-on':settings.FRONTEND_CONTRACT_VERSION='1'
                 elif path=='/__test__/contract-next':settings.FRONTEND_CONTRACT_VERSION='2'
                 elif path=='/__test__/expire':Session.objects.all().delete()

@@ -55,7 +55,7 @@ export function buildFields(
   selector: 'bm-editor-fields',
   imports: [ReactiveFormsModule, DateField],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<div class="form-grid" [formGroup]="form()">
+  template: `<div class="form-grid" [class.compact]="compact()" [formGroup]="form()">
     @for (field of fields(); track field.key) {
       <div class="form-field" [class.wide]="field.type === 'textarea'">
         @if (field.type === 'checkbox') {
@@ -79,7 +79,7 @@ export function buildFields(
             <textarea
               [id]="prefix() + field.key"
               [formControlName]="field.key"
-              rows="4"
+              [rows]="compact() ? 3 : 4"
               [attr.maxlength]="field.max ?? 2000"
               [attr.minlength]="field.min ?? (field.key === 'descripcion' ? 10 : null)"
               [attr.aria-invalid]="
@@ -146,8 +146,56 @@ export function buildFields(
       </div>
     }
   </div>`,
+  styles: `
+    .form-grid.compact {
+      gap: 12px 16px;
+    }
+    .compact .form-field {
+      display: grid;
+      align-content: start;
+      gap: 5px;
+    }
+    .compact label {
+      margin: 0;
+      font-size: 12px;
+    }
+    .compact input:not([type='checkbox']),
+    .compact select,
+    .compact textarea {
+      min-height: 44px;
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+    .compact small {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    .compact textarea {
+      min-height: var(--editor-textarea-min-height, 44px);
+      max-height: var(--editor-textarea-max-height, none);
+      resize: vertical;
+      overflow-y: auto;
+    }
+    .compact .field-feedback {
+      block-size: auto;
+      min-block-size: 0;
+      margin: 0;
+      overflow: visible;
+    }
+    .compact .field-feedback:not(:has(.field-error)) {
+      display: none;
+    }
+    @media (max-width: 600px) {
+      .form-grid.compact {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+    }
+  `,
 })
 export class EditorFields {
+  readonly compact = input(false);
   hasFeedback(key: string) {
     const control = this.form().controls[key];
     return (control.invalid && control.touched) || !!this.errors()[key]?.length;

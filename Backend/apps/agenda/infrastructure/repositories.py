@@ -1,7 +1,7 @@
 from django.db.models import Prefetch,Q
 from django.shortcuts import get_object_or_404
 from negocio import models as m
-from apps.agenda.domain.rules import ACTIVE
+from apps.agenda.domain.rules import ACTIVE,hourly_windows
 from apps.agenda.domain.errors import AgendaError
 
 
@@ -38,11 +38,11 @@ def booking_windows(professional_id,day):
     override=dated_hours(professional_id,day,include_slot_mode=True,personal_only=personal)
     if override is not None:
         if personal:
-            return [(weekday,begin,finish,True) for weekday,begin,finish,_ in override]
-        return override
+            return hourly_windows([(weekday,begin,finish,True) for weekday,begin,finish,_ in override])
+        return hourly_windows(override)
     if personal:
         return []
-    return [(weekday,begin,finish,False) for weekday,begin,finish in hours(professional_id)]
+    return hourly_windows([(weekday,begin,finish,False) for weekday,begin,finish in hours(professional_id)])
 
 
 def requires_personal_slots(professional_id):

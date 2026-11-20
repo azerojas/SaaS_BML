@@ -46,6 +46,8 @@ export interface PaymentInput {
   verificado_manualmente: true;
 }
 export interface SaleLine extends SaleLineInput {
+  profesional_nombre?: string | null;
+  duracion_minutos?: number | null;
   id: number;
   servicio_id: number;
   articulo_id: number;

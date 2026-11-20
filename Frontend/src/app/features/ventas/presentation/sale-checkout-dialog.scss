@@ -1,0 +1,355 @@
+:host {
+  display: block;
+  min-width: 0;
+  color: var(--ink);
+}
+.checkout-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 22px 26px;
+  border-bottom: 1px solid var(--line);
+}
+.checkout-symbol,
+.client-symbol,
+.service-symbol {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  color: var(--forest);
+  background: var(--sage);
+}
+.checkout-heading > div {
+  flex: 1;
+  min-width: 0;
+}
+.eyebrow {
+  margin: 0 0 4px;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+}
+.checkout-heading h2 {
+  margin: 0;
+  padding: 0;
+  font:
+    500 27px 'Playfair Display Variable',
+    Georgia,
+    serif;
+}
+mat-dialog-content {
+  max-height: calc(90dvh - 188px);
+  padding: 22px 26px;
+}
+.client-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+}
+.client-symbol {
+  background: var(--cream);
+  color: var(--muted);
+}
+.client-summary > div {
+  min-width: 0;
+}
+.detail-label {
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+}
+.client-summary h3 {
+  font-size: 17px;
+  margin: 5px 0;
+  overflow-wrap: anywhere;
+}
+.client-summary p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 24px 0 12px;
+}
+.section-title h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.section-title > span {
+  padding: 5px 9px;
+  border-radius: 30px;
+  background: var(--secondary-soft);
+  color: var(--on-secondary);
+  font-size: 10px;
+}
+.service-list {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--paper);
+}
+.service-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 18px;
+}
+.service-row + .service-row {
+  border-top: 1px solid var(--line);
+}
+.service-symbol {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--surface-low);
+}
+.service-symbol bm-icon {
+  width: 17px;
+  height: 17px;
+}
+.service-info {
+  flex: 1;
+  min-width: 0;
+}
+.service-info h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.service-info p,
+.service-info small {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+.service-row > strong {
+  font-size: 14px;
+  white-space: nowrap;
+  text-align: right;
+}
+.service-row > strong small {
+  display: block;
+  font-size: 9px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.totals {
+  display: grid;
+  gap: 10px;
+  margin: 20px 4px;
+}
+.totals > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 20px;
+  font-size: 12px;
+}
+.totals span {
+  color: var(--muted);
+  line-height: 1.6;
+}
+.totals strong {
+  white-space: nowrap;
+  font-weight: 600;
+}
+.balance-card {
+  margin-top: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 14px;
+  background: var(--sage);
+  color: var(--forest);
+}
+.balance-card span {
+  font-size: 9px;
+  letter-spacing: 1.3px;
+  font-weight: 650;
+}
+.balance-card p {
+  margin: 7px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--on-primary-soft);
+}
+.balance-card > strong {
+  font-size: clamp(23px, 4vw, 30px);
+  letter-spacing: -1px;
+  white-space: nowrap;
+}
+.empty-copy {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--muted);
+  padding: 18px;
+}
+mat-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  border-top: 1px solid var(--line);
+  padding: 18px 26px;
+}
+mat-dialog-actions p {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+mat-dialog-actions p bm-icon {
+  width: 14px;
+  height: 14px;
+}
+mat-dialog-actions button {
+  min-width: 118px;
+  min-height: 40px;
+  border-radius: 9px;
+  font-size: 12px;
+}
+mat-dialog-actions button bm-icon {
+  width: 17px;
+  height: 17px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.payment-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--secondary);
+}
+.payment-form {
+  border-top: 1px solid var(--line);
+  margin-top: 22px;
+  padding-top: 18px;
+}
+.payment-form h3 {
+  font-size: 15px;
+  margin: 0 0 16px;
+}
+.payment-form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+}
+.payment-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.payment-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.payment-form input:not([type='checkbox']),
+.payment-form select {
+  min-height: 44px;
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--outline);
+  border-radius: 9px;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 10px;
+  font: inherit;
+}
+.payment-form .verified {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 11px;
+  line-height: 1.8;
+}
+.verified input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--forest);
+  margin-top: 2px;
+}
+.consumption-review {
+  background: var(--surface-low);
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 11px;
+}
+.consumption-review h4 {
+  margin: 0 0 8px;
+  font-size: 12px;
+}
+.consumption-review p {
+  color: var(--muted);
+  line-height: 1.8;
+}
+.consumption-review strong {
+  display: block;
+  margin: 12px 0 8px;
+}
+.consumption-review label {
+  display: grid;
+  grid-template-columns: 1fr 100px;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+@media (max-width: 600px) {
+  .checkout-heading {
+    padding: 18px;
+  }
+  mat-dialog-content {
+    padding: 18px;
+    max-height: calc(90dvh - 220px);
+  }
+  mat-dialog-actions {
+    padding: 16px 18px;
+  }
+  mat-dialog-actions button {
+    width: auto;
+    min-height: 44px;
+    margin-left: auto;
+  }
+  .client-summary,
+  .service-row {
+    padding: 14px;
+  }
+  .service-row {
+    flex-wrap: wrap;
+  }
+  .service-row > strong {
+    margin-left: 46px;
+  }
+  .balance-card {
+    padding: 16px;
+    flex-wrap: wrap;
+  }
+}

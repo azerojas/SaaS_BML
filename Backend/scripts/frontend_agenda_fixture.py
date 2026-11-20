@@ -38,5 +38,7 @@ def seed(actor):
     qr=m.Citas.objects.create(clienta=clients[3],profesional=professional,estado='CONFIRMADA',
         inicio_en=now-timedelta(minutes=5),fin_en=now+timedelta(minutes=25),
         duracion_total_minutos=30,precio_total=Decimal('100'),anticipo_requerido=Decimal('0'))
+    m.CitaServicios.objects.create(cita=qr, servicio=service, orden=1,
+        duracion_minutos=30, precio_snapshot=Decimal('100.00'))
     return {'date':day.isoformat(),'professional':professional.pk,'service':service.pk,
         'clients':[row.pk for row in clients],'appointment':result['cita_id'],'expired':expired.pk,'qr':qr.pk,'synthetic_only':True}

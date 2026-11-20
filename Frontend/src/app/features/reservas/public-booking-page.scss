@@ -1,6 +1,43 @@
 :host {
   display: block;
 }
+.chosen-treatment {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  margin-block: 16px;
+  background: var(--surface-low);
+}
+.chosen-treatment-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  color: var(--forest);
+  background: var(--sage);
+}
+.chosen-treatment > div {
+  flex: 1;
+  min-width: 0;
+}
+.chosen-treatment h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.chosen-treatment p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.chosen-treatment > bm-icon {
+  color: var(--secondary);
+}
 .booking-page {
   max-width: 1160px;
   margin: auto;
@@ -100,6 +137,50 @@ h1 {
   gap: 1.3rem;
   min-width: 0;
 }
+.login-view {
+  max-width: 440px;
+  padding-block: clamp(1.5rem, 6vh, 4rem);
+}
+.login-view .booking-heading {
+  display: none;
+}
+.login-view .booking-body {
+  margin: 0;
+}
+.reservation-login {
+  padding: clamp(1.5rem, 5vw, 2.25rem);
+  box-shadow: 0 12px 36px color-mix(in srgb, var(--ink) 7%, transparent);
+}
+.login-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 1rem;
+  border-radius: 14px;
+  color: var(--forest);
+  background: var(--sage);
+}
+.reservation-login h1 {
+  font-size: clamp(1.7rem, 5vw, 2rem);
+  text-align: center;
+  letter-spacing: -0.035em;
+  margin-bottom: 0.65rem;
+}
+.login-description {
+  margin: 0 0 1.5rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.81rem;
+}
+.reservation-login label {
+  margin: 0;
+  gap: 0.35rem;
+}
+.reservation-login button {
+  width: 100%;
+  margin-top: 0.35rem;
+}
 .booking-panel {
   padding: clamp(1.25rem, 3vw, 2rem);
   border: 1px solid var(--line);
@@ -138,50 +219,10 @@ fieldset {
   margin: 0;
   min-width: 0;
 }
-.service-grid,
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.8rem;
-}
-.service-option {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.45rem 0.8rem;
-  padding: 1.1rem;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  cursor: pointer;
-  margin: 0;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
-}
-.service-option:hover {
-  border-color: var(--line);
-  background: var(--canvas);
-}
-.service-option input {
-  grid-row: span 2;
-  width: 17px;
-  height: 17px;
-  margin: 0.15rem 0;
-  accent-color: var(--forest);
-}
-.service-option strong {
-  overflow-wrap: anywhere;
-  font-size: 0.83rem;
-  font-weight: 650;
-  line-height: 1.6;
-}
-.service-option small {
-  font-size: 0.72rem;
-  color: var(--muted);
-  line-height: 1.6;
-}
-.service-option.selected {
-  background: var(--sage);
-  border-color: var(--forest);
 }
 form {
   display: grid;
@@ -335,35 +376,6 @@ textarea:focus-visible {
 }
 .section-title h2 {
   margin: 0;
-}
-.booking-card {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 1.3rem;
-  margin-bottom: 1rem;
-  background: var(--canvas);
-}
-.booking-card h3 {
-  margin: 0;
-  font-size: 0.88rem;
-  letter-spacing: 0.06em;
-}
-.booking-card p,
-.booking-card li {
-  font-size: 0.84rem;
-}
-.booking-card ul {
-  padding-left: 1.2rem;
-  line-height: 1.9;
-}
-.state {
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 0.4rem 0.7rem;
-  background: var(--sage);
-  color: var(--forest);
-  border-radius: 6px;
-  line-height: 1.5;
 }
 .confirmation {
   border-top: 4px solid var(--forest);
@@ -532,7 +544,6 @@ textarea:focus-visible {
   }
 }
 @media (max-width: 480px) {
-  .service-grid,
   .form-grid {
     grid-template-columns: 1fr;
   }
@@ -548,9 +559,6 @@ textarea:focus-visible {
   }
   .booking-page {
     padding-top: 0;
-  }
-  .booking-card {
-    padding: 1rem;
   }
   .actions button {
     flex: 1;

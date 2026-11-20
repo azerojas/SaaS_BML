@@ -119,6 +119,7 @@ type LineForm = FormGroup<{
     }
     <ng-template #editor>
       <bm-form-feedback
+        [compact]="true"
         [message]="localError() || saveState.error()"
         [errors]="saveState.fields()"
       />
@@ -169,6 +170,7 @@ type LineForm = FormGroup<{
               </p>
             }
             <bm-editor-fields
+              [compact]="true"
               [fields]="documentFields"
               [form]="header"
               [errors]="saveState.fields()"
@@ -301,6 +303,7 @@ type LineForm = FormGroup<{
             }
             <bm-editor-fields
               class="purchase-notes"
+              [compact]="true"
               [fields]="noteFields"
               [form]="header"
               [errors]="saveState.fields()"

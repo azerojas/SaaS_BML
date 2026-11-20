@@ -5,7 +5,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from negocio import models as m
 from apps.agenda.domain.errors import AgendaError
-from apps.agenda.domain.rules import ZONE,ACTIVE,amounts,overlaps
+from apps.agenda.domain.rules import ZONE,ACTIVE,amounts,overlaps,booking_duration
 from apps.agenda.infrastructure import repositories as repo
 
 
@@ -28,6 +28,7 @@ def available(query):
         from apps.agenda.models import PublicBookingRequest
         request_quote=PublicBookingRequest.objects.get(pk=query.request_id)
         total,duration,required=request_quote.precio_total,request_quote.duracion_minutos,0
+    duration=booking_duration(duration)
     day_start=datetime.combine(query.fecha,datetime.min.time(),ZONE)
     day_end=day_start+timedelta(days=1)
     if query.fecha<now.astimezone(ZONE).date() or day_start>=now+timedelta(days=min(cfg.anticipacion_maxima_dias,366)):
@@ -55,5 +56,5 @@ def available(query):
                 break
             start+=timedelta(minutes=cfg.intervalo_slots_minutos)
     return {'timezone':'America/Lima','fecha_local':query.fecha,'profesional_id':query.profesional_id,'servicios':list(query.servicios),
-            'duracion_minutos':duration,'precio_total':total,'anticipo_requerido':required,'slots':slots,
+            'duracion_minutos':duration,'cupo_minutos':settings.AGENDA_BOOKING_SLOT_MINUTES,'precio_total':total,'anticipo_requerido':required,'slots':slots,
             'disponibilidad_es_propuesta':True,'pendientes_vencidas_ocupan_hasta_expirar':True}

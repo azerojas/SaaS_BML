@@ -45,14 +45,14 @@ class CustomerBookingView(ErrorMixin, APIView):
             return Response({'habilitada': settings.AGENDA_PUBLIC_WRITE_ENABLED and settings.AGENDA_PUBLIC_READ_ENABLED and cfg.reservas_online_activas,
                 'horas_limite_cancelacion': cfg.horas_limite_cancelacion,
                 'minutos_revision': settings.AGENDA_REQUEST_HOLD_MINUTES,
+                'confirmacion_automatica': settings.AGENDA_AUTO_CONFIRM_PUBLIC_BOOKINGS,
                 'privacy_notice': booking.notice()})
         if self.resource == 'intentos':
             with agenda_transaction():
                 row = PublicBookingIntent.objects.filter(owner_hash=booking.browser(request), key=key).first()
                 return Response({'found': bool(row), **({'result': booking.restore_intent(row.result)} if row else {})})
         if self.resource == 'solicitudes':
-            ids = request.session.get('booking_requests', [])
-            rows = PublicBookingRequest.objects.filter(pk__in=ids).order_by('-creada_en')[:50]
+            rows = booking.authorized_requests(request).order_by('-creada_en')[:50]
             return Response({'results': [booking.detail(row, customer=True) for row in rows]})
         if self.resource == 'disponibilidad':
             if set(request.query_params) != {'fecha'} or len(request.query_params.getlist('fecha')) != 1:
@@ -67,6 +67,7 @@ class CustomerBookingView(ErrorMixin, APIView):
             return Response(booking.access(request, **self.parse(s.AccessInput)))
         if self.resource == 'salir':
             request.session.pop('booking_requests', None)
+            request.session.pop('booking_phone', None)
             return Response(status=204)
         consume([('customer-booking-write', request.META.get('REMOTE_ADDR',''), 20, 900)])
         if self.resource == 'solicitudes':
